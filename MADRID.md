@@ -131,3 +131,29 @@ ellas** (fallback = huella Catastro/OSM + altura real).
   errores de consola/red; WebGPU probablemente no disponible headless → se documenta
   hasta dónde llega el boot (módulos + overlay + construcción de ciudad vía
   `buildCityGrid` con datos Madrid); el render 3D real se valida en navegador real.
+
+## Estado fase 1 (25-10-2026)
+
+- **Pipeline**: `tools/madrid/fetch.sh` → Overpass (osm_madrid.json, espejos
+  overpass-api.de → osm.ch → overpass.kumi.systems), `catastro.py` (WFS INSPIRE,
+  2445 huellas EPSG:25830), `alturas.py` (IDEAM EDIFICIOS_ALTURAS, 10814 huellas con
+  ALTURA); `node tools/madrid/build.mjs` → `js/madrid-geodata.js` (1,49 MB: 879 roads,
+  139 blocks, 11412 parcels con altura 2,4–82,6 m, 231 landmarks).
+- **App**: alturas IDEAM clampean la extrusión procedural por parcela en
+  `buildings.js::commit()` (storeys enteros); profiles por barrio
+  (MADRID_CENTRO/GRANVIA/JERONIMOS); 8 teleports verificados programáticamente
+  (Sol, Callao, Gran Vía, Cibeles, Alcalá, Plaza Mayor, Ópera) sobre calzada real
+  mirando a su referencia.
+- **Tests**: 106/106 (`timeout 300 node --test 'tests/*.test.cjs'
+  tests/geodata.test.mjs`), incluidos los teleports reescritos para Madrid.
+- **Smoke headless** (Playwright chromium headless-shell, arm64): la app arranca
+  con `navigator.gpu` presente, 0 pageerrors y 0 peticiones fallidas; el render
+  WebGPU efectivo queda por validar en un navegador con GPU (headless-shell expone
+  el adaptador pero puede caer a fallback). No se captura frame.
+- **Limitaciones conocidas**: Puerta de Alcalá queda 16 m fuera del bbox fase 1
+  (gate en x=1208 vs xMax=1191.7): no está en `GEO.landmarks` ni en el mapa; el
+  teleport "Alcalá" aterriza en la calzada de Alcalá dentro del frame. i3s
+  (MODELADO_3D_MADRID) diferido a fase 2 (fetcher por nodos ya investigado, arriba).
+- **Publicación**: GitHub Pages (workflow, build_type=workflow) despliega
+  `feat/madrid` y `main`; URL https://germanpadua.github.io/slop-madrid/. Merge a
+  `main` pendiente del usuario.
