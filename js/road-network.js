@@ -1067,6 +1067,11 @@ function buildRoadNetwork(sidewalks, obstacles, signalIntersections = []) {
   }
   nodes = nodes.filter((n) => n.in && n.out);
   nodes.forEach((n, i) => (n.id = i));
+  // Dead-end stubs of the connected set (their far end lost every onward lane) reference nodes traffic.js never
+  // initialises (no approach/road slots, no arms sided): drop them here, after the node filter above
+  const keptNodes = new Set(nodes);
+  edges = edges.filter((e) => keptNodes.has(e.from) && keptNodes.has(e.to));
+  edges.forEach((e, i) => (e.id = i));
 
   // 8. Signalized intersections are exactly the ones with signal heads (street-details.js)
   for (const s of signalIntersections) {

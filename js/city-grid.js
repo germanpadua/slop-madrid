@@ -1834,9 +1834,11 @@ function buildCityGrid(scene) {
   }
   // Low coursed-schist perimeter wall (~0.8 m above the sidewalk) with the lawn a little inside it
   const cpWall = flatPts(CPG.outline);
-  group.add(createExtrudedPolygonMesh(cpWall, 0.0, 1.05, createParkWallMaterial(), true, false));
-  const cpLawnPts = offsetPolygonInward(cpWall, 0.6) || cpWall;
-  group.add(createExtrudedPolygonMesh(cpLawnPts, 0.85, 0.34, cpLawnMat, true, false));
+  if (cpWall.length) {
+    group.add(createExtrudedPolygonMesh(cpWall, 0.0, 1.05, createParkWallMaterial(), true, false));
+    const cpLawnPts = offsetPolygonInward(cpWall, 0.6) || cpWall;
+    group.add(createExtrudedPolygonMesh(cpLawnPts, 0.85, 0.34, cpLawnMat, true, false));
+  }
 
   // Sunlit open meadows & lawns: Sheep Meadow, the Great Lawn, North Meadow, the Great Hill, Cedar & Pilgrim Hills...
   const cpLawnPolys = CPG.lawns.map((l) => flatPts(l.ring));
