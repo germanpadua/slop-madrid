@@ -218,13 +218,17 @@ function mapLayers() {
 
   // Parkland (parks & garden plazas), the curb islands (blocks: raised sidewalks & lots) and the park blocks, exactly
   // as city-grid.js / buildings.js treat them
+  L.parkLand = new TiledLayer();
+  for (const park of GEO.parks || []) for (const ring of park.rings || []) L.parkLand.ring(ring);
   L.blocks = new TiledLayer();
   L.parkBlocks = new TiledLayer();
   for (const b of BLOCKS) (b.park > 0.6 && !b.median ? L.parkBlocks : L.blocks).ring(b.poly);
 
   // Central Park: empty stub in Madrid (kept for the shared draw path)
   const cp = GEO.centralPark || {};
+  L.cpBounds = cp.bounds || null;
   L.cpLawns = new Path2D();
+
   for (const l of cp.lawns || []) addRing(L.cpLawns, l.ring);
   L.cpWater = new Path2D();
   for (const w of cp.water || []) addRing(L.cpWater, w.ring);
