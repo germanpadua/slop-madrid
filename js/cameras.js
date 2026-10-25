@@ -6,17 +6,17 @@ import { bryantParkLawn } from './landmarks.js';
 // Low-Angle Action Cam, POV/Cockpit Cam, 7 Iconic NYC Architectural Cameras, and Auto-Director Drone.
 
 const CAMERA_PRESETS = [
-  { id: 'chase',       name: '3rd-Person Chase',         short: 'Chase',       category: 'follow', fov: 56 },
-  { id: 'action',      name: 'Low-Angle Action',         short: 'Action',      category: 'follow', fov: 60 },
-  { id: 'pov',         name: 'First-Person / Cockpit',   short: 'POV / Dash',  category: 'follow', fov: 68 },
-  { id: 'centralPark', name: 'Central Park Oasis',       short: 'Central Pk',  category: 'scenic', fov: 52 },
-  { id: 'fifthAve',    name: '5th Ave & Empire State',   short: '5th Ave',     category: 'scenic', fov: 48 },
-  { id: 'timesSquare', name: 'Times Square Crossroads',  short: 'Times Sq',    category: 'scenic', fov: 58 },
-  { id: 'chryslerGCT', name: '42nd St · Chrysler & GCT', short: 'Chrysler',    category: 'scenic', fov: 50 },
-  { id: 'observatory', name: 'Empire State 86th Deck',   short: '86th Deck',   category: 'scenic', fov: 52 },
-  { id: 'bryantPark',  name: 'Bryant Park & NYPL',       short: 'Bryant Pk',   category: 'scenic', fov: 52 },
-  { id: 'waterfront',  name: 'East River & Skyline',     short: 'Skyline',     category: 'scenic', fov: 46 },
-  { id: 'drone',       name: 'Auto-Director Aerial',     short: 'Director',    category: 'scenic', fov: 50 }
+  { id: 'chase',       name: '3rd-Person Chase',          short: 'Chase',       category: 'follow', fov: 56 },
+  { id: 'action',      name: 'Low-Angle Action',          short: 'Action',      category: 'follow', fov: 60 },
+  { id: 'pov',         name: 'First-Person / Cockpit',    short: 'POV / Dash',  category: 'follow', fov: 68 },
+  { id: 'centralPark', name: 'Gran Vía Canyon',           short: 'Gran Vía',    category: 'scenic', fov: 52 },
+  { id: 'fifthAve',    name: 'Alcalá & Puerta de Alcalá', short: 'Alcalá',      category: 'scenic', fov: 48 },
+  { id: 'timesSquare', name: 'Puerta del Sol Crossroads', short: 'Sol',         category: 'scenic', fov: 58 },
+  { id: 'chryslerGCT', name: 'Cibeles & Banco de España', short: 'Cibeles',     category: 'scenic', fov: 50 },
+  { id: 'observatory', name: 'Skyline Panorama',          short: 'Panorama',    category: 'scenic', fov: 52 },
+  { id: 'bryantPark',  name: 'Plaza Mayor',               short: 'Plaza Mayor', category: 'scenic', fov: 52 },
+  { id: 'waterfront',  name: 'Manzanares Skyline',        short: 'Skyline',     category: 'scenic', fov: 46 },
+  { id: 'drone',       name: 'Auto-Director Aerial',      short: 'Director',    category: 'scenic', fov: 50 }
 ];
 
 class CameraSystem {
@@ -256,60 +256,60 @@ class CameraSystem {
       }
 
       case 'centralPark': {
-        // Inside Central Park South looking across The Pond, Gapstow Bridge, The Mall, Sheep Meadow & UWS/UES Skylines
+        // Madrid: Gran Vía canyon looking west from Callao toward Plaza de España
         const sway = Math.sin(elapsed * 0.22) * 3.5;
-        desiredPos.set(-70.0 + sway, 14.0, -1425.0);
-        desiredLook.set(-250.0, 6.5, -1690.0);
+        desiredPos.set(-60.0 + sway, 14.0, -310.0);
+        desiredLook.set(-560.0, 6.5, -390.0);
         break;
       }
 
       case 'fifthAve': {
-        // 5th Avenue & 42nd St looking South down the 5th Ave canyon toward the Empire State Building
+        // Madrid: Calle de Alcalá looking west toward Puerta de Alcalá & Cibeles
         const sway = Math.sin(elapsed * 0.25) * 1.8;
-        desiredPos.set(0.0 + sway, 6.5, -20.0);
-        desiredLook.set(-60.0, 150.0, 686.0);
+        desiredPos.set(880.0 + sway, 6.5, -330.0);
+        desiredLook.set(640.0, 28.0, -300.0);
         break;
       }
 
       case 'timesSquare': {
-        // Times Square & Broadway looking across Duffy Square red steps and One Times Square billboards
+        // Madrid: Sol & the Calle del Carmen / Montera crossroads at km 0
         const sway = Math.sin(elapsed * 0.3) * 3.0;
-        desiredPos.set(-603.0 + sway, 5.5, -290.0);
-        desiredLook.set(-566.0, 40.0, -40.0);
+        desiredPos.set(-120.0 + sway, 5.5, -160.0);
+        desiredLook.set(0.0, 14.0, 60.0);
         break;
       }
 
       case 'chryslerGCT': {
-        // Park Ave & 42nd St intersection looking straight at Grand Central, MetLife, and Chrysler Building Crown
+        // Madrid: Paseo del Prado / Recoletos looking north at Cibeles & the Banco de España
         const sway = Math.cos(elapsed * 0.22) * 2.5;
-        desiredPos.set(300.0 + sway, 9.5, 95.0);
-        desiredLook.set(470.0, 120.0, -50.0);
+        desiredPos.set(920.0 + sway, 9.5, 120.0);
+        desiredLook.set(860.0, 30.0, -240.0);
         break;
       }
 
       case 'observatory': {
-        // Empire State Building 86th Floor Deck looking North-East across Midtown skyline
+        // Madrid: high vantage over the Gran Vía / Sol axis
         const pan = Math.sin(elapsed * 0.18) * 80.0;
-        desiredPos.set(-58.0, 322.0, 660.0);
-        desiredLook.set(420.0 + pan, 150.0, -200.0);
+        desiredPos.set(-120.0, 220.0, 480.0);
+        desiredLook.set(420.0 + pan, 40.0, -250.0);
         break;
       }
 
       case 'bryantPark': {
-        // Inside Bryant Park Great Lawn looking East toward NYPL portico, One Vanderbilt & Chrysler Building
+        // Madrid: inside Plaza Mayor looking at the Casa de la Panadería
         const sway = Math.sin(elapsed * 0.25) * 1.5;
-        const lawn = bryantParkLawn || { minX: -260, maxX: -150, minZ: 40, maxZ: 120, top: 1.3 };
+        const lawn = bryantParkLawn || { minX: -6.0, maxX: 132.0, minZ: 268.0, maxZ: 396.0, top: 1.3 };
         const lz = (lawn.minZ + lawn.maxZ) * 0.5;
         desiredPos.set(lawn.minX + 18.0, lawn.top + 1.7, lz + sway);
-        desiredLook.set(lawn.maxX + 260.0, 70.0, lz - 60.0);
+        desiredLook.set(lawn.maxX + 40.0, 14.0, lz - 20.0);
         break;
       }
 
       case 'waterfront': {
-        // Over the shimmering East River looking across the FDR Drive, Queensboro Bridge & Midtown Skyline
+        // Madrid: over the Manzanares axis looking across the city (river lies west of phase-1 bbox)
         const drift = Math.sin(elapsed * 0.15) * 40.0;
-        desiredPos.set(1640.0, 60.0, 60.0 + drift);
-        desiredLook.set(150.0, 150.0, -150.0);
+        desiredPos.set(-1150.0, 60.0, -120.0 + drift);
+        desiredLook.set(150.0, 60.0, -150.0);
         break;
       }
 
@@ -320,9 +320,9 @@ class CameraSystem {
         desiredPos.set(
           Math.cos(angle) * radius + 60.0,
           alt,
-          Math.sin(angle) * radius + 250.0
+          Math.sin(angle) * radius + 120.0
         );
-        desiredLook.set(60.0, 160.0, 250.0);
+        desiredLook.set(60.0, 40.0, 60.0);
         break;
       }
     }

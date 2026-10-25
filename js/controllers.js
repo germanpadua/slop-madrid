@@ -27,12 +27,13 @@ import { bryantParkLawn } from './landmarks.js';
 // Sculpted, non-blocky GTA 6-style 3D models, animations, and physics controllers
 // for Third-Person Navigation:
 // 1. Person (Skinned Pedestrian: planted-footstep IK walk/run/jump, see pedestrians.js)
-// 2. Car (Aerodynamic Sculpted NYC Medallion Yellow Taxi with Sloped Windshield & Clearcoat)
+// 2. Car (Aerodynamic Sculpted Madrid Taxi with Sloped Windshield & Clearcoat)
 // 3. Cyclist (Sculpted Road Cyclist with Drop-Bar Frame & Aero Helmet)
-// 4. Helicopter (Manhattan Sightseeing Twin-Turbine Chopper)
+// 4. Helicopter (Madrid Sightseeing Twin-Turbine Chopper)
 
-// Spawn on 5th Ave at 37th St, facing south down the avenue toward the Empire State Building (34th St)
-const SPAWN_Z = streetZ(37);
+// Spawn at Puerta del Sol (km 0)
+const SPAWN_Z = 12;
+const SPAWN_X = 0;
 const groundCollider = { type: 'ground' };
 
 const CAR_DRIVE = {
@@ -456,8 +457,8 @@ class ThirdPersonControllerManager {
       mesh: root,
       crowd,
       rig,
-      position: new THREE.Vector3(-11.6, ISLAND_BOUNDS.sidewalkHeight, SPAWN_Z + 12),
-      heading: 0,
+      position: new THREE.Vector3(SPAWN_X - 6.0, ISLAND_BOUNDS.sidewalkHeight, SPAWN_Z),
+      heading: Math.PI,
       speed: 0,
       verticalVel: 0,
       cameraTargetOffset: new THREE.Vector3(0, 1.55, 0),
@@ -558,14 +559,14 @@ class ThirdPersonControllerManager {
 
     return {
       type: 'car',
-      label: 'NYC Yellow Taxi',
+      label: 'Madrid Taxi',
       mesh: root,
       chassisPivot,
       carState,
       headLights,
       wheels,
-      position: new THREE.Vector3(3.6, 0.0, SPAWN_Z + 12),
-      heading: 0,
+      position: new THREE.Vector3(SPAWN_X + 4.0, 0.0, SPAWN_Z + 6),
+      heading: Math.PI,
       speed: 0,
       vx: 0,
       vz: 0,
@@ -731,8 +732,8 @@ class ThirdPersonControllerManager {
       riderRig,
       helmet,
       headLight,
-      position: new THREE.Vector3(5.2, 0.0, SPAWN_Z - 8),
-      heading: 0,
+      position: new THREE.Vector3(SPAWN_X - 4.0, 0.0, SPAWN_Z - 6),
+      heading: Math.PI,
       speed: 0,
       leanAngle: 0,
       pedalPhase: 0,
@@ -815,7 +816,7 @@ class ThirdPersonControllerManager {
       tiltPivot,
       mainRotorPivot,
       tailRotorPivot,
-      position: new THREE.Vector3(-110, 96, SPAWN_Z - 60),
+      position: new THREE.Vector3(SPAWN_X - 40, 96, SPAWN_Z - 40),
       heading: 0.62,
       speed: 0,
       verticalSpeed: 0,

@@ -21,7 +21,7 @@ import { setupSceneCulling, updateSceneCulling } from './scene-culling.js';
 import { CityAudioSystem } from './audio-system.js';
 
 // js/main.js
-// Main entry point for New York City (Midtown Manhattan) in Three.js WebGPURenderer & TSL (three.js dev, see index.html)
+// Main entry point for Madrid (centro) in Three.js WebGPURenderer & TSL (three.js dev, see index.html)
 
 async function initApp() {
   const container = document.getElementById('canvas-container');
@@ -70,10 +70,10 @@ async function initApp() {
   markInit('lighting');
 
   if (loadingStatus) {
-    loadingStatus.textContent = 'Constructing Manhattan Grid, Landmarks & Streetscape...';
+    loadingStatus.textContent = 'Constructing Madrid Grid, Landmarks & Streetscape...';
   }
 
-  // 3. Build Manhattan Geography, Iconic Landmarks, Blocks, Street Details & Traffic
+  // 3. Build Madrid Geography, Landmarks, Blocks, Street Details & Traffic
   const cityGrid = buildCityGrid(scene);
   markInit('cityGrid');
   const boroughs = buildBoroughs(scene, { sidewalks: cityGrid.sidewalks });
@@ -150,7 +150,7 @@ async function initApp() {
 
   // Island-wide static geometry: chunk & distance-cull the small props, shadow stand-ins for the big casters
   // (scene-culling.js)
-  const cullingRoots = ['ManhattanCityGrid', 'ManhattanCityBlocks', 'ManhattanStreetDetails', 'ManhattanLandmarks', 'Boroughs']
+  const cullingRoots = ['ManhattanCityGrid', 'ManhattanCityBlocks', 'ManhattanStreetDetails', 'Landmarks', 'Boroughs']
     .map((name) => scene.getObjectByName(name))
     .filter(Boolean);
   setupSceneCulling(scene, cullingRoots, lightingSystem.sunLight.shadow);
@@ -387,7 +387,7 @@ async function initApp() {
     if (btn && e.detail > 0) btn.blur();
   });
 
-  // Where you are: the place's name over its street corner, drawn as a pair of NYC street-name signs
+  // Where you are: the place's name over its street corner, drawn as a pair of Madrid street-name plaques
   const roadNames = new Set(ROADS.map((r) => r.name));
   const placeNames = new Set(NYC_LANDMARKS.map((l) => l.name));
   let locationText = '';

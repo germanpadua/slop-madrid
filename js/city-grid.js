@@ -57,7 +57,7 @@ import {
   createRoadPaintMaterial,
   createTunnelShadeMaterial
 } from './tsl-materials.js';
-import { GEO } from './nyc-geodata.js';
+import { GEO } from './madrid-geodata.js';
 
 // Live construction data consumed by the building and street-detail builders after buildCityGrid().
 let centralParkClearings;

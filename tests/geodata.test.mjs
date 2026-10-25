@@ -8,6 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 test('geodata builds with default paths in a checkout containing spaces and non-ASCII characters', { timeout: 180000 }, async () => {
+  // NYC pipeline: still runnable (NYC data vendored from upstream)
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'New York 東京 '));
   try {
     fs.mkdirSync(path.join(dir, 'tools'));

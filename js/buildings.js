@@ -39,7 +39,7 @@ import {
   createBillboardMaterial,
   WALL_KINDS
 } from './tsl-materials.js';
-import { GEO } from './nyc-geodata.js';
+import { GEO } from './madrid-geodata.js';
 import { fdrViaduct, pavedPlazaRects, parkTreeSites, sidewalkBlocks } from './city-grid.js';
 
 // js/buildings.js
@@ -382,6 +382,54 @@ function buildCityBlocks(scene) {
   const buckets = materials.map(() => []);
   const broadwayBillboards = [];
 
+  // IDEAM/catastral parcel footprints (js/madrid-geodata.js GEO.parcels: [[{ring, h}]]) indexed by a coarse grid for
+  // point-in-parcel lookups while massing buildings; only built when the data actually carries parcels.
+  const madridParcels = GEO.parcels?.some((b) => b?.length) || false;
+  const parcelGrid = new Map();
+  const PARCEL_CELL = 64;
+  if (madridParcels) {
+    for (const parcelsOfBlock of GEO.parcels) {
+      for (const { ring, h } of parcelsOfBlock) {
+        if (!ring || ring.length < 6 || !(h > 0)) continue;
+        const item = { ring, h };
+        let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+        for (let i = 0; i < ring.length; i += 2) {
+          minX = Math.min(minX, ring[i]);
+          maxX = Math.max(maxX, ring[i]);
+          minZ = Math.min(minZ, ring[i + 1]);
+          maxZ = Math.max(maxZ, ring[i + 1]);
+        }
+        item.bounds = [minX, maxX, minZ, maxZ];
+        for (let gx = Math.floor(minX / PARCEL_CELL); gx <= Math.floor(maxX / PARCEL_CELL); gx++) {
+          for (let gz = Math.floor(minZ / PARCEL_CELL); gz <= Math.floor(maxZ / PARCEL_CELL); gz++) {
+            const key = gx * 100000 + gz;
+            let list = parcelGrid.get(key);
+            if (!list) parcelGrid.set(key, (list = []));
+            list.push(item);
+          }
+        }
+      }
+    }
+  }
+  // The cadastral parcel whose footprint contains (x, z), or null (even-odd ray cast on its ring)
+  function madridParcel(x, z) {
+    if (!madridParcels) return null;
+    const list = parcelGrid.get(Math.floor(x / PARCEL_CELL) * 100000 + Math.floor(z / PARCEL_CELL));
+    if (!list) return null;
+    for (const item of list) {
+      const [x0, x1, z0, z1] = item.bounds;
+      if (x < x0 || x > x1 || z < z0 || z > z1) continue;
+      const ring = item.ring;
+      let inside = false;
+      for (let i = 0, j = ring.length - 2; i < ring.length; j = i, i += 2) {
+        if ((ring[i + 1] > z) !== (ring[j + 1] > z) &&
+            x < ((ring[j] - ring[i]) * (z - ring[i + 1])) / (ring[j + 1] - ring[i + 1]) + ring[i]) inside = !inside;
+      }
+      if (inside) return item;
+    }
+    return null;
+  }
+
   // Times Square's bowtie: the Broadway plaza strip (city-config.js GEO.plazas) and 7th Avenue's roadway between 47th
   // and 42nd St. Lots fronting it rise as sheer walls (flushTower) and every podium wall facing it carries billboards
   const TS = (() => {
@@ -622,10 +670,20 @@ function buildCityBlocks(scene) {
     }
     const mat = b.mat;
     const storey = storeys[mat];
-    const tone = rand();
-    let shopsOn = o.shops ?? 'all';
-    if (typeof shopsOn === 'number') shopsOn = tone < shopsOn ? 'all' : 'none';
-    const shops = { w: shopsOn !== 'none', e: shopsOn !== 'none', n: shopsOn === 'all', s: shopsOn === 'all' };
+    // Real Madrid rooflines: cap every part at the IDEAM height of the cadastral parcel under its centre
+    // (GEO.parcels h in metres → whole storeys so the window rows still line up).
+    if (madridParcels) {
+      for (const p of parts) {
+        if (p.y1 <= EPS) continue;
+        const parcel = madridParcel((p.x0 + p.x1) * 0.5, (p.z0 + p.z1) * 0.5);
+        if (!parcel) continue;
+        const cap = Math.max(storey, Math.floor(parcel.h / storey) * storey);
+        if (p.y1 > cap) {
+          p.y1 = cap;
+          if (p.y1 <= p.y0) p.y1 = p.y0 + storey;
+        }
+      }
+    }
     let top = parts[0];
     for (const p of parts) {
       const w = p.x1 - p.x0;
@@ -1737,6 +1795,38 @@ function buildCityBlocks(scene) {
   const LOWRISE = { kind: 'lowrise', floors: [2, 7] };
   const RIVERFRONT = { kind: 'river' };
 
+  // Madrid centro (city-config districtAt): dense masonry blocks, no glass towers — 5-9 storey eaves-line
+  // streets with occasional mid-rise apartment houses; the IDEAM height clamp in commit() does the fine work.
+  const MADRID_CENTRO = res({
+    walkup: [5, 7],
+    prewar: [6, 10],
+    grand: [8, 12],
+    tower: [9, 14],
+    rows: [['tenement', 7], ['brownstone', 3], ['midApt', 1.2], ['loft', 0.8]],
+    kf: { midApt: [7, 11], loft: [6, 9] },
+    ends: bothEnds([['walkups', 6], ['prewar', 3], ['tower', 1.2]]),
+    through: 0.1
+  });
+  const MADRID_GRANVIA = res({
+    walkup: [6, 8],
+    prewar: [7, 12],
+    grand: [9, 14],
+    tower: [10, 16],
+    rows: [['loft', 6], ['tenement', 4], ['midApt', 2]],
+    kf: { midApt: [8, 13], loft: [7, 11] },
+    ends: bothEnds([['prewar', 5], ['walkups', 4], ['tower', 2]]),
+    through: 0.15
+  });
+  const MADRID_JERONIMOS = res({
+    walkup: [4, 5],
+    prewar: [5, 8],
+    grand: [6, 9],
+    tower: [7, 10],
+    rows: [['brownstone', 5], ['townhouse', 3], ['tenement', 2], ['garden', 0.8]],
+    ends: bothEnds([['prewar', 5], ['walkups', 4], ['none', 1]]),
+    through: 0.08
+  });
+
   const CPB = CENTRAL_PARK_BOUNDS;
   function uptownProfile(blk) {
     const { cx, cz } = blk;
@@ -1793,9 +1883,21 @@ function buildCityBlocks(scene) {
       case 'tribeca': return LOFT_TRIBECA;
       case 'chinatown': return RES_LES;
       case 'lower_east_side': return chance(0.3) ? PROJECTS : RES_LES;
-      case 'civic_center':
-      case 'fidi': return OFFICE_FIDI;
       case 'battery_park_city': return OFFICE_BATTERY_PARK_CITY;
+      // Madrid centro barrios (GEO.districts): masonry mid-rise, taller along the Gran Vía canyon
+      case 'Gran Vía': return MADRID_GRANVIA;
+      case 'Jerónimos': return MADRID_JERONIMOS;
+      case 'Sol':
+      case 'Chueca':
+      case 'Justicia':
+      case 'Cortes':
+      case 'Huertas':
+      case 'Austrias':
+      case 'La Latina':
+      case 'Lavapiés':
+      case 'Universidad':
+      case 'Embajadores':
+      case 'centro': return MADRID_CENTRO;
       default: return OFFICE_MIDTOWN;
     }
   }

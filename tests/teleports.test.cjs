@@ -23,14 +23,14 @@ test('every teleport button has a destination on a real roadway inside Manhattan
   }
 });
 
-test('One World Trade Center arrives on Vesey Street facing the tower', () => {
-  const point = TELEPORT_LOCATIONS.owtc;
-  const tower = LANDMARK_SITES['One World Trade Center'];
-  assert.ok(nearestRoads(point.x, point.z, 20).some(({ road, dist }) => road.name === 'Vesey St' && dist < 1));
-  const distance = Math.hypot(tower.x - point.x, tower.z - point.z);
-  assert.ok(distance > 100 && distance < 220, 'leave space for the tower view');
-  const alignment = ((tower.x - point.x) * Math.sin(point.heading) + (tower.z - point.z) * Math.cos(point.heading)) / distance;
-  assert.ok(alignment > 0.999, 'face the tower rather than the neighboring buildings');
+test('Cibeles arrives on the roundabout facing the Palacio de Cibeles', () => {
+  const point = TELEPORT_LOCATIONS.cibeles;
+  const tower = LANDMARK_SITES['Palacio de Cibeles'];
+  assert.ok(nearestRoads(point.x, point.z, 20).some(({ road, dist }) => road.name === 'Plaza de la Cibeles' && dist < 5));
+  const distance = Math.hypot(tower.cx - point.x, tower.cz - point.z);
+  assert.ok(distance > 100 && distance < 220, 'leave space for the palace view');
+  const alignment = ((tower.cx - point.x) * Math.sin(point.heading) + (tower.cz - point.z) * Math.cos(point.heading)) / distance;
+  assert.ok(alignment > 0.999, 'face the palace rather than the neighboring buildings');
 });
 
 test('preset and map teleports share arrival resets and mark the resolved landing point', () => {
