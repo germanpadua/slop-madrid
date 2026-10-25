@@ -211,6 +211,7 @@ function mapLayers() {
     ELLIS_ISLAND_POLYGON, MILL_ROCK_POLYGON])) addRing(L.islands, ring);
 
   // The frame land (GEO.manhattan ring) and the piers (none in Madrid)
+  L.manhattan = new Path2D();
   addRing(L.manhattan, MANHATTAN_COASTLINE);
   L.piers = new Path2D();
   for (const p of WATERFRONT_PIERS) if (p.ring) addRing(L.piers, p.ring);
