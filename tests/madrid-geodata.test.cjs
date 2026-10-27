@@ -157,7 +157,9 @@ test('every parcel sits inside the box, off the water, with a real cadastral hei
 });
 
 test('phase-2 city is ~4x phase 1: blocks, parcels, roads and road graph all grew', () => {
-  assert.ok(GEO.blocks.length > 500, `block slabs ${GEO.blocks.length} (phase 1: 139)`);
+  // Phase 3 owns the boundary blocks by core centre (the 100 m fetch overlap belongs to the neighbouring tiles, which
+  // draw them whole), so the seed keeps the interior blocks: still ~3.5x phase 1 and the vast majority of the almendra.
+  assert.ok(GEO.blocks.length > 450, `block slabs ${GEO.blocks.length} (phase 1: 139)`);
   assert.ok(GEO.roads.length > 2500, `road polylines ${GEO.roads.length} (phase 1: 879)`);
   assert.ok(GEO.roadGraph.links.length > 1500, `graph links ${GEO.roadGraph.links.length} (phase 1: 688)`);
   assert.ok(GEO.roadGraph.nodes.length / 2 > 3000, `graph nodes ${GEO.roadGraph.nodes.length / 2} (phase 1: 1376)`);
