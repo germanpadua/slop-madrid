@@ -1,6 +1,7 @@
 // tools/madrid/config.mjs — Phase definitions for the Madrid build (see MADRID.md).
 // Every bbox is ETRS89 / UTM zone 30N (EPSG:25830), meters: [xMin, yMin, xMax, yMax].
-// Select a phase with MADRID_PHASE=fase1|fase2 when running the fetch/build tools (default: fase2).
+// Select a phase with MADRID_PHASE=fase1|fase2, or a phase-3 tile with MADRID_TILE=<id> (default: fase2).
+import fs from 'node:fs';
 
 export const CRS = 'EPSG:25830';
 
@@ -27,7 +28,33 @@ export const PHASES = {
   },
 };
 
+// A tile of the phase-3 manifest (tools/madrid/tiles.json) is selected with MADRID_TILE=<id>; the fetch box comes
+// from the manifest (core + 100 m overlap) and `core` lists the world-space rectangles the tile owns. `fase2` is
+// the seed tile: its core is the phase-2 box, so the pipeline refetches 100 m around it to keep its seams whole.
+export function getTile(id) {
+  const file = new URL('./tiles.json', import.meta.url);
+  if (!fs.existsSync(file)) throw new Error(`MADRID_TILE=${id} needs ${file.pathname} (run tiles.mjs manifest)`);
+  const mf = JSON.parse(fs.readFileSync(file, 'utf8'));
+  const tile = mf.tiles.find((t) => t.id === id);
+  if (!tile) throw new Error(`Unknown MADRID_TILE "${id}" (manifest has ${mf.tiles.map((t) => t.id).slice(0, 8).join(', ')}…)`);
+  const [x0, y0, x1, y1] = tile.fetch;
+  const [lon0, lat0, lon1, lat1] = tile.bboxWgs84;
+  // The seed tile keeps the phase-2 output contract (GEO core + blocks module); only the new cells are tile modules.
+  const isSeed = tile.id === 'fase2';
+  return {
+    name: tile.id,
+    label: tile.label,
+    utm: tile.fetch,
+    core: tile.core,
+    // Every core of the manifest: ownership of the 100 m fetch overlap is decided against the whole grid.
+    allCores: mf.tiles.flatMap((t) => t.core),
+    wgs84: { xMin: lon0, yMin: lat0, xMax: lon1, yMax: lat1 },
+    tile: isSeed ? undefined : { id: tile.id, core: tile.core, cell: tile.cell, fetch: tile.fetch, module: tile.module },
+  };
+}
+
 export function getPhase() {
+  if (process.env.MADRID_TILE) return getTile(process.env.MADRID_TILE);
   const name = process.env.MADRID_PHASE || 'fase2';
   const p = PHASES[name];
   if (!p) throw new Error(`Unknown MADRID_PHASE "${name}" (have: ${Object.keys(PHASES).join(', ')})`);

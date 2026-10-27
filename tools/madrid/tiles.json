@@ -1,0 +1,5201 @@
+{
+ "version": 1,
+ "generated": "2026-10-27",
+ "crs": "EPSG:25830",
+ "frame": {
+  "origin": "Puerta del Sol",
+  "units": "m",
+  "x": "east",
+  "z": "south"
+ },
+ "grid": {
+  "origin": [
+   438450,
+   4472800,
+   441700,
+   4475400
+  ],
+  "cell": 1000,
+  "overlap": 100,
+  "seed": "fase2",
+  "coordinate": "cell (k, j) starts at origin + 1000*(k, j)"
+ },
+ "almendra": {
+  "ring": [
+   [
+    -3840,
+    -6320
+   ],
+   [
+    -2840,
+    -6320
+   ],
+   [
+    -2840,
+    -6280
+   ],
+   [
+    -2720,
+    -6280
+   ],
+   [
+    -2720,
+    -6240
+   ],
+   [
+    -2600,
+    -6240
+   ],
+   [
+    -2600,
+    -6200
+   ],
+   [
+    -1960,
+    -6200
+   ],
+   [
+    -1960,
+    -6240
+   ],
+   [
+    -1840,
+    -6240
+   ],
+   [
+    -1840,
+    -6280
+   ],
+   [
+    -1760,
+    -6280
+   ],
+   [
+    -1760,
+    -6320
+   ],
+   [
+    2560,
+    -6320
+   ],
+   [
+    2560,
+    -6280
+   ],
+   [
+    2600,
+    -6280
+   ],
+   [
+    2600,
+    -6160
+   ],
+   [
+    2640,
+    -6160
+   ],
+   [
+    2640,
+    -6080
+   ],
+   [
+    2720,
+    -6040
+   ],
+   [
+    2720,
+    -5960
+   ],
+   [
+    2760,
+    -5960
+   ],
+   [
+    2800,
+    -5800
+   ],
+   [
+    2880,
+    -5760
+   ],
+   [
+    2880,
+    -5680
+   ],
+   [
+    2920,
+    -5680
+   ],
+   [
+    2920,
+    -5600
+   ],
+   [
+    2960,
+    -5600
+   ],
+   [
+    2960,
+    -5520
+   ],
+   [
+    3000,
+    -5520
+   ],
+   [
+    3000,
+    -5440
+   ],
+   [
+    3040,
+    -5440
+   ],
+   [
+    3040,
+    -5320
+   ],
+   [
+    3080,
+    -5320
+   ],
+   [
+    3080,
+    -5240
+   ],
+   [
+    3120,
+    -5240
+   ],
+   [
+    3120,
+    -5120
+   ],
+   [
+    3160,
+    -5120
+   ],
+   [
+    3160,
+    -5000
+   ],
+   [
+    3200,
+    -5000
+   ],
+   [
+    3200,
+    -4880
+   ],
+   [
+    3240,
+    -4880
+   ],
+   [
+    3240,
+    -4760
+   ],
+   [
+    3280,
+    -4760
+   ],
+   [
+    3280,
+    -4640
+   ],
+   [
+    3320,
+    -4640
+   ],
+   [
+    3320,
+    -4480
+   ],
+   [
+    3360,
+    -4480
+   ],
+   [
+    3360,
+    -4320
+   ],
+   [
+    3400,
+    -4320
+   ],
+   [
+    3400,
+    -3960
+   ],
+   [
+    3440,
+    -3960
+   ],
+   [
+    3440,
+    -3680
+   ],
+   [
+    3480,
+    -3680
+   ],
+   [
+    3520,
+    -3280
+   ],
+   [
+    3560,
+    -3280
+   ],
+   [
+    3560,
+    -3160
+   ],
+   [
+    3600,
+    -3160
+   ],
+   [
+    3600,
+    -3080
+   ],
+   [
+    3640,
+    -3080
+   ],
+   [
+    3640,
+    -3000
+   ],
+   [
+    3680,
+    -3000
+   ],
+   [
+    3680,
+    -2880
+   ],
+   [
+    3720,
+    -2880
+   ],
+   [
+    3720,
+    -2680
+   ],
+   [
+    3760,
+    -2680
+   ],
+   [
+    3760,
+    -2440
+   ],
+   [
+    3720,
+    -2440
+   ],
+   [
+    3720,
+    -2160
+   ],
+   [
+    3680,
+    -2160
+   ],
+   [
+    3680,
+    -1880
+   ],
+   [
+    3640,
+    -1880
+   ],
+   [
+    3640,
+    -1640
+   ],
+   [
+    3600,
+    -1640
+   ],
+   [
+    3600,
+    -1520
+   ],
+   [
+    3640,
+    -1520
+   ],
+   [
+    3640,
+    -1040
+   ],
+   [
+    3680,
+    -1040
+   ],
+   [
+    3680,
+    -840
+   ],
+   [
+    3720,
+    -840
+   ],
+   [
+    3720,
+    -520
+   ],
+   [
+    3760,
+    -520
+   ],
+   [
+    3760,
+    -40
+   ],
+   [
+    3720,
+    -40
+   ],
+   [
+    3720,
+    80
+   ],
+   [
+    3640,
+    120
+   ],
+   [
+    3640,
+    240
+   ],
+   [
+    3600,
+    240
+   ],
+   [
+    3600,
+    320
+   ],
+   [
+    3560,
+    320
+   ],
+   [
+    3520,
+    480
+   ],
+   [
+    3440,
+    520
+   ],
+   [
+    3440,
+    640
+   ],
+   [
+    3400,
+    640
+   ],
+   [
+    3400,
+    720
+   ],
+   [
+    3360,
+    720
+   ],
+   [
+    3360,
+    800
+   ],
+   [
+    3320,
+    800
+   ],
+   [
+    3320,
+    880
+   ],
+   [
+    3280,
+    880
+   ],
+   [
+    3280,
+    1000
+   ],
+   [
+    3240,
+    1000
+   ],
+   [
+    3240,
+    1080
+   ],
+   [
+    3200,
+    1080
+   ],
+   [
+    3200,
+    1200
+   ],
+   [
+    3160,
+    1200
+   ],
+   [
+    3160,
+    1320
+   ],
+   [
+    3120,
+    1320
+   ],
+   [
+    3080,
+    1640
+   ],
+   [
+    3040,
+    1640
+   ],
+   [
+    3040,
+    1720
+   ],
+   [
+    3000,
+    1720
+   ],
+   [
+    3000,
+    1800
+   ],
+   [
+    2960,
+    1800
+   ],
+   [
+    2920,
+    1960
+   ],
+   [
+    2840,
+    2000
+   ],
+   [
+    2840,
+    2080
+   ],
+   [
+    2760,
+    2120
+   ],
+   [
+    2760,
+    2200
+   ],
+   [
+    2720,
+    2200
+   ],
+   [
+    2720,
+    2240
+   ],
+   [
+    2640,
+    2280
+   ],
+   [
+    2640,
+    2360
+   ],
+   [
+    2600,
+    2360
+   ],
+   [
+    2560,
+    2440
+   ],
+   [
+    2480,
+    2440
+   ],
+   [
+    2480,
+    2480
+   ],
+   [
+    2440,
+    2480
+   ],
+   [
+    2440,
+    2520
+   ],
+   [
+    2400,
+    2520
+   ],
+   [
+    2400,
+    2560
+   ],
+   [
+    2360,
+    2560
+   ],
+   [
+    2360,
+    2600
+   ],
+   [
+    2320,
+    2600
+   ],
+   [
+    2320,
+    2640
+   ],
+   [
+    2280,
+    2640
+   ],
+   [
+    2240,
+    2720
+   ],
+   [
+    2160,
+    2720
+   ],
+   [
+    2160,
+    2760
+   ],
+   [
+    2120,
+    2760
+   ],
+   [
+    2080,
+    2840
+   ],
+   [
+    2000,
+    2840
+   ],
+   [
+    1960,
+    2920
+   ],
+   [
+    1880,
+    2920
+   ],
+   [
+    1880,
+    2960
+   ],
+   [
+    1800,
+    2960
+   ],
+   [
+    1800,
+    3000
+   ],
+   [
+    1640,
+    3000
+   ],
+   [
+    1640,
+    3040
+   ],
+   [
+    1200,
+    3040
+   ],
+   [
+    1200,
+    3000
+   ],
+   [
+    1040,
+    3000
+   ],
+   [
+    1040,
+    2960
+   ],
+   [
+    920,
+    2960
+   ],
+   [
+    920,
+    2920
+   ],
+   [
+    840,
+    2920
+   ],
+   [
+    840,
+    2880
+   ],
+   [
+    800,
+    2880
+   ],
+   [
+    800,
+    2840
+   ],
+   [
+    760,
+    2840
+   ],
+   [
+    720,
+    2760
+   ],
+   [
+    640,
+    2760
+   ],
+   [
+    640,
+    2720
+   ],
+   [
+    600,
+    2720
+   ],
+   [
+    600,
+    2680
+   ],
+   [
+    560,
+    2680
+   ],
+   [
+    560,
+    2640
+   ],
+   [
+    520,
+    2640
+   ],
+   [
+    480,
+    2560
+   ],
+   [
+    400,
+    2560
+   ],
+   [
+    400,
+    2520
+   ],
+   [
+    320,
+    2520
+   ],
+   [
+    320,
+    2480
+   ],
+   [
+    200,
+    2480
+   ],
+   [
+    200,
+    2440
+   ],
+   [
+    80,
+    2440
+   ],
+   [
+    80,
+    2400
+   ],
+   [
+    120,
+    2400
+   ],
+   [
+    120,
+    2320
+   ],
+   [
+    80,
+    2320
+   ],
+   [
+    80,
+    2280
+   ],
+   [
+    -160,
+    2320
+   ],
+   [
+    -160,
+    2280
+   ],
+   [
+    -240,
+    2280
+   ],
+   [
+    -240,
+    2240
+   ],
+   [
+    -360,
+    2240
+   ],
+   [
+    -360,
+    2200
+   ],
+   [
+    -520,
+    2160
+   ],
+   [
+    -560,
+    2080
+   ],
+   [
+    -640,
+    2080
+   ],
+   [
+    -640,
+    2040
+   ],
+   [
+    -680,
+    2040
+   ],
+   [
+    -680,
+    2000
+   ],
+   [
+    -720,
+    2000
+   ],
+   [
+    -720,
+    1960
+   ],
+   [
+    -760,
+    1960
+   ],
+   [
+    -760,
+    1920
+   ],
+   [
+    -800,
+    1920
+   ],
+   [
+    -840,
+    1840
+   ],
+   [
+    -960,
+    1840
+   ],
+   [
+    -960,
+    1800
+   ],
+   [
+    -1400,
+    1800
+   ],
+   [
+    -1400,
+    1760
+   ],
+   [
+    -1440,
+    1760
+   ],
+   [
+    -1440,
+    1720
+   ],
+   [
+    -1520,
+    1680
+   ],
+   [
+    -1560,
+    1200
+   ],
+   [
+    -1520,
+    1200
+   ],
+   [
+    -1520,
+    1040
+   ],
+   [
+    -1480,
+    1040
+   ],
+   [
+    -1480,
+    720
+   ],
+   [
+    -1520,
+    720
+   ],
+   [
+    -1520,
+    560
+   ],
+   [
+    -1560,
+    560
+   ],
+   [
+    -1560,
+    40
+   ],
+   [
+    -1520,
+    40
+   ],
+   [
+    -1520,
+    -120
+   ],
+   [
+    -1480,
+    -120
+   ],
+   [
+    -1480,
+    -400
+   ],
+   [
+    -1520,
+    -400
+   ],
+   [
+    -1520,
+    -480
+   ],
+   [
+    -1560,
+    -480
+   ],
+   [
+    -1560,
+    -520
+   ],
+   [
+    -1640,
+    -520
+   ],
+   [
+    -1680,
+    -600
+   ],
+   [
+    -1760,
+    -600
+   ],
+   [
+    -1760,
+    -640
+   ],
+   [
+    -1840,
+    -640
+   ],
+   [
+    -1840,
+    -680
+   ],
+   [
+    -1920,
+    -680
+   ],
+   [
+    -1920,
+    -720
+   ],
+   [
+    -2080,
+    -760
+   ],
+   [
+    -2080,
+    -800
+   ],
+   [
+    -2120,
+    -800
+   ],
+   [
+    -2160,
+    -880
+   ],
+   [
+    -2240,
+    -880
+   ],
+   [
+    -2240,
+    -920
+   ],
+   [
+    -2280,
+    -920
+   ],
+   [
+    -2280,
+    -960
+   ],
+   [
+    -2320,
+    -960
+   ],
+   [
+    -2360,
+    -1040
+   ],
+   [
+    -2440,
+    -1040
+   ],
+   [
+    -2440,
+    -1080
+   ],
+   [
+    -2480,
+    -1080
+   ],
+   [
+    -2480,
+    -1120
+   ],
+   [
+    -2560,
+    -1160
+   ],
+   [
+    -2560,
+    -1240
+   ],
+   [
+    -2640,
+    -1280
+   ],
+   [
+    -2640,
+    -1360
+   ],
+   [
+    -2720,
+    -1400
+   ],
+   [
+    -2720,
+    -1480
+   ],
+   [
+    -2760,
+    -1480
+   ],
+   [
+    -2760,
+    -1600
+   ],
+   [
+    -2800,
+    -1600
+   ],
+   [
+    -2800,
+    -1760
+   ],
+   [
+    -2840,
+    -1760
+   ],
+   [
+    -2840,
+    -1920
+   ],
+   [
+    -2880,
+    -1920
+   ],
+   [
+    -2880,
+    -2160
+   ],
+   [
+    -2840,
+    -2160
+   ],
+   [
+    -2840,
+    -2480
+   ],
+   [
+    -2880,
+    -2480
+   ],
+   [
+    -2880,
+    -2600
+   ],
+   [
+    -2920,
+    -2600
+   ],
+   [
+    -2920,
+    -2920
+   ],
+   [
+    -2960,
+    -2920
+   ],
+   [
+    -2960,
+    -3160
+   ],
+   [
+    -3000,
+    -3160
+   ],
+   [
+    -3000,
+    -3360
+   ],
+   [
+    -3040,
+    -3360
+   ],
+   [
+    -3040,
+    -3440
+   ],
+   [
+    -3080,
+    -3440
+   ],
+   [
+    -3080,
+    -3520
+   ],
+   [
+    -3120,
+    -3520
+   ],
+   [
+    -3120,
+    -3680
+   ],
+   [
+    -3160,
+    -3680
+   ],
+   [
+    -3160,
+    -3760
+   ],
+   [
+    -3200,
+    -3760
+   ],
+   [
+    -3200,
+    -3840
+   ],
+   [
+    -3240,
+    -3840
+   ],
+   [
+    -3240,
+    -3920
+   ],
+   [
+    -3280,
+    -3920
+   ],
+   [
+    -3280,
+    -4040
+   ],
+   [
+    -3320,
+    -4040
+   ],
+   [
+    -3320,
+    -4120
+   ],
+   [
+    -3280,
+    -4120
+   ],
+   [
+    -3280,
+    -4320
+   ],
+   [
+    -3320,
+    -4320
+   ],
+   [
+    -3320,
+    -4440
+   ],
+   [
+    -3360,
+    -4440
+   ],
+   [
+    -3360,
+    -4520
+   ],
+   [
+    -3400,
+    -4520
+   ],
+   [
+    -3400,
+    -4640
+   ],
+   [
+    -3440,
+    -4640
+   ],
+   [
+    -3440,
+    -4840
+   ],
+   [
+    -3480,
+    -4840
+   ],
+   [
+    -3520,
+    -5000
+   ],
+   [
+    -3600,
+    -5040
+   ],
+   [
+    -3600,
+    -5120
+   ],
+   [
+    -3640,
+    -5120
+   ],
+   [
+    -3640,
+    -5200
+   ],
+   [
+    -3680,
+    -5200
+   ],
+   [
+    -3680,
+    -5280
+   ],
+   [
+    -3720,
+    -5280
+   ],
+   [
+    -3720,
+    -5360
+   ],
+   [
+    -3760,
+    -5360
+   ],
+   [
+    -3760,
+    -5520
+   ],
+   [
+    -3800,
+    -5520
+   ],
+   [
+    -3800,
+    -5760
+   ],
+   [
+    -3840,
+    -5760
+   ],
+   [
+    -3840,
+    -5960
+   ],
+   [
+    -3880,
+    -5960
+   ],
+   [
+    -3880,
+    -6280
+   ],
+   [
+    -3840,
+    -6280
+   ]
+  ],
+  "areaKm2": 52.11,
+  "capZ": -6300,
+  "maskAreaKm2": 5210.56
+ },
+ "phases": {
+  "2": [
+   "fase2"
+  ],
+  "3": [
+   "k3j1",
+   "k4j1",
+   "k4j2",
+   "k2j-1",
+   "k0j-1",
+   "k0j3",
+   "k2j4"
+  ],
+  "4": "every tile of this manifest (plan, see MADRID.md)"
+ },
+ "budget": {
+  "maxResidentBytes": 12582912,
+  "maxResidentTiles": 12,
+  "preloadRadius": 1600,
+  "dropRadius": 2600
+ },
+ "totals": {
+  "tiles": 85,
+  "ready": 8,
+  "pending": 77,
+  "failed": 0,
+  "readyBytes": 6788893,
+  "readyKm2": 15.2
+ },
+ "tiles": [
+  {
+   "id": "fase2",
+   "label": "Almendra central oeste — fase 2 (Manzanares-Atocha)",
+   "status": "ready",
+   "core": [
+    [
+     -1841.3,
+     -1145.4,
+     1408.7,
+     1454.6
+    ]
+   ],
+   "cell": [
+    438450,
+    4472800,
+    441700,
+    4475400
+   ],
+   "fetch": [
+    438350,
+    4472700,
+    441800,
+    4475500
+   ],
+   "bboxWgs84": [
+    -3.72652,
+    40.402629,
+    -3.686122,
+    40.428101
+   ],
+   "module": "js/madrid-geodata.js",
+   "blocksModule": "js/madrid-geodata-blocks.js",
+   "overlapped": false,
+   "areaKm2": 8.45,
+   "bytes": 738732,
+   "md5": "acaa2795a8899d7200c6c74f11e6b1f9",
+   "blocksBytes": 3172549,
+   "blocksMd5": "164cb72af4a7e4dc96e3fc847a3d23b6",
+   "counts": {
+    "blocks": 488,
+    "parcels": 26244
+   },
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ],
+   "error": null
+  },
+  {
+   "id": "k-3j-2",
+   "i": -3,
+   "j": -2,
+   "label": "Tesela k-3j-2",
+   "status": "pending",
+   "core": [
+    [
+     -4841.3,
+     2454.6,
+     -3841.3,
+     3454.6
+    ]
+   ],
+   "cell": [
+    435450,
+    4470800,
+    436450,
+    4471800
+   ],
+   "fetch": [
+    435350,
+    4470700,
+    436550,
+    4471900
+   ],
+   "bboxWgs84": [
+    -3.761668,
+    40.384385,
+    -3.747651,
+    40.395287
+   ],
+   "module": "js/geodata/tile-k-3j-2.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-3j-1",
+   "i": -3,
+   "j": -1,
+   "label": "Tesela k-3j-1",
+   "status": "pending",
+   "core": [
+    [
+     -4841.3,
+     1454.6,
+     -3841.3,
+     2454.6
+    ]
+   ],
+   "cell": [
+    435450,
+    4471800,
+    436450,
+    4472800
+   ],
+   "fetch": [
+    435350,
+    4471700,
+    436550,
+    4472900
+   ],
+   "bboxWgs84": [
+    -3.761769,
+    40.393393,
+    -3.74775,
+    40.404295
+   ],
+   "module": "js/geodata/tile-k-3j-1.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-3j0",
+   "i": -3,
+   "j": 0,
+   "label": "Tesela k-3j0",
+   "status": "pending",
+   "core": [
+    [
+     -4841.3,
+     454.6,
+     -3841.3,
+     1454.6
+    ]
+   ],
+   "cell": [
+    435450,
+    4472800,
+    436450,
+    4473800
+   ],
+   "fetch": [
+    435350,
+    4472700,
+    436550,
+    4473900
+   ],
+   "bboxWgs84": [
+    -3.761871,
+    40.402401,
+    -3.74785,
+    40.413304
+   ],
+   "module": "js/geodata/tile-k-3j0.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-3j1",
+   "i": -3,
+   "j": 1,
+   "label": "Tesela k-3j1",
+   "status": "pending",
+   "core": [
+    [
+     -4841.3,
+     -545.4,
+     -3841.3,
+     454.6
+    ]
+   ],
+   "cell": [
+    435450,
+    4473800,
+    436450,
+    4474800
+   ],
+   "fetch": [
+    435350,
+    4473700,
+    436550,
+    4474900
+   ],
+   "bboxWgs84": [
+    -3.761972,
+    40.41141,
+    -3.74795,
+    40.422312
+   ],
+   "module": "js/geodata/tile-k-3j1.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-3j2",
+   "i": -3,
+   "j": 2,
+   "label": "Tesela k-3j2",
+   "status": "pending",
+   "core": [
+    [
+     -4841.3,
+     -1545.4,
+     -3841.3,
+     -545.4
+    ]
+   ],
+   "cell": [
+    435450,
+    4474800,
+    436450,
+    4475800
+   ],
+   "fetch": [
+    435350,
+    4474700,
+    436550,
+    4475900
+   ],
+   "bboxWgs84": [
+    -3.762074,
+    40.420418,
+    -3.748049,
+    40.431321
+   ],
+   "module": "js/geodata/tile-k-3j2.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-3j3",
+   "i": -3,
+   "j": 3,
+   "label": "Tesela k-3j3",
+   "status": "pending",
+   "core": [
+    [
+     -4841.3,
+     -2545.4,
+     -3841.3,
+     -1545.4
+    ]
+   ],
+   "cell": [
+    435450,
+    4475800,
+    436450,
+    4476800
+   ],
+   "fetch": [
+    435350,
+    4475700,
+    436550,
+    4476900
+   ],
+   "bboxWgs84": [
+    -3.762175,
+    40.429426,
+    -3.748149,
+    40.440329
+   ],
+   "module": "js/geodata/tile-k-3j3.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-3j4",
+   "i": -3,
+   "j": 4,
+   "label": "Tesela k-3j4",
+   "status": "pending",
+   "core": [
+    [
+     -4841.3,
+     -3545.4,
+     -3841.3,
+     -2545.4
+    ]
+   ],
+   "cell": [
+    435450,
+    4476800,
+    436450,
+    4477800
+   ],
+   "fetch": [
+    435350,
+    4476700,
+    436550,
+    4477900
+   ],
+   "bboxWgs84": [
+    -3.762277,
+    40.438435,
+    -3.748249,
+    40.449337
+   ],
+   "module": "js/geodata/tile-k-3j4.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-3j5",
+   "i": -3,
+   "j": 5,
+   "label": "Tesela k-3j5",
+   "status": "pending",
+   "core": [
+    [
+     -4841.3,
+     -4545.4,
+     -3841.3,
+     -3545.4
+    ]
+   ],
+   "cell": [
+    435450,
+    4477800,
+    436450,
+    4478800
+   ],
+   "fetch": [
+    435350,
+    4477700,
+    436550,
+    4478900
+   ],
+   "bboxWgs84": [
+    -3.762379,
+    40.447443,
+    -3.748349,
+    40.458346
+   ],
+   "module": "js/geodata/tile-k-3j5.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-3j6",
+   "i": -3,
+   "j": 6,
+   "label": "Tesela k-3j6",
+   "status": "pending",
+   "core": [
+    [
+     -4841.3,
+     -5545.4,
+     -3841.3,
+     -4545.4
+    ]
+   ],
+   "cell": [
+    435450,
+    4478800,
+    436450,
+    4479800
+   ],
+   "fetch": [
+    435350,
+    4478700,
+    436550,
+    4479900
+   ],
+   "bboxWgs84": [
+    -3.762481,
+    40.456451,
+    -3.748449,
+    40.467354
+   ],
+   "module": "js/geodata/tile-k-3j6.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-3j7",
+   "i": -3,
+   "j": 7,
+   "label": "Tesela k-3j7",
+   "status": "pending",
+   "core": [
+    [
+     -4841.3,
+     -6545.4,
+     -3841.3,
+     -5545.4
+    ]
+   ],
+   "cell": [
+    435450,
+    4479800,
+    436450,
+    4480800
+   ],
+   "fetch": [
+    435350,
+    4479700,
+    436550,
+    4480900
+   ],
+   "bboxWgs84": [
+    -3.762583,
+    40.46546,
+    -3.748549,
+    40.476362
+   ],
+   "module": "js/geodata/tile-k-3j7.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-2j-2",
+   "i": -2,
+   "j": -2,
+   "label": "Tesela k-2j-2",
+   "status": "pending",
+   "core": [
+    [
+     -3841.3,
+     2454.6,
+     -2841.3,
+     3454.6
+    ]
+   ],
+   "cell": [
+    436450,
+    4470800,
+    437450,
+    4471800
+   ],
+   "fetch": [
+    436350,
+    4470700,
+    437550,
+    4471900
+   ],
+   "bboxWgs84": [
+    -3.749887,
+    40.384462,
+    -3.735868,
+    40.395363
+   ],
+   "module": "js/geodata/tile-k-2j-2.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-2j-1",
+   "i": -2,
+   "j": -1,
+   "label": "Tesela k-2j-1",
+   "status": "pending",
+   "core": [
+    [
+     -3841.3,
+     1454.6,
+     -2841.3,
+     2454.6
+    ]
+   ],
+   "cell": [
+    436450,
+    4471800,
+    437450,
+    4472800
+   ],
+   "fetch": [
+    436350,
+    4471700,
+    437550,
+    4472900
+   ],
+   "bboxWgs84": [
+    -3.749987,
+    40.39347,
+    -3.735966,
+    40.404371
+   ],
+   "module": "js/geodata/tile-k-2j-1.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-2j0",
+   "i": -2,
+   "j": 0,
+   "label": "Tesela k-2j0",
+   "status": "pending",
+   "core": [
+    [
+     -3841.3,
+     454.6,
+     -2841.3,
+     1454.6
+    ]
+   ],
+   "cell": [
+    436450,
+    4472800,
+    437450,
+    4473800
+   ],
+   "fetch": [
+    436350,
+    4472700,
+    437550,
+    4473900
+   ],
+   "bboxWgs84": [
+    -3.750087,
+    40.402478,
+    -3.736064,
+    40.413379
+   ],
+   "module": "js/geodata/tile-k-2j0.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-2j1",
+   "i": -2,
+   "j": 1,
+   "label": "Tesela k-2j1",
+   "status": "pending",
+   "core": [
+    [
+     -3841.3,
+     -545.4,
+     -2841.3,
+     454.6
+    ]
+   ],
+   "cell": [
+    436450,
+    4473800,
+    437450,
+    4474800
+   ],
+   "fetch": [
+    436350,
+    4473700,
+    437550,
+    4474900
+   ],
+   "bboxWgs84": [
+    -3.750187,
+    40.411487,
+    -3.736163,
+    40.422388
+   ],
+   "module": "js/geodata/tile-k-2j1.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-2j2",
+   "i": -2,
+   "j": 2,
+   "label": "Tesela k-2j2",
+   "status": "pending",
+   "core": [
+    [
+     -3841.3,
+     -1545.4,
+     -2841.3,
+     -545.4
+    ]
+   ],
+   "cell": [
+    436450,
+    4474800,
+    437450,
+    4475800
+   ],
+   "fetch": [
+    436350,
+    4474700,
+    437550,
+    4475900
+   ],
+   "bboxWgs84": [
+    -3.750287,
+    40.420495,
+    -3.736261,
+    40.431396
+   ],
+   "module": "js/geodata/tile-k-2j2.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-2j3",
+   "i": -2,
+   "j": 3,
+   "label": "Tesela k-2j3",
+   "status": "pending",
+   "core": [
+    [
+     -3841.3,
+     -2545.4,
+     -2841.3,
+     -1545.4
+    ]
+   ],
+   "cell": [
+    436450,
+    4475800,
+    437450,
+    4476800
+   ],
+   "fetch": [
+    436350,
+    4475700,
+    437550,
+    4476900
+   ],
+   "bboxWgs84": [
+    -3.750387,
+    40.429504,
+    -3.736359,
+    40.440405
+   ],
+   "module": "js/geodata/tile-k-2j3.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-2j4",
+   "i": -2,
+   "j": 4,
+   "label": "Tesela k-2j4",
+   "status": "pending",
+   "core": [
+    [
+     -3841.3,
+     -3545.4,
+     -2841.3,
+     -2545.4
+    ]
+   ],
+   "cell": [
+    436450,
+    4476800,
+    437450,
+    4477800
+   ],
+   "fetch": [
+    436350,
+    4476700,
+    437550,
+    4477900
+   ],
+   "bboxWgs84": [
+    -3.750487,
+    40.438512,
+    -3.736457,
+    40.449413
+   ],
+   "module": "js/geodata/tile-k-2j4.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-2j5",
+   "i": -2,
+   "j": 5,
+   "label": "Tesela k-2j5",
+   "status": "pending",
+   "core": [
+    [
+     -3841.3,
+     -4545.4,
+     -2841.3,
+     -3545.4
+    ]
+   ],
+   "cell": [
+    436450,
+    4477800,
+    437450,
+    4478800
+   ],
+   "fetch": [
+    436350,
+    4477700,
+    437550,
+    4478900
+   ],
+   "bboxWgs84": [
+    -3.750588,
+    40.44752,
+    -3.736556,
+    40.458421
+   ],
+   "module": "js/geodata/tile-k-2j5.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-2j6",
+   "i": -2,
+   "j": 6,
+   "label": "Tesela k-2j6",
+   "status": "pending",
+   "core": [
+    [
+     -3841.3,
+     -5545.4,
+     -2841.3,
+     -4545.4
+    ]
+   ],
+   "cell": [
+    436450,
+    4478800,
+    437450,
+    4479800
+   ],
+   "fetch": [
+    436350,
+    4478700,
+    437550,
+    4479900
+   ],
+   "bboxWgs84": [
+    -3.750688,
+    40.456529,
+    -3.736654,
+    40.46743
+   ],
+   "module": "js/geodata/tile-k-2j6.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-2j7",
+   "i": -2,
+   "j": 7,
+   "label": "Tesela k-2j7",
+   "status": "pending",
+   "core": [
+    [
+     -3841.3,
+     -6545.4,
+     -2841.3,
+     -5545.4
+    ]
+   ],
+   "cell": [
+    436450,
+    4479800,
+    437450,
+    4480800
+   ],
+   "fetch": [
+    436350,
+    4479700,
+    437550,
+    4480900
+   ],
+   "bboxWgs84": [
+    -3.750788,
+    40.465537,
+    -3.736753,
+    40.476438
+   ],
+   "module": "js/geodata/tile-k-2j7.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-1j-2",
+   "i": -1,
+   "j": -2,
+   "label": "Tesela k-1j-2",
+   "status": "pending",
+   "core": [
+    [
+     -2841.3,
+     2454.6,
+     -1841.3,
+     3454.6
+    ]
+   ],
+   "cell": [
+    437450,
+    4470800,
+    438450,
+    4471800
+   ],
+   "fetch": [
+    437350,
+    4470700,
+    438550,
+    4471900
+   ],
+   "bboxWgs84": [
+    -3.738107,
+    40.384537,
+    -3.724086,
+    40.395437
+   ],
+   "module": "js/geodata/tile-k-1j-2.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-1j-1",
+   "i": -1,
+   "j": -1,
+   "label": "Tesela k-1j-1",
+   "status": "pending",
+   "core": [
+    [
+     -2841.3,
+     1454.6,
+     -1841.3,
+     2454.6
+    ]
+   ],
+   "cell": [
+    437450,
+    4471800,
+    438450,
+    4472800
+   ],
+   "fetch": [
+    437350,
+    4471700,
+    438550,
+    4472900
+   ],
+   "bboxWgs84": [
+    -3.738205,
+    40.393546,
+    -3.724182,
+    40.404445
+   ],
+   "module": "js/geodata/tile-k-1j-1.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-1j0",
+   "i": -1,
+   "j": 0,
+   "label": "Tesela k-1j0",
+   "status": "pending",
+   "core": [
+    [
+     -2841.3,
+     454.6,
+     -1841.3,
+     1454.6
+    ]
+   ],
+   "cell": [
+    437450,
+    4472800,
+    438450,
+    4473800
+   ],
+   "fetch": [
+    437350,
+    4472700,
+    438550,
+    4473900
+   ],
+   "bboxWgs84": [
+    -3.738303,
+    40.402554,
+    -3.724279,
+    40.413454
+   ],
+   "module": "js/geodata/tile-k-1j0.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-1j1",
+   "i": -1,
+   "j": 1,
+   "label": "Tesela k-1j1",
+   "status": "pending",
+   "core": [
+    [
+     -2841.3,
+     -545.4,
+     -1841.3,
+     454.6
+    ]
+   ],
+   "cell": [
+    437450,
+    4473800,
+    438450,
+    4474800
+   ],
+   "fetch": [
+    437350,
+    4473700,
+    438550,
+    4474900
+   ],
+   "bboxWgs84": [
+    -3.738402,
+    40.411563,
+    -3.724375,
+    40.422462
+   ],
+   "module": "js/geodata/tile-k-1j1.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-1j2",
+   "i": -1,
+   "j": 2,
+   "label": "Tesela k-1j2",
+   "status": "pending",
+   "core": [
+    [
+     -2841.3,
+     -1545.4,
+     -1841.3,
+     -545.4
+    ]
+   ],
+   "cell": [
+    437450,
+    4474800,
+    438450,
+    4475800
+   ],
+   "fetch": [
+    437350,
+    4474700,
+    438550,
+    4475900
+   ],
+   "bboxWgs84": [
+    -3.7385,
+    40.420571,
+    -3.724472,
+    40.431471
+   ],
+   "module": "js/geodata/tile-k-1j2.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-1j3",
+   "i": -1,
+   "j": 3,
+   "label": "Tesela k-1j3",
+   "status": "pending",
+   "core": [
+    [
+     -2841.3,
+     -2545.4,
+     -1841.3,
+     -1545.4
+    ]
+   ],
+   "cell": [
+    437450,
+    4475800,
+    438450,
+    4476800
+   ],
+   "fetch": [
+    437350,
+    4475700,
+    438550,
+    4476900
+   ],
+   "bboxWgs84": [
+    -3.738599,
+    40.42958,
+    -3.724569,
+    40.440479
+   ],
+   "module": "js/geodata/tile-k-1j3.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-1j4",
+   "i": -1,
+   "j": 4,
+   "label": "Tesela k-1j4",
+   "status": "pending",
+   "core": [
+    [
+     -2841.3,
+     -3545.4,
+     -1841.3,
+     -2545.4
+    ]
+   ],
+   "cell": [
+    437450,
+    4476800,
+    438450,
+    4477800
+   ],
+   "fetch": [
+    437350,
+    4476700,
+    438550,
+    4477900
+   ],
+   "bboxWgs84": [
+    -3.738697,
+    40.438588,
+    -3.724666,
+    40.449487
+   ],
+   "module": "js/geodata/tile-k-1j4.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-1j5",
+   "i": -1,
+   "j": 5,
+   "label": "Tesela k-1j5",
+   "status": "pending",
+   "core": [
+    [
+     -2841.3,
+     -4545.4,
+     -1841.3,
+     -3545.4
+    ]
+   ],
+   "cell": [
+    437450,
+    4477800,
+    438450,
+    4478800
+   ],
+   "fetch": [
+    437350,
+    4477700,
+    438550,
+    4478900
+   ],
+   "bboxWgs84": [
+    -3.738796,
+    40.447596,
+    -3.724762,
+    40.458496
+   ],
+   "module": "js/geodata/tile-k-1j5.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-1j6",
+   "i": -1,
+   "j": 6,
+   "label": "Tesela k-1j6",
+   "status": "pending",
+   "core": [
+    [
+     -2841.3,
+     -5545.4,
+     -1841.3,
+     -4545.4
+    ]
+   ],
+   "cell": [
+    437450,
+    4478800,
+    438450,
+    4479800
+   ],
+   "fetch": [
+    437350,
+    4478700,
+    438550,
+    4479900
+   ],
+   "bboxWgs84": [
+    -3.738895,
+    40.456605,
+    -3.724859,
+    40.467504
+   ],
+   "module": "js/geodata/tile-k-1j6.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k-1j7",
+   "i": -1,
+   "j": 7,
+   "label": "Tesela k-1j7",
+   "status": "pending",
+   "core": [
+    [
+     -2841.3,
+     -6545.4,
+     -1841.3,
+     -5545.4
+    ]
+   ],
+   "cell": [
+    437450,
+    4479800,
+    438450,
+    4480800
+   ],
+   "fetch": [
+    437350,
+    4479700,
+    438550,
+    4480900
+   ],
+   "bboxWgs84": [
+    -3.738993,
+    40.465613,
+    -3.724956,
+    40.476513
+   ],
+   "module": "js/geodata/tile-k-1j7.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k0j-2",
+   "i": 0,
+   "j": -2,
+   "label": "Tesela k0j-2",
+   "status": "pending",
+   "core": [
+    [
+     -1841.3,
+     2454.6,
+     -841.3,
+     3454.6
+    ]
+   ],
+   "cell": [
+    438450,
+    4470800,
+    439450,
+    4471800
+   ],
+   "fetch": [
+    438350,
+    4470700,
+    439550,
+    4471900
+   ],
+   "bboxWgs84": [
+    -3.726326,
+    40.384612,
+    -3.712303,
+    40.39551
+   ],
+   "module": "js/geodata/tile-k0j-2.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k0j-1",
+   "i": 0,
+   "j": -1,
+   "label": "Latina (Casa de Campo este, Manzanares sur)",
+   "status": "ready",
+   "core": [
+    [
+     -1841.3,
+     1454.6,
+     -841.3,
+     2454.6
+    ]
+   ],
+   "cell": [
+    438450,
+    4471800,
+    439450,
+    4472800
+   ],
+   "fetch": [
+    438350,
+    4471700,
+    439550,
+    4472900
+   ],
+   "bboxWgs84": [
+    -3.726423,
+    40.39362,
+    -3.712398,
+    40.404519
+   ],
+   "module": "js/geodata/tile-k0j-1.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": 287174,
+   "md5": "ed24241b7c53eb1979ef4e692378bf10",
+   "counts": {
+    "blocks": 77,
+    "parcels": 1665,
+    "parks": 105,
+    "water": 2,
+    "roads": 306,
+    "landmarks": 8
+   },
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k0j2",
+   "i": 0,
+   "j": 2,
+   "label": "Tesela k0j2",
+   "status": "pending",
+   "core": [
+    [
+     -1841.3,
+     -1545.4,
+     -841.3,
+     -1145.4
+    ]
+   ],
+   "cell": [
+    438450,
+    4474800,
+    439450,
+    4475800
+   ],
+   "fetch": [
+    438350,
+    4474700,
+    439550,
+    4475900
+   ],
+   "bboxWgs84": [
+    -3.726713,
+    40.420646,
+    -3.712683,
+    40.431544
+   ],
+   "module": "js/geodata/tile-k0j2.js",
+   "overlapped": true,
+   "areaKm2": 0.4,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k0j3",
+   "i": 0,
+   "j": 3,
+   "label": "Moncloa (Argüelles, Moncloa)",
+   "status": "ready",
+   "core": [
+    [
+     -1841.3,
+     -2545.4,
+     -841.3,
+     -1545.4
+    ]
+   ],
+   "cell": [
+    438450,
+    4475800,
+    439450,
+    4476800
+   ],
+   "fetch": [
+    438350,
+    4475700,
+    439550,
+    4476900
+   ],
+   "bboxWgs84": [
+    -3.72681,
+    40.429654,
+    -3.712778,
+    40.440552
+   ],
+   "module": "js/geodata/tile-k0j3.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": 450984,
+   "md5": "c575357d6b82d909fe58499af10d5bb0",
+   "counts": {
+    "blocks": 71,
+    "parcels": 2531,
+    "parks": 50,
+    "water": 2,
+    "roads": 372,
+    "landmarks": 28
+   },
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k0j4",
+   "i": 0,
+   "j": 4,
+   "label": "Tesela k0j4",
+   "status": "pending",
+   "core": [
+    [
+     -1841.3,
+     -3545.4,
+     -841.3,
+     -2545.4
+    ]
+   ],
+   "cell": [
+    438450,
+    4476800,
+    439450,
+    4477800
+   ],
+   "fetch": [
+    438350,
+    4476700,
+    439550,
+    4477900
+   ],
+   "bboxWgs84": [
+    -3.726907,
+    40.438663,
+    -3.712874,
+    40.449561
+   ],
+   "module": "js/geodata/tile-k0j4.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k0j5",
+   "i": 0,
+   "j": 5,
+   "label": "Tesela k0j5",
+   "status": "pending",
+   "core": [
+    [
+     -1841.3,
+     -4545.4,
+     -841.3,
+     -3545.4
+    ]
+   ],
+   "cell": [
+    438450,
+    4477800,
+    439450,
+    4478800
+   ],
+   "fetch": [
+    438350,
+    4477700,
+    439550,
+    4478900
+   ],
+   "bboxWgs84": [
+    -3.727004,
+    40.447671,
+    -3.712969,
+    40.458569
+   ],
+   "module": "js/geodata/tile-k0j5.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k0j6",
+   "i": 0,
+   "j": 6,
+   "label": "Tesela k0j6",
+   "status": "pending",
+   "core": [
+    [
+     -1841.3,
+     -5545.4,
+     -841.3,
+     -4545.4
+    ]
+   ],
+   "cell": [
+    438450,
+    4478800,
+    439450,
+    4479800
+   ],
+   "fetch": [
+    438350,
+    4478700,
+    439550,
+    4479900
+   ],
+   "bboxWgs84": [
+    -3.727102,
+    40.456679,
+    -3.713064,
+    40.467578
+   ],
+   "module": "js/geodata/tile-k0j6.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k0j7",
+   "i": 0,
+   "j": 7,
+   "label": "Tesela k0j7",
+   "status": "pending",
+   "core": [
+    [
+     -1841.3,
+     -6545.4,
+     -841.3,
+     -5545.4
+    ]
+   ],
+   "cell": [
+    438450,
+    4479800,
+    439450,
+    4480800
+   ],
+   "fetch": [
+    438350,
+    4479700,
+    439550,
+    4480900
+   ],
+   "bboxWgs84": [
+    -3.727199,
+    40.465688,
+    -3.713159,
+    40.476586
+   ],
+   "module": "js/geodata/tile-k0j7.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k1j-2",
+   "i": 1,
+   "j": -2,
+   "label": "Tesela k1j-2",
+   "status": "pending",
+   "core": [
+    [
+     -841.3,
+     2454.6,
+     158.7,
+     3454.6
+    ]
+   ],
+   "cell": [
+    439450,
+    4470800,
+    440450,
+    4471800
+   ],
+   "fetch": [
+    439350,
+    4470700,
+    440550,
+    4471900
+   ],
+   "bboxWgs84": [
+    -3.714546,
+    40.384685,
+    -3.700521,
+    40.395582
+   ],
+   "module": "js/geodata/tile-k1j-2.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k1j-1",
+   "i": 1,
+   "j": -1,
+   "label": "Tesela k1j-1",
+   "status": "pending",
+   "core": [
+    [
+     -841.3,
+     1454.6,
+     158.7,
+     2454.6
+    ]
+   ],
+   "cell": [
+    439450,
+    4471800,
+    440450,
+    4472800
+   ],
+   "fetch": [
+    439350,
+    4471700,
+    440550,
+    4472900
+   ],
+   "bboxWgs84": [
+    -3.714641,
+    40.393694,
+    -3.700614,
+    40.404591
+   ],
+   "module": "js/geodata/tile-k1j-1.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k1j2",
+   "i": 1,
+   "j": 2,
+   "label": "Tesela k1j2",
+   "status": "pending",
+   "core": [
+    [
+     -841.3,
+     -1545.4,
+     158.7,
+     -1145.4
+    ]
+   ],
+   "cell": [
+    439450,
+    4474800,
+    440450,
+    4475800
+   ],
+   "fetch": [
+    439350,
+    4474700,
+    440550,
+    4475900
+   ],
+   "bboxWgs84": [
+    -3.714927,
+    40.420719,
+    -3.700895,
+    40.431616
+   ],
+   "module": "js/geodata/tile-k1j2.js",
+   "overlapped": true,
+   "areaKm2": 0.4,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k1j3",
+   "i": 1,
+   "j": 3,
+   "label": "Tesela k1j3",
+   "status": "pending",
+   "core": [
+    [
+     -841.3,
+     -2545.4,
+     158.7,
+     -1545.4
+    ]
+   ],
+   "cell": [
+    439450,
+    4475800,
+    440450,
+    4476800
+   ],
+   "fetch": [
+    439350,
+    4475700,
+    440550,
+    4476900
+   ],
+   "bboxWgs84": [
+    -3.715022,
+    40.429728,
+    -3.700988,
+    40.440624
+   ],
+   "module": "js/geodata/tile-k1j3.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k1j4",
+   "i": 1,
+   "j": 4,
+   "label": "Tesela k1j4",
+   "status": "pending",
+   "core": [
+    [
+     -841.3,
+     -3545.4,
+     158.7,
+     -2545.4
+    ]
+   ],
+   "cell": [
+    439450,
+    4476800,
+    440450,
+    4477800
+   ],
+   "fetch": [
+    439350,
+    4476700,
+    440550,
+    4477900
+   ],
+   "bboxWgs84": [
+    -3.715117,
+    40.438736,
+    -3.701082,
+    40.449633
+   ],
+   "module": "js/geodata/tile-k1j4.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k1j5",
+   "i": 1,
+   "j": 5,
+   "label": "Tesela k1j5",
+   "status": "pending",
+   "core": [
+    [
+     -841.3,
+     -4545.4,
+     158.7,
+     -3545.4
+    ]
+   ],
+   "cell": [
+    439450,
+    4477800,
+    440450,
+    4478800
+   ],
+   "fetch": [
+    439350,
+    4477700,
+    440550,
+    4478900
+   ],
+   "bboxWgs84": [
+    -3.715213,
+    40.447745,
+    -3.701175,
+    40.458641
+   ],
+   "module": "js/geodata/tile-k1j5.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k1j6",
+   "i": 1,
+   "j": 6,
+   "label": "Tesela k1j6",
+   "status": "pending",
+   "core": [
+    [
+     -841.3,
+     -5545.4,
+     158.7,
+     -4545.4
+    ]
+   ],
+   "cell": [
+    439450,
+    4478800,
+    440450,
+    4479800
+   ],
+   "fetch": [
+    439350,
+    4478700,
+    440550,
+    4479900
+   ],
+   "bboxWgs84": [
+    -3.715308,
+    40.456753,
+    -3.701269,
+    40.46765
+   ],
+   "module": "js/geodata/tile-k1j6.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k1j7",
+   "i": 1,
+   "j": 7,
+   "label": "Tesela k1j7",
+   "status": "pending",
+   "core": [
+    [
+     -841.3,
+     -6545.4,
+     158.7,
+     -5545.4
+    ]
+   ],
+   "cell": [
+    439450,
+    4479800,
+    440450,
+    4480800
+   ],
+   "fetch": [
+    439350,
+    4479700,
+    440550,
+    4480900
+   ],
+   "bboxWgs84": [
+    -3.715404,
+    40.465761,
+    -3.701363,
+    40.476658
+   ],
+   "module": "js/geodata/tile-k1j7.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k2j-2",
+   "i": 2,
+   "j": -2,
+   "label": "Tesela k2j-2",
+   "status": "pending",
+   "core": [
+    [
+     158.7,
+     2454.6,
+     1158.7,
+     3454.6
+    ]
+   ],
+   "cell": [
+    440450,
+    4470800,
+    441450,
+    4471800
+   ],
+   "fetch": [
+    440350,
+    4470700,
+    441550,
+    4471900
+   ],
+   "bboxWgs84": [
+    -3.702765,
+    40.384758,
+    -3.688738,
+    40.395653
+   ],
+   "module": "js/geodata/tile-k2j-2.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k2j-1",
+   "i": 2,
+   "j": -1,
+   "label": "Arganzuela (Delicias, Legazpi)",
+   "status": "ready",
+   "core": [
+    [
+     158.7,
+     1454.6,
+     1158.7,
+     2454.6
+    ]
+   ],
+   "cell": [
+    440450,
+    4471800,
+    441450,
+    4472800
+   ],
+   "fetch": [
+    440350,
+    4471700,
+    441550,
+    4472900
+   ],
+   "bboxWgs84": [
+    -3.702859,
+    40.393766,
+    -3.68883,
+    40.404661
+   ],
+   "module": "js/geodata/tile-k2j-1.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": 500191,
+   "md5": "cee5578e2f1fad97914e2d726a91d70c",
+   "counts": {
+    "blocks": 98,
+    "parcels": 3823,
+    "parks": 41,
+    "water": 1,
+    "roads": 248,
+    "landmarks": 13
+   },
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k2j2",
+   "i": 2,
+   "j": 2,
+   "label": "Tesela k2j2",
+   "status": "pending",
+   "core": [
+    [
+     158.7,
+     -1545.4,
+     1158.7,
+     -1145.4
+    ]
+   ],
+   "cell": [
+    440450,
+    4474800,
+    441450,
+    4475800
+   ],
+   "fetch": [
+    440350,
+    4474700,
+    441550,
+    4475900
+   ],
+   "bboxWgs84": [
+    -3.70314,
+    40.420792,
+    -3.689106,
+    40.431687
+   ],
+   "module": "js/geodata/tile-k2j2.js",
+   "overlapped": true,
+   "areaKm2": 0.4,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k2j3",
+   "i": 2,
+   "j": 3,
+   "label": "Tesela k2j3",
+   "status": "pending",
+   "core": [
+    [
+     158.7,
+     -2545.4,
+     1158.7,
+     -1545.4
+    ]
+   ],
+   "cell": [
+    440450,
+    4475800,
+    441450,
+    4476800
+   ],
+   "fetch": [
+    440350,
+    4475700,
+    441550,
+    4476900
+   ],
+   "bboxWgs84": [
+    -3.703234,
+    40.4298,
+    -3.689198,
+    40.440695
+   ],
+   "module": "js/geodata/tile-k2j3.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k2j4",
+   "i": 2,
+   "j": 4,
+   "label": "Chamartín sur (Nuevos Ministerios)",
+   "status": "ready",
+   "core": [
+    [
+     158.7,
+     -3545.4,
+     1158.7,
+     -2545.4
+    ]
+   ],
+   "cell": [
+    440450,
+    4476800,
+    441450,
+    4477800
+   ],
+   "fetch": [
+    440350,
+    4476700,
+    441550,
+    4477900
+   ],
+   "bboxWgs84": [
+    -3.703327,
+    40.438808,
+    -3.68929,
+    40.449704
+   ],
+   "module": "js/geodata/tile-k2j4.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": 424999,
+   "md5": "bd9a0ef684b6975f8fbd00774b30d7f7",
+   "counts": {
+    "blocks": 70,
+    "parcels": 2727,
+    "parks": 84,
+    "water": 5,
+    "roads": 373,
+    "landmarks": 23
+   },
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k2j5",
+   "i": 2,
+   "j": 5,
+   "label": "Tesela k2j5",
+   "status": "pending",
+   "core": [
+    [
+     158.7,
+     -4545.4,
+     1158.7,
+     -3545.4
+    ]
+   ],
+   "cell": [
+    440450,
+    4477800,
+    441450,
+    4478800
+   ],
+   "fetch": [
+    440350,
+    4477700,
+    441550,
+    4478900
+   ],
+   "bboxWgs84": [
+    -3.703421,
+    40.447817,
+    -3.689382,
+    40.458712
+   ],
+   "module": "js/geodata/tile-k2j5.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k2j6",
+   "i": 2,
+   "j": 6,
+   "label": "Tesela k2j6",
+   "status": "pending",
+   "core": [
+    [
+     158.7,
+     -5545.4,
+     1158.7,
+     -4545.4
+    ]
+   ],
+   "cell": [
+    440450,
+    4478800,
+    441450,
+    4479800
+   ],
+   "fetch": [
+    440350,
+    4478700,
+    441550,
+    4479900
+   ],
+   "bboxWgs84": [
+    -3.703515,
+    40.456825,
+    -3.689474,
+    40.467721
+   ],
+   "module": "js/geodata/tile-k2j6.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k2j7",
+   "i": 2,
+   "j": 7,
+   "label": "Tesela k2j7",
+   "status": "pending",
+   "core": [
+    [
+     158.7,
+     -6545.4,
+     1158.7,
+     -5545.4
+    ]
+   ],
+   "cell": [
+    440450,
+    4479800,
+    441450,
+    4480800
+   ],
+   "fetch": [
+    440350,
+    4479700,
+    441550,
+    4480900
+   ],
+   "bboxWgs84": [
+    -3.703609,
+    40.465834,
+    -3.689566,
+    40.476729
+   ],
+   "module": "js/geodata/tile-k2j7.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k3j-2",
+   "i": 3,
+   "j": -2,
+   "label": "Tesela k3j-2",
+   "status": "pending",
+   "core": [
+    [
+     1158.7,
+     2454.6,
+     2158.7,
+     3454.6
+    ]
+   ],
+   "cell": [
+    441450,
+    4470800,
+    442450,
+    4471800
+   ],
+   "fetch": [
+    441350,
+    4470700,
+    442550,
+    4471900
+   ],
+   "bboxWgs84": [
+    -3.690984,
+    40.384829,
+    -3.676956,
+    40.395722
+   ],
+   "module": "js/geodata/tile-k3j-2.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k3j-1",
+   "i": 3,
+   "j": -1,
+   "label": "Tesela k3j-1",
+   "status": "pending",
+   "core": [
+    [
+     1158.7,
+     1454.6,
+     2158.7,
+     2454.6
+    ]
+   ],
+   "cell": [
+    441450,
+    4471800,
+    442450,
+    4472800
+   ],
+   "fetch": [
+    441350,
+    4471700,
+    442550,
+    4472900
+   ],
+   "bboxWgs84": [
+    -3.691076,
+    40.393837,
+    -3.677046,
+    40.404731
+   ],
+   "module": "js/geodata/tile-k3j-1.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k3j0",
+   "i": 3,
+   "j": 0,
+   "label": "Tesela k3j0",
+   "status": "pending",
+   "core": [
+    [
+     1408.7,
+     454.6,
+     2158.7,
+     1454.6
+    ]
+   ],
+   "cell": [
+    441450,
+    4472800,
+    442450,
+    4473800
+   ],
+   "fetch": [
+    441350,
+    4472700,
+    442550,
+    4473900
+   ],
+   "bboxWgs84": [
+    -3.691168,
+    40.402846,
+    -3.677136,
+    40.41374
+   ],
+   "module": "js/geodata/tile-k3j0.js",
+   "overlapped": true,
+   "areaKm2": 0.75,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k3j1",
+   "i": 3,
+   "j": 1,
+   "label": "Retiro oeste (Atocha, Jerónimos)",
+   "status": "ready",
+   "core": [
+    [
+     1408.7,
+     -545.4,
+     2158.7,
+     454.6
+    ]
+   ],
+   "cell": [
+    441450,
+    4473800,
+    442450,
+    4474800
+   ],
+   "fetch": [
+    441350,
+    4473700,
+    442550,
+    4474900
+   ],
+   "bboxWgs84": [
+    -3.691261,
+    40.411854,
+    -3.677226,
+    40.422748
+   ],
+   "module": "js/geodata/tile-k3j1.js",
+   "overlapped": true,
+   "areaKm2": 0.75,
+   "bytes": 121670,
+   "md5": "ff10a81d001440199d720ff66363111c",
+   "counts": {
+    "blocks": 14,
+    "parcels": 476,
+    "parks": 295,
+    "water": 7,
+    "roads": 79,
+    "landmarks": 33
+   },
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k3j2",
+   "i": 3,
+   "j": 2,
+   "label": "Tesela k3j2",
+   "status": "pending",
+   "core": [
+    [
+     1158.7,
+     -1545.4,
+     2158.7,
+     -1145.4
+    ],
+    [
+     1408.7,
+     -1145.4,
+     2158.7,
+     -545.4
+    ]
+   ],
+   "cell": [
+    441450,
+    4474800,
+    442450,
+    4475800
+   ],
+   "fetch": [
+    441350,
+    4474700,
+    442550,
+    4475900
+   ],
+   "bboxWgs84": [
+    -3.691353,
+    40.420863,
+    -3.677317,
+    40.431757
+   ],
+   "module": "js/geodata/tile-k3j2.js",
+   "overlapped": true,
+   "areaKm2": 0.85,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k3j3",
+   "i": 3,
+   "j": 3,
+   "label": "Tesela k3j3",
+   "status": "pending",
+   "core": [
+    [
+     1158.7,
+     -2545.4,
+     2158.7,
+     -1545.4
+    ]
+   ],
+   "cell": [
+    441450,
+    4475800,
+    442450,
+    4476800
+   ],
+   "fetch": [
+    441350,
+    4475700,
+    442550,
+    4476900
+   ],
+   "bboxWgs84": [
+    -3.691445,
+    40.429871,
+    -3.677407,
+    40.440765
+   ],
+   "module": "js/geodata/tile-k3j3.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k3j4",
+   "i": 3,
+   "j": 4,
+   "label": "Tesela k3j4",
+   "status": "pending",
+   "core": [
+    [
+     1158.7,
+     -3545.4,
+     2158.7,
+     -2545.4
+    ]
+   ],
+   "cell": [
+    441450,
+    4476800,
+    442450,
+    4477800
+   ],
+   "fetch": [
+    441350,
+    4476700,
+    442550,
+    4477900
+   ],
+   "bboxWgs84": [
+    -3.691537,
+    40.43888,
+    -3.677498,
+    40.449774
+   ],
+   "module": "js/geodata/tile-k3j4.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k3j5",
+   "i": 3,
+   "j": 5,
+   "label": "Tesela k3j5",
+   "status": "pending",
+   "core": [
+    [
+     1158.7,
+     -4545.4,
+     2158.7,
+     -3545.4
+    ]
+   ],
+   "cell": [
+    441450,
+    4477800,
+    442450,
+    4478800
+   ],
+   "fetch": [
+    441350,
+    4477700,
+    442550,
+    4478900
+   ],
+   "bboxWgs84": [
+    -3.69163,
+    40.447888,
+    -3.677588,
+    40.458782
+   ],
+   "module": "js/geodata/tile-k3j5.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k3j6",
+   "i": 3,
+   "j": 6,
+   "label": "Tesela k3j6",
+   "status": "pending",
+   "core": [
+    [
+     1158.7,
+     -5545.4,
+     2158.7,
+     -4545.4
+    ]
+   ],
+   "cell": [
+    441450,
+    4478800,
+    442450,
+    4479800
+   ],
+   "fetch": [
+    441350,
+    4478700,
+    442550,
+    4479900
+   ],
+   "bboxWgs84": [
+    -3.691722,
+    40.456897,
+    -3.677679,
+    40.46779
+   ],
+   "module": "js/geodata/tile-k3j6.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k3j7",
+   "i": 3,
+   "j": 7,
+   "label": "Tesela k3j7",
+   "status": "pending",
+   "core": [
+    [
+     1158.7,
+     -6545.4,
+     2158.7,
+     -5545.4
+    ]
+   ],
+   "cell": [
+    441450,
+    4479800,
+    442450,
+    4480800
+   ],
+   "fetch": [
+    441350,
+    4479700,
+    442550,
+    4480900
+   ],
+   "bboxWgs84": [
+    -3.691814,
+    40.465905,
+    -3.677769,
+    40.476799
+   ],
+   "module": "js/geodata/tile-k3j7.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k4j-2",
+   "i": 4,
+   "j": -2,
+   "label": "Tesela k4j-2",
+   "status": "pending",
+   "core": [
+    [
+     2158.7,
+     2454.6,
+     3158.7,
+     3454.6
+    ]
+   ],
+   "cell": [
+    442450,
+    4470800,
+    443450,
+    4471800
+   ],
+   "fetch": [
+    442350,
+    4470700,
+    443550,
+    4471900
+   ],
+   "bboxWgs84": [
+    -3.679204,
+    40.384898,
+    -3.665173,
+    40.395791
+   ],
+   "module": "js/geodata/tile-k4j-2.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k4j-1",
+   "i": 4,
+   "j": -1,
+   "label": "Tesela k4j-1",
+   "status": "pending",
+   "core": [
+    [
+     2158.7,
+     1454.6,
+     3158.7,
+     2454.6
+    ]
+   ],
+   "cell": [
+    442450,
+    4471800,
+    443450,
+    4472800
+   ],
+   "fetch": [
+    442350,
+    4471700,
+    443550,
+    4472900
+   ],
+   "bboxWgs84": [
+    -3.679294,
+    40.393907,
+    -3.665262,
+    40.404799
+   ],
+   "module": "js/geodata/tile-k4j-1.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k4j0",
+   "i": 4,
+   "j": 0,
+   "label": "Tesela k4j0",
+   "status": "pending",
+   "core": [
+    [
+     2158.7,
+     454.6,
+     3158.7,
+     1454.6
+    ]
+   ],
+   "cell": [
+    442450,
+    4472800,
+    443450,
+    4473800
+   ],
+   "fetch": [
+    442350,
+    4472700,
+    443550,
+    4473900
+   ],
+   "bboxWgs84": [
+    -3.679385,
+    40.402915,
+    -3.66535,
+    40.413808
+   ],
+   "module": "js/geodata/tile-k4j0.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k4j1",
+   "i": 4,
+   "j": 1,
+   "label": "Retiro este (Retiro, Salamanca sur)",
+   "status": "ready",
+   "core": [
+    [
+     2158.7,
+     -545.4,
+     3158.7,
+     454.6
+    ]
+   ],
+   "cell": [
+    442450,
+    4473800,
+    443450,
+    4474800
+   ],
+   "fetch": [
+    442350,
+    4473700,
+    443550,
+    4474900
+   ],
+   "bboxWgs84": [
+    -3.679475,
+    40.411924,
+    -3.665439,
+    40.422817
+   ],
+   "module": "js/geodata/tile-k4j1.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": 399280,
+   "md5": "55108357e85a9c30becc0421643c2649",
+   "counts": {
+    "blocks": 81,
+    "parcels": 2828,
+    "parks": 66,
+    "water": 5,
+    "roads": 301,
+    "landmarks": 12
+   },
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k4j2",
+   "i": 4,
+   "j": 2,
+   "label": "Salamanca este (Guindalera, Fuente del Berro)",
+   "status": "ready",
+   "core": [
+    [
+     2158.7,
+     -1545.4,
+     3158.7,
+     -545.4
+    ]
+   ],
+   "cell": [
+    442450,
+    4474800,
+    443450,
+    4475800
+   ],
+   "fetch": [
+    442350,
+    4474700,
+    443550,
+    4475900
+   ],
+   "bboxWgs84": [
+    -3.679566,
+    40.420933,
+    -3.665528,
+    40.431825
+   ],
+   "module": "js/geodata/tile-k4j2.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": 693314,
+   "md5": "06e2df3ee93044f020c4f376d9bde6bb",
+   "counts": {
+    "blocks": 81,
+    "parcels": 4851,
+    "parks": 61,
+    "water": 0,
+    "roads": 271,
+    "landmarks": 18
+   },
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k4j3",
+   "i": 4,
+   "j": 3,
+   "label": "Tesela k4j3",
+   "status": "pending",
+   "core": [
+    [
+     2158.7,
+     -2545.4,
+     3158.7,
+     -1545.4
+    ]
+   ],
+   "cell": [
+    442450,
+    4475800,
+    443450,
+    4476800
+   ],
+   "fetch": [
+    442350,
+    4475700,
+    443550,
+    4476900
+   ],
+   "bboxWgs84": [
+    -3.679656,
+    40.429941,
+    -3.665617,
+    40.440834
+   ],
+   "module": "js/geodata/tile-k4j3.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k4j4",
+   "i": 4,
+   "j": 4,
+   "label": "Tesela k4j4",
+   "status": "pending",
+   "core": [
+    [
+     2158.7,
+     -3545.4,
+     3158.7,
+     -2545.4
+    ]
+   ],
+   "cell": [
+    442450,
+    4476800,
+    443450,
+    4477800
+   ],
+   "fetch": [
+    442350,
+    4476700,
+    443550,
+    4477900
+   ],
+   "bboxWgs84": [
+    -3.679747,
+    40.43895,
+    -3.665706,
+    40.449842
+   ],
+   "module": "js/geodata/tile-k4j4.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k4j5",
+   "i": 4,
+   "j": 5,
+   "label": "Tesela k4j5",
+   "status": "pending",
+   "core": [
+    [
+     2158.7,
+     -4545.4,
+     3158.7,
+     -3545.4
+    ]
+   ],
+   "cell": [
+    442450,
+    4477800,
+    443450,
+    4478800
+   ],
+   "fetch": [
+    442350,
+    4477700,
+    443550,
+    4478900
+   ],
+   "bboxWgs84": [
+    -3.679838,
+    40.447958,
+    -3.665795,
+    40.458851
+   ],
+   "module": "js/geodata/tile-k4j5.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k4j6",
+   "i": 4,
+   "j": 6,
+   "label": "Tesela k4j6",
+   "status": "pending",
+   "core": [
+    [
+     2158.7,
+     -5545.4,
+     3158.7,
+     -4545.4
+    ]
+   ],
+   "cell": [
+    442450,
+    4478800,
+    443450,
+    4479800
+   ],
+   "fetch": [
+    442350,
+    4478700,
+    443550,
+    4479900
+   ],
+   "bboxWgs84": [
+    -3.679929,
+    40.456966,
+    -3.665884,
+    40.467859
+   ],
+   "module": "js/geodata/tile-k4j6.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k4j7",
+   "i": 4,
+   "j": 7,
+   "label": "Tesela k4j7",
+   "status": "pending",
+   "core": [
+    [
+     2158.7,
+     -6545.4,
+     3158.7,
+     -5545.4
+    ]
+   ],
+   "cell": [
+    442450,
+    4479800,
+    443450,
+    4480800
+   ],
+   "fetch": [
+    442350,
+    4479700,
+    443550,
+    4480900
+   ],
+   "bboxWgs84": [
+    -3.68002,
+    40.465975,
+    -3.665973,
+    40.476867
+   ],
+   "module": "js/geodata/tile-k4j7.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k5j-2",
+   "i": 5,
+   "j": -2,
+   "label": "Tesela k5j-2",
+   "status": "pending",
+   "core": [
+    [
+     3158.7,
+     2454.6,
+     4158.7,
+     3454.6
+    ]
+   ],
+   "cell": [
+    443450,
+    4470800,
+    444450,
+    4471800
+   ],
+   "fetch": [
+    443350,
+    4470700,
+    444550,
+    4471900
+   ],
+   "bboxWgs84": [
+    -3.667423,
+    40.384967,
+    -3.65339,
+    40.395858
+   ],
+   "module": "js/geodata/tile-k5j-2.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k5j-1",
+   "i": 5,
+   "j": -1,
+   "label": "Tesela k5j-1",
+   "status": "pending",
+   "core": [
+    [
+     3158.7,
+     1454.6,
+     4158.7,
+     2454.6
+    ]
+   ],
+   "cell": [
+    443450,
+    4471800,
+    444450,
+    4472800
+   ],
+   "fetch": [
+    443350,
+    4471700,
+    444550,
+    4472900
+   ],
+   "bboxWgs84": [
+    -3.667512,
+    40.393976,
+    -3.653477,
+    40.404867
+   ],
+   "module": "js/geodata/tile-k5j-1.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k5j0",
+   "i": 5,
+   "j": 0,
+   "label": "Tesela k5j0",
+   "status": "pending",
+   "core": [
+    [
+     3158.7,
+     454.6,
+     4158.7,
+     1454.6
+    ]
+   ],
+   "cell": [
+    443450,
+    4472800,
+    444450,
+    4473800
+   ],
+   "fetch": [
+    443350,
+    4472700,
+    444550,
+    4473900
+   ],
+   "bboxWgs84": [
+    -3.667601,
+    40.402984,
+    -3.653565,
+    40.413875
+   ],
+   "module": "js/geodata/tile-k5j0.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k5j1",
+   "i": 5,
+   "j": 1,
+   "label": "Tesela k5j1",
+   "status": "pending",
+   "core": [
+    [
+     3158.7,
+     -545.4,
+     4158.7,
+     454.6
+    ]
+   ],
+   "cell": [
+    443450,
+    4473800,
+    444450,
+    4474800
+   ],
+   "fetch": [
+    443350,
+    4473700,
+    444550,
+    4474900
+   ],
+   "bboxWgs84": [
+    -3.66769,
+    40.411993,
+    -3.653652,
+    40.422884
+   ],
+   "module": "js/geodata/tile-k5j1.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k5j2",
+   "i": 5,
+   "j": 2,
+   "label": "Tesela k5j2",
+   "status": "pending",
+   "core": [
+    [
+     3158.7,
+     -1545.4,
+     4158.7,
+     -545.4
+    ]
+   ],
+   "cell": [
+    443450,
+    4474800,
+    444450,
+    4475800
+   ],
+   "fetch": [
+    443350,
+    4474700,
+    444550,
+    4475900
+   ],
+   "bboxWgs84": [
+    -3.667779,
+    40.421001,
+    -3.653739,
+    40.431892
+   ],
+   "module": "js/geodata/tile-k5j2.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k5j3",
+   "i": 5,
+   "j": 3,
+   "label": "Tesela k5j3",
+   "status": "pending",
+   "core": [
+    [
+     3158.7,
+     -2545.4,
+     4158.7,
+     -1545.4
+    ]
+   ],
+   "cell": [
+    443450,
+    4475800,
+    444450,
+    4476800
+   ],
+   "fetch": [
+    443350,
+    4475700,
+    444550,
+    4476900
+   ],
+   "bboxWgs84": [
+    -3.667868,
+    40.43001,
+    -3.653826,
+    40.440901
+   ],
+   "module": "js/geodata/tile-k5j3.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k5j4",
+   "i": 5,
+   "j": 4,
+   "label": "Tesela k5j4",
+   "status": "pending",
+   "core": [
+    [
+     3158.7,
+     -3545.4,
+     4158.7,
+     -2545.4
+    ]
+   ],
+   "cell": [
+    443450,
+    4476800,
+    444450,
+    4477800
+   ],
+   "fetch": [
+    443350,
+    4476700,
+    444550,
+    4477900
+   ],
+   "bboxWgs84": [
+    -3.667957,
+    40.439018,
+    -3.653914,
+    40.449909
+   ],
+   "module": "js/geodata/tile-k5j4.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k5j5",
+   "i": 5,
+   "j": 5,
+   "label": "Tesela k5j5",
+   "status": "pending",
+   "core": [
+    [
+     3158.7,
+     -4545.4,
+     4158.7,
+     -3545.4
+    ]
+   ],
+   "cell": [
+    443450,
+    4477800,
+    444450,
+    4478800
+   ],
+   "fetch": [
+    443350,
+    4477700,
+    444550,
+    4478900
+   ],
+   "bboxWgs84": [
+    -3.668046,
+    40.448027,
+    -3.654001,
+    40.458918
+   ],
+   "module": "js/geodata/tile-k5j5.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k5j6",
+   "i": 5,
+   "j": 6,
+   "label": "Tesela k5j6",
+   "status": "pending",
+   "core": [
+    [
+     3158.7,
+     -5545.4,
+     4158.7,
+     -4545.4
+    ]
+   ],
+   "cell": [
+    443450,
+    4478800,
+    444450,
+    4479800
+   ],
+   "fetch": [
+    443350,
+    4478700,
+    444550,
+    4479900
+   ],
+   "bboxWgs84": [
+    -3.668135,
+    40.457035,
+    -3.654088,
+    40.467926
+   ],
+   "module": "js/geodata/tile-k5j6.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  },
+  {
+   "id": "k5j7",
+   "i": 5,
+   "j": 7,
+   "label": "Tesela k5j7",
+   "status": "pending",
+   "core": [
+    [
+     3158.7,
+     -6545.4,
+     4158.7,
+     -5545.4
+    ]
+   ],
+   "cell": [
+    443450,
+    4479800,
+    444450,
+    4480800
+   ],
+   "fetch": [
+    443350,
+    4479700,
+    444550,
+    4480900
+   ],
+   "bboxWgs84": [
+    -3.668225,
+    40.466044,
+    -3.654176,
+    40.476935
+   ],
+   "module": "js/geodata/tile-k5j7.js",
+   "overlapped": true,
+   "areaKm2": 1,
+   "bytes": null,
+   "md5": null,
+   "counts": null,
+   "error": null,
+   "sources": [
+    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
+    "Catastro INSPIRE WFS (© IGN/Catastro)"
+   ]
+  }
+ ]
+}

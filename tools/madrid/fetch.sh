@@ -14,7 +14,8 @@ CFG="file://$DIR/config.mjs"
 PHASE=$(node --input-type=module -e "import {getPhase} from '$CFG'; console.log(getPhase().name)")
 WGS=$(node --input-type=module -e "import {getPhase} from '$CFG'; const p=getPhase().wgs84; console.log(\`\${p.yMin},\${p.xMin},\${p.yMax},\${p.xMax}\`)")
 UTM=$(node --input-type=module -e "import {getPhase} from '$CFG'; console.log(getPhase().utm.join(','))")
-TILE_GRID=${TILE_GRID:-3x2}
+# Phases are fetched with 3x2 Overpass tiles; a phase-3 tile is ~1.2 km square (2x2).
+TILE_GRID=${TILE_GRID:-$([ -n "${MADRID_TILE:-}" ] && [ "${MADRID_TILE}" != "fase2" ] && echo 2x2 || echo 3x2)}
 echo "phase $PHASE  wgs84(s) $WGS  utm $UTM  tiles $TILE_GRID -> $OUT"
 
 # Overpass bbox is (south,west,north,east); the tile grid splits it linearly (metres < 1 m off
@@ -108,14 +109,19 @@ node -e '
 ' "$OUT/osm_madrid.json" "${tiles[@]}"
 
 # 1b) Barrios (admin_level=10) & distritos (admin_level=9) boundaries: districtAt / building profiles / place names.
-cat > "$OUT/q_barrios.overpassql" <<EOF
+# Only the seed/phases carry the district layer; a phase-3 tile is drawn by its own geodata.
+if [ -n "${MADRID_TILE:-}" ] && [ "${MADRID_TILE}" != "fase2" ]; then
+  echo "tile ${MADRID_TILE}: skipping barrios/distritos"
+else
+  cat > "$OUT/q_barrios.overpassql" <<EOF
 [out:json][timeout:300];
 (
   relation["boundary"="administrative"]["admin_level"~"^(9|10)$"]($WGS);
 );
 out geom;
 EOF
-fetch_overpass "$OUT/barrios.json" "$OUT/q_barrios.overpassql" 3
+  fetch_overpass "$OUT/barrios.json" "$OUT/q_barrios.overpassql" 3
+fi
 
 # 2) Catastro: building footprints (INSPIRE WFS, 2500 per page, 500 m pages).
 python3 "$DIR/catastro.py" "$UTM" "$OUT/catastro_buildings_raw.json"

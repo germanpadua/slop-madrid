@@ -15,47 +15,45 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Raster, rdp, rdpRing, ringArea, bbox, r1, log } from '../geo-base.mjs';
 import { getPhase } from './config.mjs';
+import { toWorld, utmToWorld } from './projection.mjs';
 
-const DATA = process.env.GEO_DATA || fileURLToPath(new URL('../../tools/data/madrid/', import.meta.url));
+const DATA = process.env.MADRID_DATA || fileURLToPath(new URL('../../tools/data/madrid/', import.meta.url));
+const SOURCES = [
+  'OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)',
+  'Ayuntamiento de Madrid IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)',
+  'Catastro INSPIRE WFS (© IGN/Catastro)',
+];
 const OUT = process.argv[2] || fileURLToPath(new URL('../../js/madrid-geodata.js', import.meta.url));
 const load = (f) => JSON.parse(fs.readFileSync(path.join(DATA, f), 'utf8'));
 const phase = getPhase();
 log(`phase ${phase.name} (${phase.label})`);
 
 // =====================================================================================================================
-// 1. FRAME — UTM 30N (EPSG:25830) translation, no rotation. WGS<->UTM via the standard transverse
-//    Mercator series (Snyder), WGS84 ellipsoid — sub-cm error at city scale.
+// 1. FRAME — UTM 30N (EPSG:25830) translation, no rotation (tools/madrid/projection.mjs).
 // =====================================================================================================================
-const A = 6378137.0, F = 1 / 298.257223563, E2 = 2 * F - F * F, EP2 = E2 / (1 - E2);
-const K0 = 0.9996, LON0 = -3 * Math.PI / 180;
-const SOL = [-3.7037900, 40.4167750]; // Puerta del Sol
-
-function utmForward(lon, lat) {
-  const phi = lat * Math.PI / 180, lam = lon * Math.PI / 180;
-  const sp = Math.sin(phi), cp = Math.cos(phi), tp = Math.tan(phi);
-  const N = A / Math.sqrt(1 - E2 * sp * sp);
-  const T = tp * tp, C = EP2 * cp * cp;
-  const M = A * ((1 - E2 / 4 - 3 * E2 * E2 / 64 - 5 * E2 ** 3 / 256) * phi
-    - (3 * E2 / 8 + 3 * E2 * E2 / 32 + 45 * E2 ** 3 / 1024) * Math.sin(2 * phi)
-    + (15 * E2 * E2 / 256 + 45 * E2 ** 3 / 1024) * Math.sin(4 * phi)
-    - (35 * E2 ** 3 / 3072) * Math.sin(6 * phi));
-  const dl = lam - LON0;
-  const a2 = dl * cp;
-  const x = K0 * N * (a2 + (1 - T + C) * a2 ** 3 / 6 + (5 - 18 * T + T * T + 72 * C - 58 * EP2) * a2 ** 5 / 120) + 500000;
-  const y = K0 * (M + N * tp * (a2 * a2 / 2 + (5 - T + 9 * C + 4 * C * C) * a2 ** 4 / 24
-    + (61 - 58 * T + T * T + 600 * C - 330 * EP2) * a2 ** 6 / 720));
-  return [x, y];
-}
-const [SOLX, SOLY] = utmForward(SOL[0], SOL[1]);
-// world x = UTM east, world z = grid south (north = -z)
-const toWorld = (lon, lat) => { const [e, n] = utmForward(lon, lat); return [e - SOLX, SOLY - n]; };
-const utmToWorld = (x, y) => [x - SOLX, SOLY - y];
-
 // phase bbox in world coordinates (from the UTM corners)
 const [bx0, by0, bx1, by1] = phase.utm;
 const [wx0, wz1] = utmToWorld(bx0, by0);
 const [wx1, wz0] = utmToWorld(bx1, by1);
 log(`world bbox x [${wx0.toFixed(0)}, ${wx1.toFixed(0)}] z [${wz0.toFixed(0)}, ${wz1.toFixed(0)}] (${((wx1 - wx0) / 1000).toFixed(2)} x ${((wz1 - wz0) / 1000).toFixed(2)} km)`);
+
+// The build frame is the *fetch* box (core + 100 m overlap): blocks that touch it are cut, so they are dropped, and
+// every feature is owned by exactly one tile, decided by its centroid falling in the tile core. For the phase-2 seed
+// the core is the phase-2 box, so this only removes the boundary leftovers of the padded fetch.
+const CORE = (phase.core ? phase.core.map((r) => r.slice()) : [[wx0, wz0, wx1, wz1]])
+  .map(([x0, z0, x1, z1]) => {
+    if (x1 < x0) [x0, x1] = [x1, x0];
+    if (z1 < z0) [z0, z1] = [z1, z0];
+    return [x0, z0, x1, z1];
+  });
+const IS_TILE = !!phase.tile;
+const ALL_CORES = phase.allCores || CORE;
+const inCore = (x, z) => CORE.some(([x0, z0, x1, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1);
+// A point in the fetch overlap belongs to no core: a feature there is owned by whoever owns its block. A point inside
+// another tile's core belongs to that tile, so this tile must not emit it (no doubled building at a seam).
+const inOtherCore = (x, z) => !inCore(x, z)
+  && ALL_CORES.some(([x0, z0, x1, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1);
+log(`core: ${CORE.map((r) => `[${r.map((v) => v.toFixed(0)).join(',')}]`).join(' + ')} (${IS_TILE ? `tile ${phase.tile.id}` : 'seed'})`);
 
 const flat = (pts) => pts.flatMap(([x, z]) => [r1(x), r1(z)]);
 
@@ -167,6 +165,8 @@ for (const e of els) {
   const dir = t.oneway === 'yes' ? 1 : t.oneway === '-1' ? -1 : 0;
   roadLines.push({ name: t.name || '', w: roadW(t), dir, lanes: parseInt(t.lanes || '0', 10) || 0, hw: /^(motorway|trunk)/.test(t.highway) ? 1 : 0, pts: rdp(kept, 0.6) });
 }
+// Same ownership rule for roads (they carry the bridge decks over the water): keep the ones that enter the core.
+roadLines.splice(0, roadLines.length, ...roadLines.filter((r) => r.pts.some(([x, z]) => inCore(x, z))));
 log(`${roadLines.length} road polylines, ${roadLines.filter((r) => r.name).length} named`);
 
 // parks, water & pedestrian squares (ground colouring + GEO.parks)
@@ -264,8 +264,9 @@ for (const f of alturas.features) {
   const bb = bbox(ring);
   if (bb.x1 - bb.x0 < 1.2 || bb.z1 - bb.z0 < 1.2) continue;
   if (ringArea(ring) > 0) ring.reverse();
-  // The WFS returns every footprint that intersects the box: keep the ones whose centre is inside the frame, so no
-  // building is ever placed outside the land the city is built on
+  // The WFS returns every footprint that intersects the box: keep the ones whose centre is inside the fetch box. A
+  // footprint carries no ownership of its own — it is emitted with the block that owns it (blocks are owned by the
+  // tile whose core holds the block centre), so a parcel in the fetch overlap is written by exactly one tile.
   let cx = 0, cz = 0;
   for (const q of ring) { cx += q[0]; cz += q[1]; }
   cx /= ring.length; cz /= ring.length;
@@ -276,22 +277,76 @@ log(`${parcels.length} real building parcels (IDEAM alturas)`);
 
 // label connected components of the parcel raster, then trace each component's outer ring
 const RES = 2;
-const ras = new Raster(wx0 - 4, wz0 - 4, wx1 + 4, wz1 + 4, RES);
+// The raster origin is snapped to a global 100 m grid (not to this tile's frame): the same block then traces to the
+// same ring in every tile that carries it, so ownership decisions agree across tiles.
+const RX0 = Math.floor((wx0 - 4) / 100) * 100, RZ0 = Math.floor((wz0 - 4) / 100) * 100;
+const RX1 = Math.ceil((wx1 + 4) / 100) * 100, RZ1 = Math.ceil((wz1 + 4) / 100) * 100;
+const ras = new Raster(RX0, RZ0, RX1, RZ1, RES);
 for (const p of parcels) ras.fillRing(p.ring, 1);
 // Same grid as the slab raster, filled only with the parcels as built (before any morphology)
 const lotRas = new Raster(ras.x0, ras.z0, ras.x0 + (ras.w - 1) * RES, ras.z0 + (ras.h - 1) * RES, RES);
 for (const p of parcels) lotRas.fillRing(p.ring, 1);
 ras.close(4); // patios < 8 m across and gaps to the neighbour merge into the slab
 ras.open(9);  // drop slivers
-const blockComps = componentRings(ras, 60, 0.8, 250); // < ~240 m² of footprint is not a block
-const blockRings = blockComps.map((c) => c.ring);
+// Blocks that touch the fetch frame are cut slabs: drop them (the neighbouring tile carries the whole one).
+const insideFrame = (ring) => ring.every(([x, z]) => x > wx0 + 0.5 && x < wx1 - 0.5 && z > wz0 + 0.5 && z < wz1 - 0.5);
+// A complete block belongs to the tile whose core holds the larger part of it (clipped-area fraction > 1/2). Cores are
+// disjoint and the rings are identical across tiles, so the rule has one owner: no doubled slab, no lost block. A
+// block straddling a seam is still drawn whole, by its owner.
+const coreFraction = (ring) => {
+  const area = Math.abs(ringArea(ring));
+  if (!area) return 0;
+  let inside = 0;
+  for (const [x0, z0, x1, z1] of CORE) {
+    const c = clipWater(ring, x0, z0, x1, z1);
+    if (c) inside += Math.abs(ringArea(c));
+  }
+  return inside / area;
+};
+const allBlockComps = componentRings(ras, 60, 0.8, 250); // < ~240 m² of footprint is not a block
+// Every block that the fetch box carries whole is a candidate for every tile that sees it: the ownership flag decides
+// which tile writes it, but parcel→block attachment uses the whole candidate set (so the same parcel lands on the same
+// block — and therefore on the same owner — in every tile).
+const frameBlocks = allBlockComps.filter((c) => insideFrame(c.ring));
+for (const c of frameBlocks) c.owned = coreFraction(c.ring) > 0.5;
+const ownedBlocks = frameBlocks.filter((c) => c.owned);
+log(`block slabs: ${allBlockComps.length} traced, ${frameBlocks.length} whole inside the fetch box, ${ownedBlocks.length} owned by this core`);
 // Lot rects per block: the coverage of the real cadastral parcels (so courtyards and irregular fronts stay open). The
 // massing works inside each rect (rows of lots, courtyards, towers) and clamps every part to the IDEAM parcel height.
-for (const c of blockComps) c.rects = cellRects(c, RES, ras.x0, ras.z0, lotRas);
-log(`merged into ${blockRings.length} block slabs, ${blockComps.reduce((t, c) => t + c.rects.length, 0)} lot rects`);
-// Assign every parcel to the smallest block whose bounds contain its centroid (parcels share the raster the slabs
-// were traced from, so this is a containment test). Parcels are bucketed once by centroid: O(parcels + blocks).
-const blockBoxes = blockRings.map((ring) => bbox(ring));
+for (const c of frameBlocks) c.rects = cellRects(c, RES, ras.x0, ras.z0, lotRas);
+log(`merged into ${ownedBlocks.length} owned blocks, ${ownedBlocks.reduce((t, c) => t + c.rects.length, 0)} lot rects`);
+// Assign every parcel to the smallest candidate block whose bounds contain its centroid (parcels share the raster the
+// slabs were traced from, so this is a containment test). Parcels are bucketed once by centroid: O(parcels + blocks).
+const ownerId = new Map(); // frame-block index -> index in `blocks` (owned only)
+let nextBlockId = 0;
+for (const c of frameBlocks) if (c.owned) ownerId.set(frameBlocks.indexOf(c), nextBlockId++);
+const blocks = ownedBlocks.map((c, id) => ({ id, ring: c.ring, rects: c.rects, parcels: [] }));
+const blockBoxes = frameBlocks.map((c) => bbox(c.ring));
+const blockAreas = frameBlocks.map((c) => Math.abs(ringArea(c.ring)));
+// Even-odd point-in-ring: a parcel belongs to the block whose area actually contains its centre (bboxes of two
+// neighbouring blocks overlap at their gap, so bbox containment alone would put one parcel on both).
+// The traced slab ring is simplified (~0.8 m), so a parcel that really sits on the block can fall a metre or two
+// outside it: the test accepts anything within SEAM_TOL of the outline, while streets (6 m and wider) stay excluded.
+const SEAM_TOL = 2.5;
+const ringDistance = (ring, x, z) => {
+  let best = Infinity;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [ax, az] = ring[j], [bx, bz] = ring[i];
+    const dx = bx - ax, dz = bz - az;
+    const len2 = dx * dx + dz * dz || 1;
+    const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / len2));
+    best = Math.min(best, Math.hypot(ax + t * dx - x, az + t * dz - z));
+  }
+  return best;
+};
+const inRing = (ring, x, z) => {
+  let hit = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const a = ring[j], b = ring[i];
+    if ((a[1] > z) !== (b[1] > z) && x < ((b[0] - a[0]) * (z - a[1])) / (b[1] - a[1]) + a[0]) hit = !hit;
+  }
+  return hit || ringDistance(ring, x, z) <= SEAM_TOL;
+};
 const CELL = 64;
 const blockCells = new Map();
 blockBoxes.forEach((bb, id) => {
@@ -303,23 +358,27 @@ blockBoxes.forEach((bb, id) => {
     }
   }
 });
-const blocks = blockRings.map((ring, id) => ({ id, ring, rects: blockComps[id].rects, parcels: [] }));
 let orphans = 0, orphanArea = 0;
+const parcelOrphans = [];
 for (const p of parcels) {
   const list = blockCells.get(Math.floor(p.cx / CELL) * 100000 + Math.floor(p.cz / CELL));
-  if (!list) { orphans++; continue; }
+  if (!list) { orphans++; parcelOrphans.push(p); continue; }
   let best = -1, bestArea = Infinity;
   for (const id of list) {
     const bb = blockBoxes[id];
     if (p.cx <= bb.x0 || p.cx >= bb.x1 || p.cz <= bb.z0 || p.cz >= bb.z1) continue;
-    const area = (bb.x1 - bb.x0) * (bb.z1 - bb.z0);
-    if (area < bestArea) { bestArea = area; best = id; }
+    if (!inRing(frameBlocks[id].ring, p.cx, p.cz)) continue;
+    if (blockAreas[id] < bestArea) { bestArea = blockAreas[id]; best = id; }
   }
-  if (best < 0) { orphans++; orphanArea += Math.abs(ringArea(p.ring)); continue; }
-  p.block = best;
-  blocks[best].parcels.push(p);
+  if (best < 0) { orphans++; orphanArea += Math.abs(ringArea(p.ring)); parcelOrphans.push(p); continue; }
+  p.frameBlock = best;
+  // A footprint belongs to the block that contains its centre: that block's owner writes it (seam buildings included,
+  // which keeps a block whole). Footprints in no block are owned by the tile whose core holds their centre.
+  p.owned = ownerId.has(best);
+  if (p.owned) blocks[ownerId.get(best)].parcels.push(p);
 }
-log(`${blocks.length} blocks kept, ${blocks.reduce((t, b) => t + b.parcels.length, 0)} parcels attached (${orphans} orphan, ${(orphanArea / 1e4).toFixed(0)} ha of isolated footprints)`);
+const orphansInCore = parcelOrphans.filter((p) => inCore(p.cx, p.cz)).length;
+log(`${blocks.length} blocks kept, ${blocks.reduce((t, b) => t + b.parcels.length, 0)} parcels attached (${orphans} orphan, ${orphansInCore} of them centred in this core, ${(orphanArea / 1e4).toFixed(0)} ha of isolated footprints)`);
 
 // =====================================================================================================================
 // 4. Landmarks — named OSM footprints with tagged height where available, for the generic
@@ -491,7 +550,10 @@ for (const [canonical, re] of CANON) {
   }
   log(`landmark heights: ${measured} measured from IDEAM parcels`);
 }
-log(`${Object.keys(landmarks).length} landmark footprints: ${Object.keys(landmarks).join(', ') || '(none)'}`);
+// Tile ownership: a landmark belongs to the tile whose core holds its centre, so the fetch overlap never produces it
+// twice. The seed's core is the phase-2 box, so its landmark set is unchanged.
+for (const [name, lm] of Object.entries(landmarks)) if (!inCore(lm.cx, lm.cz)) delete landmarks[name];
+log(`${Object.keys(landmarks).length} landmark footprints owned by this core: ${Object.keys(landmarks).join(', ') || '(none)'}`);
 
 // =====================================================================================================================
 // 5. Corridors for the traffic system — avenues (N-S streets: x ~= const) & major streets (E-W / diagonal:
@@ -632,18 +694,34 @@ function clipWater(ring, x0, z0, x1, z1) {
   out = clip(out, -1, 1);
   return out.length >= 3 ? out : null;
 }
-const waterClipped = [];
-for (const ring of water) {
-  const c = clipWater(ring, wx0, wz0, wx1, wz1);
-  if (!c) continue;
-  const simp = rdpRing(c, 0.8);
-  if (simp.length < 3 || Math.abs(ringArea(simp)) < 150) continue;
-  if (ringArea(simp) > 0) simp.reverse();
-  waterClipped.push(simp);
-}
+// Clip a ring to every core rectangle: a polygon that crosses a tile seam is split, each half owned by its tile, so
+// two adjacent tiles never draw the same ground/lawn/water twice (no z-fighting, no double grass).
+const clipToCore = (ring, minArea = 150) => {
+  const out = [];
+  for (const [x0, z0, x1, z1] of CORE) {
+    const c = clipWater(ring, x0, z0, x1, z1);
+    if (!c) continue;
+    const simp = rdpRing(c, 0.8);
+    if (simp.length < 3 || Math.abs(ringArea(simp)) < minArea) continue;
+    if (ringArea(simp) > 0) simp.reverse();
+    out.push(simp);
+  }
+  return out;
+};
+const waterClipped = water.flatMap((ring) => clipToCore(ring));
 const waterInBox = waterClipped.reduce((t, r) => t + Math.abs(ringArea(r)), 0);
-log(`water clipped to the frame: ${waterClipped.length} polygons, ${(waterInBox / 1e6).toFixed(3)} km2 inside`);
-if (!waterClipped.length) throw new Error('no water inside the box: the Manzanares is missing from the extract');
+log(`water clipped to the core: ${waterClipped.length} polygons, ${(waterInBox / 1e6).toFixed(3)} km2 inside`);
+// The seed must carry the Manzanares; a tile may legitimately have no water at all (e.g. the Retiro).
+if (!waterClipped.length && !IS_TILE) throw new Error('no water inside the box: the Manzanares is missing from the extract');
+
+// Parks/lawns clipped to the core for the same reason (the Manzanares channel is cut out of Madrid Río here).
+const parksClipped = [];
+for (const p of parks) {
+  const rings = p.rings.flatMap((r) => clipToCore(r, 40));
+  if (!rings.length) continue;
+  parksClipped.push({ name: p.name, cat: p.cat, acres: Math.round(rings.reduce((t, r) => t + Math.abs(ringArea(r)), 0) / 404.686) / 10, rings });
+}
+log(`parks clipped to the core: ${parksClipped.length} surfaces, ${(parksClipped.reduce((t, p) => t + p.acres, 0) / 100).toFixed(2)} km2`);
 
 const barrios = [];
 const BARRIOS_FILE = path.join(DATA, 'barrios.json');
@@ -702,7 +780,7 @@ const GEO = {
   roadGraph: { nodes: outNodes, links: outLinks, names },
   blocks: blocks.map((b) => [flat(b.ring), b.rects, 0, '', 0, 0]),
   parcels: blocks.map((b) => b.parcels.map((p) => ({ ring: flat(p.ring), h: p.h }))),
-  parks: parks.map((p) => ({ name: p.name, cat: p.cat, acres: Math.round(p.acres * 10) / 10, rings: p.rings.map(flat) })),
+  parks: parksClipped.map((p) => ({ name: p.name, cat: p.cat, acres: p.acres, rings: p.rings.map(flat) })),
   water: waterClipped.map(flat),
   plazasMadrid: [
     ...plazas.map((p) => ({ name: p.name, ring: flat(p.ring) })),
@@ -740,6 +818,38 @@ const OUT_DIR = path.dirname(OUT);
 const BLOCKS_OUT = path.join(OUT_DIR, 'madrid-geodata-blocks.js');
 const credits = `// Building footprints & heights: Ayuntamiento de Madrid IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid).
 // Streets, parks, water, barrios & landmark footprints: © OpenStreetMap contributors (ODbL). See MADRID.md.`;
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Phase-3 tile output: one self-contained module per tile (js/geodata/tile-<id>.js) exporting `TILE`. It carries only
+// what the streaming renderer draws — core rectangles (ownership & ground), block slabs with their cadastral parcels,
+// parks, water, landmark footprints and the roads that carry bridge decks — with every feature owned by this core.
+// ---------------------------------------------------------------------------------------------------------------------
+if (IS_TILE) {
+  const TILE = {
+    id: phase.tile.id,
+    label: phase.label,
+    core: CORE.map((r) => r.map(r1)),
+    frame: { bbox: [r1(wx0), r1(wz0), r1(wx1), r1(wz1)], bearingDeg: 0, origin: 'Puerta del Sol', units: 'm' },
+    blocks: blockLayer.blocks,
+    // Flat parcel list owned by this core (the tile renderer draws one facade box per parcel; ownership by the
+    // parcel's own centre keeps every footprint in exactly one tile, whatever block its raster merged into).
+    // A footprint that sits on a block is written only by that block's owner (seam buildings included, so a block is
+    // whole in one tile); a footprint in no block belongs to the core that holds its centre.
+    parcels: parcels.filter((p) => (p.frameBlock >= 0 ? p.owned : inCore(p.cx, p.cz))).map((p) => ({ ring: flat(p.ring), h: p.h })),
+    parks: parksClipped.map((p) => ({ name: p.name, cat: p.cat, acres: p.acres, rings: p.rings.map(flat) })),
+    water: waterClipped.map(flat),
+    roads: roadLines.map((r) => [r.name, r1(r.w), r.dir, r.lanes, r.hw, flat(r.pts)]),
+    landmarks,
+  };
+  fs.writeFileSync(OUT, `// ${path.relative(path.resolve(OUT_DIR, '../..'), OUT)} — GENERATED by tools/madrid/build.mjs, do not edit by hand.
+// Phase-3 tile ${TILE.id}: ${phase.label}. Real geometry, owned by this tile's core ${JSON.stringify(TILE.core)}; it is
+// loaded on demand by js/madrid-tiles.js (see MADRID.md). Sources: ${SOURCES.join('; ')}.
+${credits}
+export const TILE = ${JSON.stringify(TILE)};
+`);
+  log(`wrote ${path.basename(OUT)} (${(fs.statSync(OUT).size / 1024).toFixed(0)} KB): ${TILE.blocks.length} blocks, ${TILE.parcels.reduce((t, b) => t + b.length, 0)} parcels, ${TILE.parks.length} parks, ${TILE.water.length} water, ${TILE.roads.length} roads, ${Object.keys(TILE.landmarks).length} landmarks`);
+  process.exit(0);
+}
 
 fs.writeFileSync(BLOCKS_OUT, `// js/madrid-geodata-blocks.js — GENERATED by tools/madrid/build.mjs, do not edit by hand.
 // Phase ${phase.name}: ${phase.label}. Block slabs recovered from the cadastral parcels + every parcel with its IDEAM height (m).
