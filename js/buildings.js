@@ -670,6 +670,10 @@ function buildCityBlocks(scene) {
     }
     const mat = b.mat;
     const storey = storeys[mat];
+    const tone = rand();
+    let shopsOn = o.shops ?? 'all';
+    if (typeof shopsOn === 'number') shopsOn = tone < shopsOn ? 'all' : 'none';
+    const shops = { w: shopsOn !== 'none', e: shopsOn !== 'none', n: shopsOn === 'all', s: shopsOn === 'all' };
     // Real Madrid rooflines: cap every part at the IDEAM height of the cadastral parcel under its centre
     // (GEO.parcels h in metres → whole storeys so the window rows still line up).
     if (madridParcels) {
@@ -1884,9 +1888,13 @@ function buildCityBlocks(scene) {
       case 'chinatown': return RES_LES;
       case 'lower_east_side': return chance(0.3) ? PROJECTS : RES_LES;
       case 'battery_park_city': return OFFICE_BATTERY_PARK_CITY;
-      // Madrid centro barrios (GEO.districts): masonry mid-rise, taller along the Gran Vía canyon
+      // Madrid barrios (city-config districtAt over the admin boundaries): masonry mid-rise, taller along the real
+      // Gran Vía canyon, low-rise garden blocks in Jerónimos/Retiro — every other Madrid barrio is the centro profile
       case 'Gran Vía': return MADRID_GRANVIA;
-      case 'Jerónimos': return MADRID_JERONIMOS;
+      case 'Jerónimos':
+      case 'Retiro': return MADRID_JERONIMOS;
+      case 'Casa de Campo': return LOWRISE;
+      case 'Palacio':
       case 'Sol':
       case 'Chueca':
       case 'Justicia':
@@ -1897,8 +1905,18 @@ function buildCityBlocks(scene) {
       case 'Lavapiés':
       case 'Universidad':
       case 'Embajadores':
+      case 'Atocha':
+      case 'Palos de Moguer':
+      case 'Chopera':
+      case 'Legazpi':
+      case 'Delicias':
+      case 'Argüelles':
+      case 'Moncloa':
+      case 'Gaztambide':
+      case 'Arapiles':
+      case 'Trafalgar':
       case 'centro': return MADRID_CENTRO;
-      default: return OFFICE_MIDTOWN;
+      default: return GEO.frame && GEO.frame.madrid ? MADRID_CENTRO : OFFICE_MIDTOWN;
     }
   }
 
@@ -2092,7 +2110,8 @@ function buildCityBlocks(scene) {
   }
   for (const b of BLOCKS) {
     if (b.park > 0.6 || b.median) continue;
-    minLot = b.frames ? 12 : 15;
+    // Madrid lots are real cadastral parcels (10-20 m fronts): the 12 m floor keeps one building per parcel row
+    minLot = b.frames || (GEO.frame && GEO.frame.madrid) ? 12 : 15;
     for (const [th, px, pz, rects] of b.frames || [[0, 0, 0, b.rects]]) {
       xf = th ? { th, cs: Math.cos(th), sn: Math.sin(th), px, pz } : null;
       for (const r of rects) {

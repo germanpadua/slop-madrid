@@ -6,8 +6,9 @@ import { GEO } from './madrid-geodata.js';
 // Catastro footprints & OpenStreetMap).
 //
 // World frame: 1 unit = 1 m, x = east, z = south (north = -z), origin at Puerta del Sol (kilometre 0),
-// no rotation. The phase-1 box spans Sol → Puerta de Alcalá east-west and Chueca → Plaza Mayor north-south
-// (x ∈ [-741, 1192], z ∈ [-659, 325]).
+// no rotation. Phase 2 (the western half of the almendra central) spans the Manzanares (Príncipe Pío, Debod)
+// east to Atocha: x ∈ [-1841.6, 1409.4], z ∈ [-1153.2, 1453.0], 8.45 km². The Manzanares is carved out of the
+// land as real water (GEO.water), so the coast ring is the frame cut, not a river.
 //
 // NYC-only machinery (islands, bridges, piers, boroughs) is stubbed empty or far off-map so unedited
 // importer code survives without inventing Manhattan; the Madrid config below feeds the rest from real data.
@@ -172,6 +173,12 @@ function getBroadwayX(z) {
   return a.x + ((z - a.z) / Math.max(1e-6, b.z - a.z)) * (b.x - a.x);
 }
 
+// The river & water polygons (GEO.water: the Manzanares and Madrid Río, real OSM geometry, clipped to the frame).
+// city-grid.js builds the ground deck with these as holes, so the channel is carved out of the city.
+const MADRID_WATER = (GEO.water || []).map(toPts);
+// Every land piece the deck is laid on: the phase box (GEO.landRings, [manhattan]) — the frame cut, not a shoreline
+const LAND_RINGS = (GEO.landRings && GEO.landRings.length ? GEO.landRings : [GEO.manhattan]).map(toPts);
+
 // Waterfront piers: Madrid centro has none — kept empty so pier code builds nothing
 const WATERFRONT_PIERS = [];
 
@@ -235,6 +242,20 @@ ALL_STREETS.sort((a, b) => a.z - b.z);
 
 // Named roads (the real centreline) — maps, labels & lookups
 const ROADS = GEO.roads.map(([name, w, dir, lanes, hw, flat]) => ({ name, raw: name, w, dir, lanes, highway: !!hw, pts: toPts(flat) }));
+// The Gran Vía canyon, from the real OSM carriageway geometry: the blocks it crosses get Madrid's taller profile
+const GRAN_VIA_CORRIDOR = (() => {
+  const runs = ROADS.filter((r) => r.name === 'Gran Vía');
+  if (!runs.length) return null;
+  let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+  for (const r of runs) {
+    for (const p of r.pts) {
+      x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x);
+      z0 = Math.min(z0, p.z); z1 = Math.max(z1, p.z);
+    }
+  }
+  const pad = 45; // half the avenue's facade-to-facade width (Gran Vía is ~35 m)
+  return { x0: x0 - pad, x1: x1 + pad, z0: z0 - pad, z1: z1 + pad };
+})();
 
 // Nearest-road index (labels, sidewalk tests): uniform grid of road segments
 const ROAD_CELL = 64;
@@ -340,9 +361,24 @@ function blocksInRect(minX, maxX, minZ, maxZ) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// Barrios of the phase-1 box (rect approximations from tools/madrid/build.mjs GEO.districts)
+// Barrios of the phase box: the real administrative boundaries (GEO.barrios, from OSM admin_level 10/9) tested as
+// polygons; GEO.districts (their bounding boxes, or coarse rects when the boundaries were not fetched) is the fallback
 // ---------------------------------------------------------------------------------------------------------------------
+const BARRIOS = (GEO.barrios || []).map((b) => {
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  for (let i = 0; i < b.ring.length; i += 2) {
+    minX = Math.min(minX, b.ring[i]); maxX = Math.max(maxX, b.ring[i]);
+    minZ = Math.min(minZ, b.ring[i + 1]); maxZ = Math.max(maxZ, b.ring[i + 1]);
+  }
+  return { name: b.name, poly: toPts(b.ring), cx: b.cx, cz: b.cz, minX, maxX, minZ, maxZ };
+});
 function districtAt(x, z) {
+  const gv = GRAN_VIA_CORRIDOR;
+  if (gv && x > gv.x0 && x < gv.x1 && z > gv.z0 && z < gv.z1) return 'Gran Vía';
+  for (const b of BARRIOS) {
+    if (x < b.minX || x > b.maxX || z < b.minZ || z > b.maxZ) continue;
+    if (pointInPoly(b.poly, x, z)) return b.name;
+  }
   for (const [name, x0, x1, z0, z1] of GEO.districts) {
     if (x >= x0 && x <= x1 && z >= z0 && z <= z1) return name;
   }
@@ -372,7 +408,14 @@ const TELEPORT_LOCATIONS = {
   cibeles: { x: 875, z: -265, heading: 1.25 }, // on the Cibeles roundabout, facing the Palacio de Cibeles
   alcala: { x: 760, z: -389, heading: Math.PI / 2 }, // by the army headquarters, facing east up Calle de Alcalá
   mayor: { x: -332, z: 196, heading: 2.61 }, // at the Toledo arch mouth, facing into the square
-  opera: { x: -612, z: -140, heading: 2.14 } // on Plaza de Oriente's edge street, facing the Teatro Real
+  opera: { x: -612, z: -140, heading: 2.14 }, // on Plaza de Oriente's edge street, facing the Teatro Real
+  // Phase 2: the west half of the almendra. Every landing is on a real carriageway/plaza roadway clear of blocks and
+  // of the river, facing the sight it names (verified by tests/teleports.test.cjs).
+  debod: { x: -1205.9, z: -719.3, heading: 2.66 }, // on Calle del Profesor Martín Almagro Basch, facing the Templo de Debod
+  palacio: { x: -791.5, z: -126.2, heading: -1.61 }, // on Plaza de Oriente's roadway, facing the Palacio Real
+  principepio: { x: -1345.6, z: -408.5, heading: 2.56 }, // on the Cuesta de San Vicente, facing Príncipe Pío
+  atocha: { x: 1163, z: 1382.4, heading: 1.72 }, // on Calle de Méndez Álvaro, facing the Atocha station
+  reinasofia: { x: 860.3, z: 1042.9, heading: -2.23 } // on the Plaza del Emperador Carlos V, facing the Reina Sofía
 };
 const site = (name) => LANDMARK_SITES[name];
 // Map pins & place names (the old NYC_LANDMARKS contract, with Madrid places)
@@ -383,7 +426,12 @@ const NYC_LANDMARKS = [
   ['cibeles', 'Plaza de Cibeles', 'Cibeles', 'Cibeles'],
   ['alcala', 'Puerta de Alcalá', 'P. de Alcalá', 'Jerónimos'],
   ['mayor', 'Plaza Mayor', 'Plaza Mayor', 'Austrias'],
-  ['opera', 'Teatro Real', 'Teatro Real', 'Ópera']
+  ['opera', 'Teatro Real', 'Teatro Real', 'Ópera'],
+  ['debod', 'Templo de Debod', 'Debod', 'Moncloa'],
+  ['palacio', 'Palacio Real', 'Palacio Real', 'Palacio'],
+  ['principepio', 'Príncipe Pío', 'P. Pío', 'Palacio'],
+  ['atocha', 'Estación de Atocha', 'Atocha', 'Atocha'],
+  ['reinasofia', 'Museo Reina Sofía', 'Reina Sofía', 'Embajadores']
 ].map(([id, name, short, district]) => {
   const t = TELEPORT_LOCATIONS[id] || { x: 0, z: 0 };
   return { id, name, short, x: t.x, z: t.z, district };
@@ -484,6 +532,9 @@ export {
   CENTRAL_PARK_BOUNDS,
   getIslandBoundsAtZ,
   MANHATTAN_COASTLINE,
+  LAND_RINGS,
+  MADRID_WATER,
+  BARRIOS,
   getBroadwayX,
   BROADWAY_LINE,
   WATERFRONT_PIERS,

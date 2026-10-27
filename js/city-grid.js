@@ -30,12 +30,15 @@ import {
   CENTRAL_PARK_BOUNDS,
   getIslandBoundsAtZ,
   MANHATTAN_COASTLINE,
+  LAND_RINGS,
+  MADRID_WATER,
   WATERFRONT_PIERS,
   BLOCKS,
   streetZ,
   avenueX,
   ALL_AVENUES,
   ALL_STREETS,
+  ROADS,
   blockAt,
   EAST_RIVER_BRIDGES,
   CUT_Z
@@ -226,8 +229,24 @@ function createWorldXZShape(pts) {
   return shape;
 }
 
-function createExtrudedPolygonMesh(pts, bottomY, height, material, receiveShadow = true, castShadow = false) {
+// Holes (real water polygons) are added to the shape: a ShapeGeometry cap or an ExtrudeGeometry slab then has the
+// channel cut out of it, with the slab's side faces acting as the embankment.
+function addPolygonHoles(shape, holes) {
+  for (const ring of holes) {
+    const path = new THREE.Path();
+    for (let i = 0; i < ring.length; i++) {
+      if (i === 0) path.moveTo(ring[i].x, -ring[i].z);
+      else path.lineTo(ring[i].x, -ring[i].z);
+    }
+    path.closePath();
+    shape.holes.push(path);
+  }
+  return shape;
+}
+
+function createExtrudedPolygonMesh(pts, bottomY, height, material, receiveShadow = true, castShadow = false, holes = null) {
   const shape = createWorldXZShape(pts);
+  if (holes) addPolygonHoles(shape, holes);
   const geo = new THREE.ExtrudeGeometry(shape, {
     depth: height,
     bevelEnabled: false,
@@ -241,8 +260,9 @@ function createExtrudedPolygonMesh(pts, bottomY, height, material, receiveShadow
   return mesh;
 }
 
-function createFlatPolygonMesh(pts, y, material, receiveShadow = true) {
+function createFlatPolygonMesh(pts, y, material, receiveShadow = true, holes = null) {
   const shape = createWorldXZShape(pts);
+  if (holes) addPolygonHoles(shape, holes);
   const geo = new THREE.ShapeGeometry(shape, 1);
   geo.rotateX(-Math.PI / 2);
   geo.translate(0, y, 0);
@@ -1510,24 +1530,112 @@ function buildCityGrid(scene) {
     metalness: 0.08
   });
 
-  // Slightly expanded perimeter polygon for the granite seawall & waterfront esplanade coping
-  const seawallPolygon = MANHATTAN_COASTLINE.map((p) => ({
-    x: p.x + (p.x < -100 ? -6 : (p.x > 100 ? 6 : 0)),
-    z: p.z + (p.z > 1350 ? 6 : (p.z < -1550 ? -6 : 0))
-  }));
-  const seawallMesh = createExtrudedPolygonMesh(seawallPolygon, -2.35, 2.31, seawallMat, true, false);
-  group.add(seawallMesh);
-
-  // Unified Manhattan Roadway Asphalt Deck (Y = 0.0) following true Manhattan coastline
+  // Granite bulkhead around every land piece (NYC): Madrid's frame is a cut, not a shoreline, so it is not walled
   const roadMat = createRoadSurfaceMaterial();
-  const roadMesh = createFlatPolygonMesh(MANHATTAN_COASTLINE, 0.0, roadMat, true);
-  group.add(roadMesh);
+  const LAND = LAND_RINGS && LAND_RINGS.length ? LAND_RINGS : [MANHATTAN_COASTLINE];
+  const MADRID_RIVER = !!(GEO.frame && GEO.frame.madrid) && (MADRID_WATER || []).length > 0;
+  if (!MADRID_RIVER) {
+    for (const ring of LAND) {
+      const seawallPolygon = ring.map((p) => ({
+        x: p.x + (p.x < -100 ? -6 : (p.x > 100 ? 6 : 0)),
+        z: p.z + (p.z > 1350 ? 6 : (p.z < -1550 ? -6 : 0))
+      }));
+      group.add(createExtrudedPolygonMesh(seawallPolygon, -2.35, 2.31, seawallMat, true, false));
+    }
+  }
+
+  // Unified roadway asphalt deck (Y = 0.0). Madrid: a 0.6 m slab carved by the real water polygons (GEO.water), so the
+  // Manzanares is a hole in the city with a real bank; the channel surface sits 0.45 m below the street.
+  if (MADRID_RIVER) {
+    for (const ring of LAND) {
+      const deck = createExtrudedPolygonMesh(ring, -0.6, 0.6, roadMat, true, false, MADRID_WATER);
+      deck.name = 'MadridDeck';
+      group.add(deck);
+    }
+    for (const ring of MADRID_WATER) {
+      const river = createFlatPolygonMesh(ring, -0.45, waterMat, true);
+      river.name = 'MadridRiver';
+      group.add(river);
+    }
+    // Bridges: every carriageway that crosses the channel keeps its deck at street level (the crossings price the
+    // real Puente de Segovia / del Rey / de Toledo spans), so traffic never drives into the carved river
+    const inWater = (x, z) => {
+      for (const ring of MADRID_WATER) {
+        let hit = false;
+        for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+          const a = ring[j], b = ring[i];
+          if ((a.z > z) !== (b.z > z) && x < ((b.x - a.x) * (z - a.z)) / (b.z - a.z) + a.x) hit = !hit;
+        }
+        if (hit) return true;
+      }
+      return false;
+    };
+    let bridgeSpans = 0;
+    for (const road of ROADS) {
+      const pts = road.pts;
+      for (let i = 1; i < pts.length; i++) {
+        const a = pts[i - 1], b = pts[i];
+        // any of the two ends or the midpoint inside the channel: covers crossings where the water is narrower than a segment
+        if (!(inWater(a.x, a.z) || inWater(b.x, b.z) || inWater((a.x + b.x) / 2, (a.z + b.z) / 2))) continue;
+        const dx = b.x - a.x, dz = b.z - a.z;
+        const len = Math.hypot(dx, dz);
+        if (len < 1) continue; // duplicated node: the neighbouring segment carries the deck
+        const nx = (-dz / len) * (road.w / 2 + 1.5), nz = (dx / len) * (road.w / 2 + 1.5);
+        let quad = [
+          { x: a.x + nx, z: a.z + nz }, { x: b.x + nx, z: b.z + nz },
+          { x: b.x - nx, z: b.z - nz }, { x: a.x - nx, z: a.z - nz }
+        ];
+        let sn = 0;
+        for (let k = 0, j = quad.length - 1; k < quad.length; j = k++) sn += quad[j].x * quad[k].z - quad[k].x * quad[j].z;
+        if (sn < 0) quad = quad.reverse(); // the deck ring convention (positive shoelace in x, z)
+        const span = createFlatPolygonMesh(quad, 0.0, roadMat, true);
+        span.name = 'MadridBridge';
+        group.add(span);
+        bridgeSpans++;
+      }
+    }
+    if (bridgeSpans) group.userData.bridgeSpans = bridgeSpans;
+  } else {
+    for (const ring of LAND) group.add(createFlatPolygonMesh(ring, 0.0, roadMat, true));
+  }
 
   // =========================================================================
   // 3. PARK LAWN MATERIALS (the harbor islands themselves are built in boroughs.js)
   // =========================================================================
   const cpLawnMat = createParkLawnMaterial(false);
   const cpMeadowMat = createParkLawnMaterial(true);
+
+  // Madrid: every real OSM park/garden landuse from GEO.parks as a lawn patch at curb height. The channel is cut out
+  // of the river-spanning parks (Madrid Río), so the Manzanares is never covered by grass.
+  if (GEO.frame && GEO.frame.madrid && (GEO.parks || []).length) {
+    const boundsOf = (pts) => {
+      let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+      for (const p of pts) { x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); z0 = Math.min(z0, p.z); z1 = Math.max(z1, p.z); }
+      return { x0, x1, z0, z1 };
+    };
+    const waterBounds = (MADRID_WATER || []).map((ring) => ({ ring, bb: boundsOf(ring) }));
+    const lawn = [];
+    let patches = 0;
+    for (const park of GEO.parks) {
+      for (const ring of park.rings || []) {
+        if (ring.length < 6) continue;
+        const pts = [];
+        for (let i = 0; i < ring.length; i += 2) pts.push({ x: ring[i], z: ring[i + 1] });
+        const bb = boundsOf(pts);
+        const holes = waterBounds.filter((w) => w.bb.x1 > bb.x0 && w.bb.x0 < bb.x1 && w.bb.z1 > bb.z0 && w.bb.z0 < bb.z1).map((w) => w.ring);
+        lawn.push(createFlatPolygonMesh(pts, 0.10, cpLawnMat, true, holes.length ? holes : null).geometry);
+        patches++;
+      }
+    }
+    if (lawn.length) {
+      const merged = mergeGeometries(lawn, false);
+      const parkMesh = new THREE.Mesh(merged, cpLawnMat);
+      parkMesh.receiveShadow = true;
+      parkMesh.name = 'MadridParks';
+      group.add(parkMesh);
+      group.userData.parkPatches = patches;
+    }
+  }
 
   // =========================================================================
   // 4. RAISED SIDEWALKS & GRANITE CURBSTONES: every real curb island of Manhattan (city-config.js BLOCKS, from the
