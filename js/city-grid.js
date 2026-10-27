@@ -62,6 +62,10 @@ import {
 } from './tsl-materials.js';
 import { GEO } from './madrid-geodata.js';
 
+// Materials the Madrid ground, lawns, sidewalks, curbs and water were built with. The phase-3 tile renderer
+// (js/madrid-tile-world.js) reuses them so streamed tiles never compile or hold a second copy of those shaders.
+export const cityMaterials = {};
+
 // Live construction data consumed by the building and street-detail builders after buildCityGrid().
 let centralParkClearings;
 let parkTreeSites;
@@ -1510,6 +1514,7 @@ function buildCityGrid(scene) {
   // 1. NEW YORK HARBOR, HUDSON RIVER, EAST RIVER & HARLEM RIVER WATER PLANE
   // =========================================================================
   const waterMat = createWaterMaterial();
+  cityMaterials.water = waterMat;
   const harborWaterGeo = new THREE.PlaneGeometry(60000, 60000, 1, 1);
   harborWaterGeo.rotateX(-Math.PI / 2);
   const harborWaterMesh = new THREE.Mesh(harborWaterGeo, waterMat);
@@ -1532,6 +1537,7 @@ function buildCityGrid(scene) {
 
   // Granite bulkhead around every land piece (NYC): Madrid's frame is a cut, not a shoreline, so it is not walled
   const roadMat = createRoadSurfaceMaterial();
+  cityMaterials.road = roadMat;
   const LAND = LAND_RINGS && LAND_RINGS.length ? LAND_RINGS : [MANHATTAN_COASTLINE];
   const MADRID_RIVER = !!(GEO.frame && GEO.frame.madrid) && (MADRID_WATER || []).length > 0;
   if (!MADRID_RIVER) {
@@ -1603,6 +1609,7 @@ function buildCityGrid(scene) {
   // 3. PARK LAWN MATERIALS (the harbor islands themselves are built in boroughs.js)
   // =========================================================================
   const cpLawnMat = createParkLawnMaterial(false);
+  cityMaterials.lawn = cpLawnMat;
   const cpMeadowMat = createParkLawnMaterial(true);
 
   // Madrid: every real OSM park/garden landuse from GEO.parks as a lawn patch at curb height. The channel is cut out
@@ -1645,6 +1652,8 @@ function buildCityGrid(scene) {
   // =========================================================================
   const sidewalkMat = createSidewalkMaterial();
   const curbMat = createCurbMaterial();
+  cityMaterials.sidewalk = sidewalkMat;
+  cityMaterials.curb = curbMat;
   const medianHedgeMat = new THREE.MeshStandardNodeMaterial({ color: 0x366e3b, roughness: 0.82 });
   const blockSidewalks = []; // { cx, cz, w, d, block } axis-aligned slabs (irregular islands: their lot cover)
   const roadSidewalks = []; // the curbs road-network.js bounds the roads with (medians go in as footprints)
@@ -3647,6 +3656,9 @@ function buildUnderpassPortal(frames, acc, quad, lights, colliders) {
 
 export {
   buildCityGrid,
+  createExtrudedPolygonMesh,
+  createFlatPolygonMesh,
+  offsetPolygonInward,
   batchStaticGroupMeshes,
   centralParkClearings,
   parkTreeSites,

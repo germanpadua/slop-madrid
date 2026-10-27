@@ -853,6 +853,11 @@ class ThirdPersonControllerManager {
 
   // The colliders whose bounds come within `r` of (x, z), in their original order. They never move, so they are
   // bucketed once into 48 m cells (tens of thousands of buildings: testing them all every frame cost ~0.5 ms)
+  /** Tile streaming appends buildings to the collider list: drop the spatial index so the next query rebuilds it. */
+  refreshColliders() {
+    this._colliderCells = null;
+  }
+
   nearColliders(x, z, r) {
     const CELL = 48;
     const key = (ix, iz) => (ix + 4096) * 8192 + (iz + 4096);

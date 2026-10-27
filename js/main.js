@@ -4,7 +4,7 @@ import { ssr } from 'three/addons/tsl/display/SSRNode.js';
 import { createPostProcessing } from './post-processing.js';
 import { ClusteredLighting } from 'three/addons/lighting/ClusteredLighting.js';
 import { getLocationLabel, isTypingInField, ROADS, NYC_LANDMARKS, TELEPORT_LOCATIONS } from './city-config.js';
-import { buildCityGrid } from './city-grid.js';
+import { buildCityGrid, cityMaterials } from './city-grid.js';
 import { buildBoroughs } from './boroughs.js';
 import { buildLandmarks } from './landmarks.js';
 import { buildCityBlocks } from './buildings.js';
@@ -19,6 +19,8 @@ import { LightingSystem } from './lighting.js';
 import { NYCMapSystem } from './nyc-map.js';
 import { setupSceneCulling, updateSceneCulling } from './scene-culling.js';
 import { CityAudioSystem } from './audio-system.js';
+import { createTileWorld, createOutOfMapFloor } from './madrid-tile-world.js';
+import { createTileStreamer } from './madrid-tiles.js';
 
 // js/main.js
 // Main entry point for Madrid (centro) in Three.js WebGPURenderer & TSL (three.js dev, see index.html)
@@ -125,6 +127,36 @@ async function initApp() {
   }
 
   const cameraSystem = new CameraSystem(renderer.domElement, controllerManager);
+
+  // 4b. Phase-3 tile streaming: the seed (phase-2 geodata) is the world above; the neighbouring 1 km tiles of the
+  //     almendra are imported on demand around the camera and evicted past the memory budget (js/madrid-tiles.js).
+  //     Pending tiles show the "out of map" floor, never empty city ground.
+  const tileWorld = createTileWorld(scene, { colliders: allColliders, materials: cityMaterials });
+  let tileStreamer = null;
+  try {
+    tileStreamer = await createTileStreamer({
+      world: tileWorld,
+      manifestUrl: new URL('../tools/madrid/tiles.json', import.meta.url).href,
+      baseUrl: new URL('..', import.meta.url).href,
+      onStatus: () => controllerManager.refreshColliders()
+    });
+    const ring = tileStreamer.manifest?.almendra?.ring;
+    if (ring && ring.length > 2) {
+      const xs = ring.map((p) => p[0]), zs = ring.map((p) => p[1]);
+      createOutOfMapFloor(scene, [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)]);
+    }
+    tileStreamer.update(cameraSystem.currentPos.x, cameraSystem.currentPos.z);
+    markInit('tiles');
+  } catch (err) {
+    console.warn('[madrid-tiles] tile streaming disabled:', err.message);
+  }
+
+  // Opt-in diagnostics (?debug): the measurement harness (tools/madrid/measure.mjs) reads the streamer, renderer
+  // stats and the controller from the page. Nothing is exposed on a normal visit.
+  if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug')) {
+    window.__madrid = { renderer, scene, tileStreamer, tileWorld, controllerManager, cameraSystem };
+  }
+
   const touchControls = new TouchControls(controllerManager);
   const soundButton = document.getElementById('btn-sound');
   const audioSystem = new CityAudioSystem({ controllerManager, trafficSystem, highwayTraffic, streetDetails }, {
@@ -678,6 +710,7 @@ async function initApp() {
     }
     if (boroughs.update) boroughs.update(elapsed); // Roosevelt Island Tramway cabins
     cityBlocks.update(cameraSystem.currentPos.x, cameraSystem.currentPos.z);
+    if (tileStreamer) tileStreamer.update(cameraSystem.currentPos.x, cameraSystem.currentPos.z, now);
     if (cityBlocks.updateLights) cityBlocks.updateLights(cameraSystem.camera);
     if (streetDetails.update) streetDetails.update(cameraSystem.camera);
     lightingSystem.update(cameraSystem.currentPos);
