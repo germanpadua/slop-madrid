@@ -1,8 +1,9 @@
 # slop-madrid — plan de adaptación (fork de mrdoob/slop-newyork)
 
 Fork del simulador GTA-style de Manhattan (three.js WebGPURenderer + TSL, 1:1) a Madrid.
-Objetivo por fases: **fase 1** centro (~1 km²: Sol, Gran Vía, Cibeles, Alcalá), **fase 2**
-almendra central (mismo pipeline, bbox mayor), **fase 3** término municipal (solo plan).
+Objetivo por fases: **fase 1** centro (~1,9 km²: Sol, Gran Vía, Cibeles, Alcalá) — completada;
+**fase 2** almendra central oeste (8,45 km²: Manzanares, Debod, Palacio Real, Atocha) — completada el
+27-10-2026; **fase 3** término municipal (solo plan).
 
 ## Cómo funciona el original (auditoría, 25-10-2026)
 
@@ -125,8 +126,12 @@ ellas** (fallback = huella Catastro/OSM + altura real).
 
 ## Verificación
 
-- Datos: `node tools/madrid/build.mjs` sale a `js/madrid-geodata.js`; tests
-  `tests/madrid-geodata.test.mjs` (schema, frame, counts no vacíos).
+- Datos: `node tools/madrid/build.mjs` sale a `js/madrid-geodata.js` +
+  `js/madrid-geodata-blocks.js`; tests `tests/madrid-geodata.test.cjs` (fase, cobertura
+  del bbox, agua real, hitos con alturas, parcelas dentro del frame y fuera del cauce).
+- Datos crudos **no versionados** (`tools/data/madrid/*.json`, ~55 MB en fase 2):
+  se regeneran con `MADRID_PHASE=fase2 bash tools/madrid/fetch.sh` (Overpass por
+  teselas 3x2, Catastro WFS paginado, IDEAM MapServer paginado, barrios 9/10).
 - App: `npx http-server` (o `python3 -m http.server`); Playwright headless: sin
   errores de consola/red; WebGPU probablemente no disponible headless → se documenta
   hasta dónde llega el boot (módulos + overlay + construcción de ciudad vía
@@ -157,3 +162,145 @@ ellas** (fallback = huella Catastro/OSM + altura real).
 - **Publicación**: GitHub Pages (workflow, build_type=workflow) despliega
   `feat/madrid` y `main`; URL https://germanpadua.github.io/slop-madrid/. Merge a
   `main` pendiente del usuario.
+
+## Estado fase 2 (27-10-2026) — almendra central
+
+### Fase activa y bbox
+
+`MADRID_PHASE` por defecto es **fase2** (`tools/madrid/config.mjs`). El bbox que traía
+el borrador (`439316,4473866,441428,4474730`) medía **1,82 km²** — no crecía respecto a
+fase 1 (1,90 km²) y **dejaba fuera** el Templo de Debod (x 439103), Príncipe Pío
+(x 438844), Atocha (y 4473100) y Reina Sofía al sur: cuatro de los ocho hitos pedidos.
+Se sustituye por:
+
+| | UTM 30N | WGS84 |
+|---|---|---|
+| fase 2 | `438450, 4472800, 441700, 4475400` | lon −3,725351…−3,687292 · lat 40,403537…40,427193 |
+
+3,25 × 2,60 km = **8,45 km² (4,4× fase 1)**, con el Manzanares dentro del frame y los
+ocho hitos. Los WGS84 salen de la inversa de la serie transversal de Mercator (la misma
+que usa `build.mjs`), comprobados contra pyproj.
+
+### Datos descargados (`MADRID_PHASE=fase2 bash tools/madrid/fetch.sh`)
+
+| Fuente | Resultado fase 2 | fase 1 |
+|---|---|---|
+| Overpass (6 teselas 3×2, `out geom meta`) | 18 199 elementos, 15,2 MB — 2 792 polilíneas de vía (2 182 con nombre), 635 parques, 51 masas de agua (12 por relación multipolígono), 116 plazas | 5,7 MB |
+| Catastro WFS INSPIRE (42 páginas de 500 m) | 8 110 huellas (respaldo) | 2 445 |
+| IDEAM `EDIFICIOS_ALTURAS` (18 páginas de 2 000) | **34 440 huellas con ALTURA** | 10 814 |
+| Barrios OSM (`admin_level` 9/10) | 19 límites administrativos | — |
+
+`fetch.sh` cambió: tesela el bbox de Overpass (una consulta por tesela, fusión con dedupe
+por `type/id`), añade estaciones de ferrocarril, `leisure`/`natural` por relación y
+barrios; 4 espejos con 3 intentos (el principal devolvió 502 una vez, `overpass.osm.ch`
+respondió). Los JSON crudos (~55 MB) **no se versionan**: `.gitignore` los excluye y se
+regeneran con el script.
+
+### Pipeline (`tools/madrid/build.mjs`)
+
+- **Agua**: sólo áreas (`natural=water`, `water=*`, `waterway=riverbank` o `area=yes`);
+  antes cualquier `waterway` contaba como polígono y una vía cerrada de `waterway=river`
+  (OSM 1340243106) excavaba 15 ha falsas. Las relaciones se cosen miembro a miembro
+  (`stitchOuterRings`) y todo se recorta al frame (Sutherland-Hodgman) → **29 polígonos,
+  0,120 km² dentro**, con el cauce del Manzanares de 333 vértices.
+- **Manzanas y lotes**: las huellas IDEAM se rasterizan a 2 m, se cierran/abren
+  (close 4 / open 9) para obtener las manzanas (507) y, con el ráster **sin morfología**
+  como máscara, se cubre cada manzana con rectángulos codiciosos de 12 m → **4 435 lotes**
+  que caen sobre la huella catastral real (3,41 km² de 3,38 km² de huellas).
+- **Alturas**: 22 hitos toman la ALTURA de la parcela IDEAM que los contiene (muestreo 6×6
+  del footprint); el resto usa `height`/`building:levels` de OSM y se marca `hSrc:'OSM'`.
+- **Barrios**: `GEO.barrios` con el polígono real; `city-config.js::districtAt` lo prueba
+  como polígono antes de las cajas, y la Gran Vía se detecta con el corredor de `ROADS`.
+- **Salida partida**: `js/madrid-geodata.js` (712 KB: frame, manzanas como lista de
+  rectángulos, vías, grafo, parques, agua, barrios, hitos) + `js/madrid-geodata-blocks.js`
+  (3,26 MB: manzanas + parcelas). Ambos van en `modulepreload`; el contrato
+  `import { GEO } from './js/madrid-geodata.js'` no cambia.
+
+### Motor
+
+- **Cauce real**: el suelo es una losa de 0,6 m con los polígonos de agua como **agujeros**
+  (`Shape.holes` + `ExtrudeGeometry`), así el cauce queda excavado con banco vertical y la
+  superficie del río a −0,45 m. Los viales que cruzan el agua reciben su tablero a cota 0
+  (**26 vanos**) para que el tráfico no circule sobre el hueco. Ya no hay anillo cuadrado
+  ni foso decorativo.
+- **Parques**: las 654 superficies de `GEO.parks` se dibujan como césped a 0,10 m en una
+  sola malla fusionada, con el agua recortada como agujero en Madrid Río.
+- **Edificios**: fase 1 no construía ninguno (`rects: []` en cada manzana). Ahora cada
+  manzana lleva sus lotes reales y `buildings.js` crea 4 786 complejos con la altura
+  IDEAM por parcela. Se restauraron además `tone`/`shops` en `commit()`, borrados por
+  error en el commit de fase 1 (referencia a variable inexistente).
+- **Minimapa**: capa de agua real (`L.water`) sobre el suelo.
+
+### Hitos de la almendra
+
+| Hito | Huella (m) | Altura | Fuente |
+|---|---|---|---|
+| Templo de Debod | 91 × 41 | — (sin altura inventada) | OSM ring |
+| Palacio Real | 169 × 273 | 45,7 | IDEAM |
+| Catedral de la Almudena | 135 × 107 | 65,4 | IDEAM |
+| Plaza de España | 334 × 272 | — (plaza) | OSM plaza |
+| Museo Reina Sofía | 246 × 196 | 14,4 | OSM levels |
+| Estación de Atocha | 463 × 463 | 30,4 | IDEAM |
+| Estación de Príncipe Pío | 120 × 154 | 35,9 | IDEAM |
+| Gran Vía | 1 285 m (x −619…666) | — | OSM vías + corredor |
+
+Teleports nuevos (verificados sobre calzada real, mirando al hito): `palacio`, `debod`,
+`principepio`, `reinasofia`, `atocha`.
+
+### Rendimiento medido (Chromium headless, SwiftShader, arm64)
+
+| Métrica | fase 1 | fase 2 |
+|---|---|---|
+| import `madrid-geodata` | 184 ms | 448 ms |
+| import `city-config` (mundo en import-time) | — | 81 ms |
+| `buildCityGrid` | 1 910 ms | 2 099 ms |
+| `buildCityBlocks` | 275 ms (0 edificios) | 2 330 ms (4 786 complejos) |
+| `buildLandmarks` | — | 113 ms |
+| mallas / instancias | — | 100 mallas, 42 707 instancias, 23 175 colisionadores |
+| por frame (submit SwiftShader) | ~414 k triángulos | ~482 k triángulos, ~46 draw calls |
+
+El coste por frame crece sólo ~16 % pese a 4,4× superficie: `scene-culling.js` ya trocea
+los batches estáticos en celdas de 500/1 000 m y los edificios van instanciados por
+material. No fue necesario añadir LOD ni carga por capas para esta fase (la referencia de
+tinywarsaw — celdas de 600 m con manifiesto, niveles lejanos prebakeados y culling por
+sub-chunk de ~225 m — queda como plan para fase 3). El "FPS" de SwiftShader no es una
+medida de GPU y no se reporta como tal.
+
+### Verificación de la geometría renderizada
+
+Como el frame no se puede capturar en headless (SwiftShader compila shaders a 2 % y el
+`toDataURL` de un canvas WebGPU sale negro), la malla se comprueba **por raycast** sobre el
+grafo construido en el navegador (mismo `buildCityGrid`/`buildCityBlocks` de la app):
+
+- 40/40 sondas interiores al cauce (disco de 6 m dentro del agua): suelo a **−0,45 m** y
+  ningún tablero encima → el río es un hueco real.
+- 40/40 sondas en centros de manzana: losa a **0,0 m**.
+- 16/16 cruces de vía sobre el agua (Puente de Segovia, del Rey, de San Isidro, M-30):
+  tablero a **0,0 m**.
+- 0 de 23 175 colisionadores de edificio dentro del cauce.
+- 40 volúmenes de hito, el mayor **129 m** (Torre de Madrid, IDEAM 128,6).
+- Parque: una malla fusionada de 4,79 km² de triángulos (4,35 km² de polígonos OSM, el
+  resto son solapes de anillos anidados).
+
+### Tests
+
+`timeout 900 node --test 'tests/*.test.cjs' tests/geodata.test.mjs` → **114/114** (106 de
+fase 1 + 8 nuevos en `tests/madrid-geodata.test.cjs`: fase/bbox, cobertura tierra+agua,
+cauce real (curvatura, área, lado oeste), hitos con alturas y fuente, Gran Vía completa,
+parcelas dentro del frame y fuera del agua, crecimiento ~4×, módulo partido).
+
+### Limitaciones conocidas (fase 2)
+
+- **Geometría de edificio = caja**: el material de fachada es instancing de cajas
+  (`boxLocal`, atributos `box`/`faces`), así que cada lote es un rectángulo de 12 m sobre
+  la huella catastral, no el polígono exacto. El contorno de manzana, la ocupación y la
+  altura sí son reales; patios interiores menores de ~8 m se cierran en el ráster.
+- **1 354 huellas aisladas (12 ha)** no entran en ninguna manzana (naves, equipamientos
+  sueltos) y no se construyen.
+- **Templo de Debod sin altura**: no hay parcela IDEAM ni `height` en OSM; se deja sin
+  dato antes que inventarlo (el extrusor usa su valor por defecto).
+- **Puente/baden**: los 17 vanos son tableros planos a cota 0; no hay barandillas ni
+  geometría de puente.
+- **i3s** (`MODELADO_3D_MADRID`) sigue diferido: los hitos se extruyen de su huella real.
+- Errores de consola de WebGPU en headless (`Binding size … is zero`) son **previos**
+  (también aparecen con los datos de fase 1) y del entorno SwiftShader; 0 pageerrors.
