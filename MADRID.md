@@ -3,7 +3,9 @@
 Fork del simulador GTA-style de Manhattan (three.js WebGPURenderer + TSL, 1:1) a Madrid.
 Objetivo por fases: **fase 1** centro (~1,9 km²: Sol, Gran Vía, Cibeles, Alcalá) — completada;
 **fase 2** almendra central oeste (8,45 km²: Manzanares, Debod, Palacio Real, Atocha) — completada el
-27-10-2026; **fase 3** término municipal (solo plan).
+27-10-2026; **fase 3** teselado del interior de la M-30 y carga diferida (8 teselas, 15,2 km²
+residentes de las 52,1 km² del ámbito) — completada el 27-10-2026; **fase 4** término municipal
+(~606 km², las 77 celdas pendientes del manifiesto) — solo plan, ver "Escalado".
 
 ## Cómo funciona el original (auditoría, 25-10-2026)
 
@@ -103,32 +105,39 @@ Integración fase 1: fetcher `tools/madrid/i3s.py` (trae hojas por bbox de hito)
 conversión a un paquete de meshes con colisión aproximada; **el fork base funciona sin
 ellas** (fallback = huella Catastro/OSM + altura real).
 
-## Escalado (fase 3 — plan, no implementado)
+## Escalado (fase 4 — plan, no ejecutado)
 
-- **Partición**: cuadrícula UTM 1 km del término (≈606 km², ~640 tiles). Pipeline ya
-  parametrizado por bbox → corrección por tile; un manifiesto (`tiles.json`) lista
-  tiles con extent, counts y sha. Overpass no escala a 640 llamadas: usar extracto
-  pbf diario (BBBike/Geofabrik) recortado con `osmium` por tile (CPU, segundos/tile).
-- **Catastro/Alturas**: WFS y MapServer paginados ya implementados; para el municipio
-  completo descargar por distrito (~21 peticiones MapServer con where por distrito).
-- **LOD**: nivel 0 = máscara de suelo + manzanas simplificadas (todo el municipio,
-  ~50 MB); nivel 1 = edificios extruidos con altura Catastro por tile; nivel 2 =
-  detalle de fachada procedural cerca de cámara. i3s municipal como capa opcional de
-  hitos (ya por nodo).
-- **Carga diferida**: fetch por tile con `AbortController` + cache HTTP inmutable
-  (hash en la URL); Web Workers para parseo; presupuesto memoria <1.5 GB.
-- **Volúmenes estimados**: ~250-350 k huellas Catastro (Altura), ~500 k edificios OSM,
-  ~60 k nodos vía. GEO actual es 1 módulo inline (1,1 MB para 59 km²): por fases el
-  peso total estimado 60-120 MB — obliga a tiles por red, no un solo JSON.
-- **Cambios de código necesarios**: consumidor GEO por-tile (streaming), culling por
-  tile en scene-culling, tráfico/red por grafo global con tiles activos, sistema de
-  parque/agua global. Nada de esto en fase 1-2.
+La fase 3 dejó hecha la infraestructura (manifiesto, pipeline por tesela, propiedad de geometría, streams y
+presupuesto de memoria); la fase 4 es llenar el término municipal.
+
+- **Partición**: la cuadrícula de fase 3 (1 km, solape 100 m) ya cubre la almendra y el manifiesto tiene las 77
+  celdas pendientes con su bbox; el término completo (≈606 km²) son ~640 celdas con la misma parametrización
+  (`tools/madrid/tiles.mjs`). Overpass no escala a 640 llamadas: usar extracto pbf diario (BBBike/Geofabrik)
+  recortado con `osmium` por tile (CPU, segundos/tile) y dejar Overpass para las celdas sueltas.
+- **Catastro/Alturas**: WFS y MapServer paginados ya implementados y parametrizados por bbox; para el municipio
+  completo conviene descargar por distrito (~21 peticiones MapServer con where por distrito) y recortar.
+- **LOD**: la fase 3 ya separa dos niveles (semilla con masificación procedural de manzana; tesela con una caja de
+  fachada por parcela). Fase 4: nivel 0 = máscara de suelo + manzanas simplificadas para lo lejano (~50 MB para
+  el municipio); i3s municipal como capa opcional de hitos (ya investigado por nodo).
+- **Tráfico y minimapa por tesela**: hoy el grafo de tráfico y el minimapa son de la semilla; extenderlos requiere
+  un grafo global con tiles activos (los `roads` de cada tesela ya se emiten con nombre, ancho y carriles).
+- **Carga diferida**: el presupuesto (12 MB / 12 teselas) y el `?v=<md5>` de los módulos ya están; para el
+  municipio conviene subir el presupuesto y parsear en Web Workers (hoy el parseo va en el hilo principal, ~30-150
+  ms por tesela).
+- **Volúmenes medidos en fase 3**: 0,115–0,65 MB por tesela densa (media 0,4 MB/km²), ~2 900 parcelas y ~80
+  manzanas por km² en la almendra construida. El municipio completo a este LOD ≈ 200–300 MB: por red, nunca un
+  solo JSON.
 
 ## Verificación
 
-- Datos: `node tools/madrid/build.mjs` sale a `js/madrid-geodata.js` +
+- Datos (semilla): `node tools/madrid/build.mjs` sale a `js/madrid-geodata.js` +
   `js/madrid-geodata-blocks.js`; tests `tests/madrid-geodata.test.cjs` (fase, cobertura
   del bbox, agua real, hitos con alturas, parcelas dentro del frame y fuera del cauce).
+- Datos (teselas): `node tools/madrid/tiles.mjs manifest|build <ids…>|verify` genera el
+  manifiesto, fetch+construye las celdas y comprueba md5/tamaño; tests
+  `tests/madrid-tiles.test.cjs` (cobertura y disjunción de los cores sobre el polígono de la
+  M-30, hashes, geometría completa en los bordes, dedupe entre teselas, política de carga y
+  presupuesto). `node tools/madrid/measure.mjs` mide carga/streaming/frame cost en headless.
 - Datos crudos **no versionados** (`tools/data/madrid/*.json`, ~55 MB en fase 2):
   se regeneran con `MADRID_PHASE=fase2 bash tools/madrid/fetch.sh` (Overpass por
   teselas 3x2, Catastro WFS paginado, IDEAM MapServer paginado, barrios 9/10).
@@ -304,3 +313,159 @@ parcelas dentro del frame y fuera del agua, crecimiento ~4×, módulo partido).
 - **i3s** (`MODELADO_3D_MADRID`) sigue diferido: los hitos se extruyen de su huella real.
 - Errores de consola de WebGPU en headless (`Binding size … is zero`) son **previos**
   (también aparecen con los datos de fase 1) y del entorno SwiftShader; 0 pageerrors.
+
+## Estado fase 3 (27-10-2026) — teselado y expansión al interior de la M-30
+
+### Resultado
+
+- **Manifiesto** `tools/madrid/tiles.json` (generado por `node tools/madrid/tiles.mjs manifest`): cuadrícula UTM30N
+  paramétrica de celdas de 1 000 m con **solape de descarga de 100 m**, anclada en la esquina SO de la fase 2
+  (438 450, 4 472 800), ids `k<i>j<j>`. 85 celdas tocan el interior de la M-30: 8 `ready` (semilla + 7 nuevas),
+  77 `pending` (fase 4). Cada entrada lleva core, fetch, bbox WGS84, estado, md5, bytes y conteos.
+- **Ámbito medido sobre OSM**: el interior del anillo de la M-30 son **52,11 km²** (incluye Casa de Campo; la
+  almendra construida que se cita habitualmente ronda 40 km²). No hay contorno dibujado a mano.
+- **7 teselas nuevas** (Retiro ×2, Salamanca este, Arganzuela, Latina, Moncloa, Chamartín sur), mismas fuentes y
+  mismo pipeline que la fase 2: **6,75 km² nuevos, 2,74 MB**. Con la semilla: 8 teselas, 15,2 km², **6,47 MB**.
+- **Carga diferida**: prefetch a 1 600 m, descarga a 2 600 m, presupuesto duro de **12 MB / 12 teselas** que nunca se
+  supera; la semilla no se descarga nunca; lo pendiente se pinta con la textura de "fuera de mapa".
+- **Consistencia**: cada manzana y cada huella tiene un dueño único, agua y parques se recortan al core, y hay tests
+  que comprueban cobertura, disjunción, ausencia de geometría cortada y ausencia de duplicados entre teselas.
+
+### El ámbito: interior de la M-30 (geometría real)
+
+- Fuente: ways OSM con `ref=M-30` (1 520 segmentos a menos de 9 km de Sol; `tools/data/madrid/m30.json`, regenerable
+  con `node tools/madrid/tiles.mjs fetch-m30`).
+- Ráster de 40 m con barrera de 30 m a cada lado de la calzada y flood-fill 4-conectado desde la Puerta del Sol.
+- El anillo no es cerrado al norte: la M-30 continúa como Avenida de la Ilustración (A-6) y A-1, así que el relleno se
+  recorta en `z = −6 300 m` (ápice norte del anillo, `almendra.capZ` en el manifiesto). Sin ese tope el relleno se
+  escapa por los enlaces y mide 55,8 km² de corredores que no son almendra.
+- Contorno = aristas de celda del relleno + RDP 20 m → 314 vértices en coordenadas de mundo.
+
+### Manifiesto (`tools/madrid/tiles.json`)
+
+- `grid`: origen (esquina SO de la fase 2), `cell` 1 000 m, `overlap` 100 m, `seed: "fase2"`.
+- `almendra`: `ring` ([x, z] de mundo), `areaKm2`, `maskAreaKm2`, `capZ`.
+- `budget`: 12 MB, 12 teselas, `preloadRadius` 1 600 m, `dropRadius` 2 600 m.
+- `tiles[]`: `id`, `label`, `status`, `core` (rectángulos [x0, z0, x1, z1] en metros de mundo), `cell`/`fetch` (UTM),
+  `bboxWgs84`, `module`, `md5`, `bytes`, `counts` (manzanas, parcelas, parques, agua, vías, hitos), `areaKm2`,
+  `sources`. La semilla `fase2` conserva el contrato de fase 2 (`js/madrid-geodata.js` +
+  `js/madrid-geodata-blocks.js`) con sus md5.
+- Core de la semilla = caja de fase 2 (3 250 × 2 600 m); fetch = caja + 100 m. Las celdas que la tocan llevan el core
+  partido en 1–2 rectángulos, de modo que todos los cores son disjuntos y cubren el polígono (test).
+- `node tools/madrid/tiles.mjs verify` compara md5 y tamaño de cada módulo con el manifiesto (8/85, 6,47 MB).
+
+### Teselas generadas
+
+| id | zona | km² | manzanas | huellas IDEAM | parques | agua | hitos* | módulo |
+|---|---|---|---|---|---|---|---|---|
+| `k3j1` | Retiro oeste (Atocha, Jerónimos) | 0,75 | 14 | 476 | 295 | 7 | 33 | 119 KB |
+| `k4j1` | Retiro este (Retiro, Salamanca sur) | 1,00 | 81 | 2 828 | 66 | 5 | 12 | 390 KB |
+| `k4j2` | Salamanca este (Guindalera, Fuente del Berro) | 1,00 | 81 | 4 851 | 61 | 0 | 18 | 677 KB |
+| `k2j-1` | Arganzuela (Delicias, Legazpi) | 1,00 | 98 | 3 823 | 41 | 1 | 13 | 488 KB |
+| `k0j-1` | Latina (Casa de Campo este, Manzanares sur) | 1,00 | 77 | 1 665 | 105 | 2 | 8 | 280 KB |
+| `k0j3` | Moncloa (Argüelles, Moncloa) | 1,00 | 71 | 2 531 | 50 | 2 | 28 | 440 KB |
+| `k2j4` | Chamartín sur (Nuevos Ministerios) | 1,00 | 70 | 2 727 | 84 | 5 | 23 | 415 KB |
+
+\* entradas de `landmarks` con huella; sólo se extruyen las que tienen altura real. Fuentes por tesela: Overpass
+(© OpenStreetMap, ODbL), IDEAM `EDIFICIOS_ALTURAS` (© Ayuntamiento de Madrid) y Catastro INSPIRE (© IGN/Catastro).
+Total 2,74 MB de módulos de tesela; semilla 721 KB + 3,09 MB.
+
+### Pipeline por tesela
+
+- `MADRID_TILE=<id> bash tools/madrid/fetch.sh tools/data/madrid/tiles/<id>`: Overpass en 2×2 (misma consulta que la
+  fase 2, dedupe por `type/id`), Catastro INSPIRE paginado y EDIFICIOS_ALTURAS paginado. Los barrios se omiten (sólo
+  los usa la semilla). Una descarga fallida marca la celda `failed` en el manifiesto y el resto sigue.
+- `MADRID_DATA=<dir> MADRID_TILE=<id> node tools/madrid/build.mjs js/geodata/tile-<id>.js`: misma proyección
+  (`tools/madrid/projection.mjs`, extraída para compartirla con `tiles.mjs`), mismo ráster de 2 m y misma morfología
+  de manzanas que la fase 2.
+- **Propiedad** (dedupe entre teselas, sin duplicar ni recortar geometría): el ráster de manzanas se ancla a una
+  cuadrícula global de 100 m (no a la caja de cada tesela), así la misma manzana se traza idéntica en todas las
+  teselas que la llevan. Una manzana completa pertenece a la tesela con **más de la mitad de su área** en el core;
+  una huella pertenece a la manzana que contiene su centro (tolerancia 2,5 m por la simplificación del contorno) y,
+  si no está en ninguna, a la tesela que contiene su centro. Manzanas que tocan el borde de descarga se descartan
+  (estarían cortadas); parques y agua se recortan al core (Sutherland–Hodgman por rectángulo); hitos por centroide;
+  los vanos de puente por el punto medio del segmento (un vano se dibuja una vez).
+- La semilla se regeneró con el mismo pipeline y 100 m de solape (`build-seed`): sus bordes ya no llevan manzanas
+  cortadas, y las manzanas del anillo de solape pertenecen a la tesela vecina, que las dibuja enteras.
+- Salida: módulo autocontenido `export const TILE = {id, label, core, frame, blocks, parcels, parks, water, roads,
+  landmarks}` (una sola petición por tesela).
+
+### Motor: carga diferida y fusión
+
+- `js/madrid-tiles.js`: `planTiles()` puro (testeado en Node) decide qué cargar y qué descargar;
+  `createTileStreamer()` pide el manifiesto, importa el módulo de cada tesela (`import()` con `?v=<md5>`, caché
+  inmutable) y lo entrega al mundo. Reglas: sólo `ready`; prefetch ≤1 600 m; descarga >2 600 m; topes duros
+  12 MB / 12 teselas (si no cabe, no se carga); la semilla nunca se descarga; ≤3 importaciones en vuelo; un reintento
+  por tesela y después se deja; actualización autolimitada a 20 m / 400 ms; la tesela se construye entera antes de
+  entrar en la escena (sin parpadeo).
+- `js/madrid-tile-world.js`: geometría por tesela con **los mismos materiales** que la semilla (`cityMaterials`; las
+  fachadas salen de `FACADE_DEFS`, cacheadas por opciones ⇒ ninguna compilación de shader extra al entrar una tesela):
+  losa de asfalto de 0,6 m con el agua real como agujero, lámina de agua a −0,45 m, césped real a 0,10 m, aceras
+  (bordillo + losa) de la manzana catastral, una caja de fachada por huella IDEAM con su ALTURA, hitos extruidos sólo
+  con altura real, tableros de puente a cota 0 y un guardián de huellas ya dibujadas.
+- Suelo "fuera de mapa": plano bajo todo el ámbito (rejilla de 50/250 m sobre zócalo oscuro) visible en las celdas
+  pendientes; nunca se confunde con suelo urbano ni deja huecos grises.
+- Colisionadores: las huellas de cada tesela entran en la lista viva y `controllerManager.refreshColliders()` reindexa
+  el mapa espacial.
+- Diagnóstico opt-in: `?debug=1` expone `window.__madrid` (renderer, escena, streamer, mundo, cámara) para
+  `tools/madrid/measure.mjs`.
+
+### Rendimiento medido (Chromium headless, SwiftShader, arm64)
+
+`node tools/madrid/measure.mjs --tiles k3j1,k4j1,k4j2,k2j-1,k0j-1,k0j3,k2j4` (servidor estático local, perfil nuevo,
+`?debug=1`):
+
+| Métrica | Medida | Nota |
+|---|---|---|
+| Arranque hasta el primer frame | 173,5 s | de los cuales **151 s son el primer frame en SwiftShader** (la GPU software encola una sola vez el render completo); no es una cifra de GPU real |
+| Fases CPU del arranque | 5,75 s en total | `renderer 468 · lighting 109 · cityGrid 1 438 · boroughs 242 · landmarks 28 · blocks 985 · streetDetails 850 · traffic 919 · roadPaint 164 · **tiles 109** · controllers 7 · culling 360 · ui 70 · postFX 238` |
+| Capa de teselas en el arranque | **109 ms** | petición del manifiesto (10 KB) + mundo de teselas + suelo "fuera de mapa"; **no** descarga ninguna tesela de datos |
+| Import + construcción por tesela | 28–711 ms (mediana ≈ 150 ms) | primera vez en frío (descarga incluida): 1,4–1,7 s; 500 KB de módulo ≈ 150 ms |
+| Teselas residentes tras recorrer el ámbito | 7 (semilla + 6) | 3,17 MB contabilizados en el presupuesto (de 12 MB); 0 fallos de carga |
+| Mallas de una tesela | 7–12 | tapa, agua, césped, aceras, 3 lotes de fachadas instanciadas, tablero de puente |
+| Coste de frame con 6 teselas + semilla | **511 draw calls, 3,57 M triángulos** | cámara en el Retiro, incluye los pases de sombra; la fase 2 se midió con otro harness (46 draw calls / 0,48 M triángulos), no comparable directamente |
+| FPS | no medible en headless | el rasterizador software tarda ~150 s en un frame; la tasa de cámara a 60 fps queda pendiente de validar en navegador con GPU (igual que en fase 2) |
+| Errores de página / peticiones fallidas | 0 / 0 | los avisos `Binding size … is zero` son de SwiftShader y ya existían en fases anteriores |
+
+**Carga inicial y objetivo < 3 s**: no se cumple en esta máquina (5,75 s de CPU hasta el primer frame, antes de compilar
+shaders). El teselado no la empeora (109 ms); el coste está en la construcción procedural del mundo de la semilla
+(`cityGrid` + `blocks` + `streetDetails` + `traffic` ≈ 4,2 s). En una GPU real la compilación de shaders (~12,4 s aquí)
+baja a ~2 s (medido en fase 2), pero el límite sigue siendo la CPU de la instancia ARM; queda como trabajo de
+optimización (Web Workers para el parseo, LOD de la semilla).
+
+Cada tesela aporta 7–12 mallas (las fachadas van instanciadas en tres lotes) y sus huellas como instancias: el coste de
+vértices escala con los edificios de la tesela, no con el tamaño del ámbito, y el culling deja en pantalla sólo las
+cercanas. Ampliar radios/budget es un valor del manifiesto, no un cambio de código.
+
+### Tests
+
+`timeout 900 node --test 'tests/*.test.cjs' tests/geodata.test.mjs` → **123/123** (114 previos + 9 nuevos en
+`tests/madrid-tiles.test.cjs`):
+
+- cobertura del polígono de la M-30 por los cores (≥2 000 puntos muestreados, exactamente un dueño por punto) y
+  disjunción de todos los cores (semilla incluida);
+- manifiesto: esquema, área, `capZ`, md5/tamaño de cada módulo contra el fichero;
+- geometría completa: ninguna manzana cortada en un borde de descarga, ninguna huella con dos vértices sobre una
+  línea de recorte, todo lo que se emite pertenece al core o a una manzana suya;
+- dedupe: ninguna huella ni manzana aparece en dos teselas;
+- streaming: prefetch dentro del radio, descarga más allá del radio, la semilla nunca se descarga, topes de bytes y
+  de número de teselas respetados.
+
+### Limitaciones conocidas (fase 3)
+
+- **LOD de tesela**: una caja de fachada por huella IDEAM (sin masificación procedural, cornisas, balcones ni
+  cubiertas). La semilla mantiene el detalle alto; las teselas son un nivel intermedio.
+- **Tráfico y minimapa** siguen siendo de la semilla: las teselas aportan suelo, manzanas, edificios, parques, agua y
+  vanos, no carriles, rutas ni capa de mapa.
+- **Celdas pendientes**: sólo hay 7 vecinas generadas; las otras 77 celdas del manifiesto se pintan como "fuera de
+  mapa" (nunca como ciudad vacía) hasta la fase 4.
+- **Costuras con celdas pendientes**: la manzana que cabalga sobre una celda pendiente la dibuja la celda vecina; si esa
+  vecina aún no está generada, la manzana no se ve (su suelo lo cubre la tapa de la tesela cargada o el "fuera de
+  mapa"). Al generar la celda, la manzana entra entera, sin cortes.
+- **Hitos sin altura** no se extruyen (no se inventan); las entradas de `landmarks` incluyen POIs con nombre sin
+  volumen.
+- **Agua y parques** se recortan al core: una mancha que cruza una costura se dibuja en dos mitades exactas, sin
+  solape ni z-fighting.
+- **Vecinos de la semilla**: al regenerarla con 100 m de solape, las manzanas del anillo pertenecen a las celdas
+  vecinas (488 manzanas interiores en la semilla), de modo que una parte del borde de fase 2 se completa al cargar esas
+  celdas.
