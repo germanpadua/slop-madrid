@@ -1,1 +1,5 @@
 .DS_Store
+# Madrid raw source extract (OSM/Catastro/IDEAM, ~100 MB for phase 2): regenerate with tools/madrid/fetch.sh,
+# the generated js/madrid-geodata*.js is what the app ships
+tools/data/madrid/*.json
+tools/data/madrid/*.overpassql

@@ -59,6 +59,88 @@ log(`world bbox x [${wx0.toFixed(0)}, ${wx1.toFixed(0)}] z [${wz0.toFixed(0)}, $
 
 const flat = (pts) => pts.flatMap(([x, z]) => [r1(x), r1(z)]);
 
+// Connected components of a binary raster -> outer rings (x,z; negative shoelace), largest first. Used for the block
+// slabs (morphological merge of the cadastral parcels) and for the land (the phase box minus the real water).
+function componentRings(ras, minCells, simplify, minArea) {
+  const { w, h, d } = ras;
+  const label = new Int32Array(w * h);
+  const compCells = [];
+  const stack = [];
+  for (let s = 0; s < w * h; s++) {
+    if (!d[s] || label[s]) continue;
+    const k = compCells.length;
+    const cells = [];
+    stack.push(s);
+    label[s] = k + 1;
+    while (stack.length) {
+      const c = stack.pop();
+      cells.push(c);
+      const i = c % w, j = (c / w) | 0;
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const ni = i + di, nj = j + dj;
+        if (ni < 0 || nj < 0 || ni >= w || nj >= h) continue;
+        const n = nj * w + ni;
+        if (d[n] && !label[n]) { label[n] = k + 1; stack.push(n); }
+      }
+    }
+    compCells.push(cells);
+  }
+  const out = [];
+  for (const cells of compCells) {
+    if (cells.length < minCells) continue;
+    let i0 = w, j0 = h, i1 = 0, j1 = 0;
+    for (const c of cells) { const i = c % w, j = (c / w) | 0; if (i < i0) i0 = i; if (i > i1) i1 = i; if (j < j0) j0 = j; if (j > j1) j1 = j; }
+    const sub = new Raster(ras.x0 + i0 * ras.res, ras.z0 + j0 * ras.res, ras.x0 + (i1 + 1) * ras.res, ras.z0 + (j1 + 1) * ras.res, ras.res);
+    for (const c of cells) sub.d[(((c / w) | 0) - j0) * sub.w + ((c % w) - i0)] = 1;
+    const ring = sub.traceOuter();
+    const area = Math.abs(ringArea(ring));
+    if (area < minArea) continue;
+    if (ringArea(ring) > 0) ring.reverse();
+    out.push({ ring: rdpRing(ring, simplify), area, cells, w, i0, j0, i1, j1 });
+  }
+  return out.sort((a, b) => b.area - a.area);
+}
+
+// Rect cover of a block's built cells (greedy maximal rectangles, row-major) at a coarse resolution: the building
+// massing works inside each rect (rows of lots, courtyards, towers) and clamps each part to the IDEAM parcel height, so
+// one rect per 12 m of block keeps the real footprint while letting the lotting do the detail work.
+function cellRects(comp, res, ox, oz, keep, factor = 6) {
+  const { cells, w, i0, j0, i1, j1 } = comp;
+  const cw = i1 - i0 + 1, ch = j1 - j0 + 1;
+  const cw2 = Math.ceil(cw / factor), ch2 = Math.ceil(ch / factor);
+  const sum = new Uint16Array(cw2 * ch2);
+  for (const c of cells) {
+    if (keep && !keep.d[c]) continue;
+    const gi = (c % w) - i0, gj = ((c / w) | 0) - j0;
+    sum[((gj / factor) | 0) * cw2 + ((gi / factor) | 0)]++;
+  }
+  const half = (factor * factor) / 2;
+  const mask = new Uint8Array(cw2 * ch2);
+  for (let k = 0; k < mask.length; k++) mask[k] = sum[k] >= half ? 1 : 0;
+  const used = new Uint8Array(cw2 * ch2);
+  const step = res * factor;
+  const rects = [];
+  for (let j = 0; j < ch2; j++) {
+    for (let i = 0; i < cw2; i++) {
+      if (!mask[j * cw2 + i] || used[j * cw2 + i]) continue;
+      let i2 = i;
+      while (i2 + 1 < cw2 && mask[j * cw2 + i2 + 1] && !used[j * cw2 + i2 + 1]) i2++;
+      let j2 = j;
+      for (let grow = true; grow && j2 + 1 < ch2;) {
+        grow = true;
+        for (let k = i; k <= i2; k++) {
+          if (!mask[(j2 + 1) * cw2 + k] || used[(j2 + 1) * cw2 + k]) { grow = false; break; }
+        }
+        if (grow) j2++;
+      }
+      for (let jj = j; jj <= j2; jj++) for (let k = i; k <= i2; k++) used[jj * cw2 + k] = 1;
+      rects.push([r1(ox + (i0 + i * factor) * res), r1(ox + (i0 + (i2 + 1) * factor) * res),
+        r1(oz + (j0 + j * factor) * res), r1(oz + (j0 + (j2 + 1) * factor) * res)]);
+    }
+  }
+  return rects.filter((r) => r[1] - r[0] >= 8 && r[3] - r[2] >= 8);
+}
+
 // =====================================================================================================================
 // 2. OSM — roads, parks & water, squares, named landmark footprints
 // =====================================================================================================================
@@ -88,9 +170,14 @@ for (const e of els) {
 log(`${roadLines.length} road polylines, ${roadLines.filter((r) => r.name).length} named`);
 
 // parks, water & pedestrian squares (ground colouring + GEO.parks)
+// Water *areas* only: `waterway=river|stream` is the centreline of a channel, not a polygon, and treating such a
+// closed way as an area carves a 15 ha hole out of the city (seen on OSM way 1340243106).
+const WATER_AREA = new Set(['river', 'riverbank', 'canal', 'stream', 'brook', 'ditch', 'drain']); // waterway values that can be areas
 const areaKind = (t) => {
   if (t.leisure === 'park' || t.leisure === 'garden') return 'park';
-  if (t.natural === 'water' || t.waterway) return 'water';
+  if (t.natural === 'water') return 'water';
+  if (t.water && t.water !== 'no') return 'water'; // water=river|pond|basin|canal|reservoir
+  if (t.waterway && (t.waterway === 'riverbank' || (t.area === 'yes' && WATER_AREA.has(t.waterway)))) return 'water';
   if (t.landuse === 'grass' || t.landuse === 'meadow' || t.landuse === 'forest') return 'grass';
   if (t.place === 'square') return 'plaza';
   if (t.highway === 'pedestrian' && (t.area === 'yes' || t.area === 'true')) return 'plaza';
@@ -112,7 +199,55 @@ for (const e of els) {
   else if (kind === 'plaza') plazas.push({ name: (e.tags || {}).name || '', ring });
   else parks.push({ name: (e.tags || {}).name || '', cat: kind, acres: Math.abs(ringArea(ring)) / 4046.86, rings: [ring] });
 }
-log(`${parks.length} parks, ${water.length} water bodies, ${plazas.length} plazas/squares`);
+
+// Multipolygons: the Manzanares and most of the big parks are relations, not ways. Stitch each relation's outer
+// member ways into closed rings (members can be split at bridges/street crossings) and keep the real polygons.
+const near = (a, b) => Math.abs(a.lon - b.lon) < 1e-7 && Math.abs(a.lat - b.lat) < 1e-7;
+function stitchOuterRings(members) {
+  const segs = members.filter((m) => m.role !== 'inner' && Array.isArray(m.geometry)).map((m) => m.geometry.filter((p) => p));
+  const rings = [];
+  while (segs.length) {
+    let cur = segs.pop();
+    if (cur.length < 2) continue;
+    for (let progressed = true; progressed;) {
+      progressed = false;
+      for (let i = 0; i < segs.length; i++) {
+        const s = segs[i];
+        if (!s.length) { segs.splice(i, 1); i--; continue; }
+        const head = cur[0], tail = cur[cur.length - 1];
+        let next = null;
+        if (near(tail, s[0])) next = cur.concat(s.slice(1));
+        else if (near(tail, s[s.length - 1])) next = cur.concat(s.slice(0, -1).reverse());
+        else if (near(head, s[s.length - 1])) next = s.slice(0, -1).concat(cur);
+        else if (near(head, s[0])) next = s.slice(1).reverse().concat(cur);
+        if (next) { cur = next; segs.splice(i, 1); progressed = true; break; }
+      }
+      if (cur.length > 20000) break; // runaway stitch: give up on this relation
+    }
+    if (cur.length >= 4 && near(cur[0], cur[cur.length - 1])) rings.push(cur);
+  }
+  return rings;
+}
+let waterRelations = 0;
+for (const e of els) {
+  if (e.type !== 'relation' || !e.members) continue;
+  const kind = areaKind(e.tags || {});
+  if (!kind || kind === 'plaza') continue;
+  for (const raw of stitchOuterRings(e.members)) {
+    const pts = raw.map((p) => toWorld(p.lon, p.lat));
+    const ring = rdpRing(pts, 0.8);
+    if (Math.abs(ringArea(ring)) < 100) continue;
+    if (ringArea(ring) > 0) ring.reverse();
+    if (kind === 'water') { water.push(ring); waterRelations++; }
+    else {
+      const name = (e.tags || {}).name || '';
+      const prev = parks.find((p) => p.name === name && p.cat === kind);
+      if (prev) { prev.rings.push(ring); prev.acres += Math.abs(ringArea(ring)) / 4046.86; }
+      else parks.push({ name, cat: kind, acres: Math.abs(ringArea(ring)) / 4046.86, rings: [ring] });
+    }
+  }
+}
+log(`${parks.length} parks, ${water.length} water bodies (${waterRelations} from area relations), ${plazas.length} plazas/squares`);
 
 // =====================================================================================================================
 // 3. Real buildings — Ayuntamiento EDIFICIOS_ALTURAS: authoritative footprint + real height (m).
@@ -129,7 +264,13 @@ for (const f of alturas.features) {
   const bb = bbox(ring);
   if (bb.x1 - bb.x0 < 1.2 || bb.z1 - bb.z0 < 1.2) continue;
   if (ringArea(ring) > 0) ring.reverse();
-  parcels.push({ ring, h: Math.max(2.4, Math.round(h * 10) / 10) });
+  // The WFS returns every footprint that intersects the box: keep the ones whose centre is inside the frame, so no
+  // building is ever placed outside the land the city is built on
+  let cx = 0, cz = 0;
+  for (const q of ring) { cx += q[0]; cz += q[1]; }
+  cx /= ring.length; cz /= ring.length;
+  if (cx < wx0 || cx > wx1 || cz < wz0 || cz > wz1) continue;
+  parcels.push({ ring, h: Math.max(2.4, Math.round(h * 10) / 10), cx, cz });
 }
 log(`${parcels.length} real building parcels (IDEAM alturas)`);
 
@@ -137,60 +278,48 @@ log(`${parcels.length} real building parcels (IDEAM alturas)`);
 const RES = 2;
 const ras = new Raster(wx0 - 4, wz0 - 4, wx1 + 4, wz1 + 4, RES);
 for (const p of parcels) ras.fillRing(p.ring, 1);
+// Same grid as the slab raster, filled only with the parcels as built (before any morphology)
+const lotRas = new Raster(ras.x0, ras.z0, ras.x0 + (ras.w - 1) * RES, ras.z0 + (ras.h - 1) * RES, RES);
+for (const p of parcels) lotRas.fillRing(p.ring, 1);
 ras.close(4); // patios < 8 m across and gaps to the neighbour merge into the slab
 ras.open(9);  // drop slivers
-{
-  const { w, h, d } = ras;
-  const label = new Int32Array(w * h);
-  const compCells = [];
-  const stack = [];
-  for (let s = 0; s < w * h; s++) {
-    if (!d[s] || label[s]) continue;
-    const k = compCells.length;
-    const cells = [];
-    stack.push(s);
-    label[s] = k + 1;
-    while (stack.length) {
-      const c = stack.pop();
-      cells.push(c);
-      const i = c % w, j = (c / w) | 0;
-      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-        const ni = i + di, nj = j + dj;
-        if (ni < 0 || nj < 0 || ni >= w || nj >= h) continue;
-        const n = nj * w + ni;
-        if (d[n] && !label[n]) { label[n] = k + 1; stack.push(n); }
-      }
+const blockComps = componentRings(ras, 60, 0.8, 250); // < ~240 m² of footprint is not a block
+const blockRings = blockComps.map((c) => c.ring);
+// Lot rects per block: the coverage of the real cadastral parcels (so courtyards and irregular fronts stay open). The
+// massing works inside each rect (rows of lots, courtyards, towers) and clamps every part to the IDEAM parcel height.
+for (const c of blockComps) c.rects = cellRects(c, RES, ras.x0, ras.z0, lotRas);
+log(`merged into ${blockRings.length} block slabs, ${blockComps.reduce((t, c) => t + c.rects.length, 0)} lot rects`);
+// Assign every parcel to the smallest block whose bounds contain its centroid (parcels share the raster the slabs
+// were traced from, so this is a containment test). Parcels are bucketed once by centroid: O(parcels + blocks).
+const blockBoxes = blockRings.map((ring) => bbox(ring));
+const CELL = 64;
+const blockCells = new Map();
+blockBoxes.forEach((bb, id) => {
+  for (let ix = Math.floor(bb.x0 / CELL); ix <= Math.floor(bb.x1 / CELL); ix++) {
+    for (let iz = Math.floor(bb.z0 / CELL); iz <= Math.floor(bb.z1 / CELL); iz++) {
+      const k = ix * 100000 + iz;
+      if (!blockCells.has(k)) blockCells.set(k, []);
+      blockCells.get(k).push(id);
     }
-    compCells.push(cells);
   }
-  var blockRings = [];
-  for (const cells of compCells) {
-    if (cells.length < 60) continue; // < ~240 m² of footprint
-    let i0 = w, j0 = h, i1 = 0, j1 = 0;
-    for (const c of cells) { const i = c % w, j = (c / w) | 0; if (i < i0) i0 = i; if (i > i1) i1 = i; if (j < j0) j0 = j; if (j > j1) j1 = j; }
-    const sub = new Raster(ras.x0 + i0 * RES, ras.z0 + j0 * RES, ras.x0 + (i1 + 1) * RES, ras.z0 + (j1 + 1) * RES, RES);
-    for (const c of cells) sub.d[(((c / w) | 0) - j0) * sub.w + ((c % w) - i0)] = 1;
-    const ring = sub.traceOuter();
-    if (Math.abs(ringArea(ring)) < 250) continue;
-    if (ringArea(ring) > 0) ring.reverse();
-    blockRings.push(rdpRing(ring, 0.8));
+});
+const blocks = blockRings.map((ring, id) => ({ id, ring, rects: blockComps[id].rects, parcels: [] }));
+let orphans = 0, orphanArea = 0;
+for (const p of parcels) {
+  const list = blockCells.get(Math.floor(p.cx / CELL) * 100000 + Math.floor(p.cz / CELL));
+  if (!list) { orphans++; continue; }
+  let best = -1, bestArea = Infinity;
+  for (const id of list) {
+    const bb = blockBoxes[id];
+    if (p.cx <= bb.x0 || p.cx >= bb.x1 || p.cz <= bb.z0 || p.cz >= bb.z1) continue;
+    const area = (bb.x1 - bb.x0) * (bb.z1 - bb.z0);
+    if (area < bestArea) { bestArea = area; best = id; }
   }
+  if (best < 0) { orphans++; orphanArea += Math.abs(ringArea(p.ring)); continue; }
+  p.block = best;
+  blocks[best].parcels.push(p);
 }
-log(`merged into ${blockRings.length} block slabs`);
-const blocks = [];
-for (const ring of blockRings) {
-  const bb = bbox(ring);
-  const mine = [];
-  for (const p of parcels) {
-    const cx = p.ring.reduce((t, q) => t + q[0], 0) / p.ring.length;
-    const cz = p.ring.reduce((t, q) => t + q[1], 0) / p.ring.length;
-    if (cx > bb.x0 && cx < bb.x1 && cz > bb.z0 && cz < bb.z1) mine.push(p);
-  }
-  const id = blocks.length;
-  blocks.push({ id, ring, parcels: mine });
-  for (const p of mine) p.block = id;
-}
-log(`${blocks.length} blocks kept, ${blocks.reduce((t, b) => t + b.parcels.length, 0)} parcels attached`);
+log(`${blocks.length} blocks kept, ${blocks.reduce((t, b) => t + b.parcels.length, 0)} parcels attached (${orphans} orphan, ${(orphanArea / 1e4).toFixed(0)} ha of isolated footprints)`);
 
 // =====================================================================================================================
 // 4. Landmarks — named OSM footprints with tagged height where available, for the generic
@@ -204,6 +333,13 @@ const LANDMARK_NAMES = new Set([
   'Mercado de San Miguel', 'Iglesia de San Ginés', 'Oratorio del Caballero de Gracia', 'Edificio Grassy',
   'Palacio de la Prensa', 'Edificio Carrión', 'Teatro Capitol', 'Edificio Telefónica', 'Teatro Español',
   'Congreso de los Diputados', 'Plaza de Santa Ana', 'Puerta del Sol', 'Plaza de Canalejas', 'Iglesia de San José',
+  // Phase 2 (almendra central oeste): the hits named for this phase, plus their real neighbours
+  'Templo de Debod', 'Palacio Real', 'Palacio Real de Madrid', 'Catedral de la Almudena', 'Príncipe Pío',
+  'Catedral de Santa María la Real de la Almudena', 'Plaza de España', 'Plaza de Oriente', 'Campo del Moro',
+  'Museo Nacional Centro de Arte Reina Sofía', 'Museo Reina Sofía', 'Estación de Atocha', 'Madrid Puerta de Atocha',
+  'Estación de Atocha-Almudena Grandes', 'Estación de Príncipe Pío', 'Madrid-Príncipe Pío', 'Estación del Norte',
+  'Basílica de San Francisco el Grande', 'Palacio de Uceda', 'Mercado de San Antón', 'Iglesia de San Andrés',
+  'Palacio de la Duquesa de Sueca', 'Real Basílica de San Francisco el Grande', 'Torre de Madrid', 'Edificio Madrid-París',
 ]);
 const landmarks = {};
 // POI nodes (fountains, statues, clocks, memorials): points, extruder can skip but map/teleport use them
@@ -213,7 +349,8 @@ for (const e of els) {
   const name = t.name || t['name:es'] || '';
   if (!name) continue;
   const isPOI = t.historic === 'monument' || t.historic === 'memorial' || t.amenity === 'fountain' || t.amenity === 'clock' ||
-    t.tourism === 'artwork' || t.tourism === 'attraction' || t.man_made === 'obelisk' || t.man_made === 'tower' || t.man_made === 'cross';
+    t.tourism === 'artwork' || t.tourism === 'attraction' || t.man_made === 'obelisk' || t.man_made === 'tower' ||
+    t.man_made === 'cross' || t.railway === 'station';
   if (!isPOI) continue;
   const [x, z] = toWorld(e.lon, e.lat);
   if (x < wx0 || x > wx1 || z < wz0 || z > wz1) continue;
@@ -238,11 +375,12 @@ for (const e of els) {
   const big = rings.reduce((a, r) => (Math.abs(ringArea(r)) > Math.abs(ringArea(a)) ? r : a));
   const bb = bbox(big);
   const h = parseFloat(t.height || '') || (parseInt(t['building:levels'] || '0', 10) ? parseInt(t['building:levels'], 10) * 3.6 : 0);
-  landmarks[name] = { ring: flat(big), cx: r1((bb.x0 + bb.x1) / 2), cz: r1((bb.z0 + bb.z1) / 2), w: r1(bb.x1 - bb.x0), d: r1(bb.z1 - bb.z0), h: h ? Math.round(h * 10) / 10 : undefined };
+  landmarks[name] = { ring: flat(big), cx: r1((bb.x0 + bb.x1) / 2), cz: r1((bb.z0 + bb.z1) / 2), w: r1(bb.x1 - bb.x0), d: r1(bb.z1 - bb.z0), h: h ? Math.round(h * 10) / 10 : undefined, hSrc: h ? 'OSM' : undefined, building: t.building ? 1 : 0 };
 }
 // The big squares we name teleports after (OSM splits them across many open/fragmented ways):
 // merge every fragment of the same name into one footprint (union bbox + outer hull ring)
-const PLAZA_NAMES = ['Plaza de la Cibeles', 'Plaza de Callao', 'Plaza de la Puerta del Sol', 'Plaza Mayor', 'Plaza de la Villa', 'Plaza de la Independencia'];
+const PLAZA_NAMES = ['Plaza de la Cibeles', 'Plaza de Callao', 'Plaza de la Puerta del Sol', 'Plaza Mayor', 'Plaza de la Villa',
+  'Plaza de la Independencia', 'Plaza de España', 'Plaza de Oriente', 'Plaza de la Armería', 'Glorieta del Emperador Carlos V'];
 const plazaFragments = new Map();
 for (const e of els) {
   if (e.type !== 'way' || !e.geometry) continue;
@@ -268,7 +406,7 @@ for (const e of els) {
   const t = e.tags || {};
   const name = t.name || t['name:es'] || '';
   if (!name || !LANDMARK_NAMES.has(name)) continue;
-  const isArea = t.building || t.place === 'square' || t.historic || t.tourism || t.amenity === 'fountain' || t.man_made;
+  const isArea = t.building || t.place === 'square' || t.historic || t.tourism || t.amenity || t.man_made; // closed way = area
   if (!isArea) continue;
   const pts = e.geometry.filter((p) => p).map((p) => toWorld(p.lon, p.lat));
   if (pts.length < 3) continue;
@@ -277,7 +415,81 @@ for (const e of els) {
   if (ringArea(ring) > 0) ring.reverse();
   const bb = bbox(ring);
   const h = parseFloat(t.height || '') || (parseInt(t['building:levels'] || '0', 10) ? parseInt(t['building:levels'], 10) * 3.6 : 0);
-  landmarks[name] = { ring: flat(ring), cx: r1((bb.x0 + bb.x1) / 2), cz: r1((bb.z0 + bb.z1) / 2), w: r1(bb.x1 - bb.x0), d: r1(bb.z1 - bb.z0), h: h ? Math.round(h * 10) / 10 : undefined };
+  landmarks[name] = { ring: flat(ring), cx: r1((bb.x0 + bb.x1) / 2), cz: r1((bb.z0 + bb.z1) / 2), w: r1(bb.x1 - bb.x0), d: r1(bb.z1 - bb.z0), h: h ? Math.round(h * 10) / 10 : undefined, hSrc: h ? 'OSM' : undefined, building: t.building ? 1 : 0 };
+}
+
+// Canonical keys for features whose OSM name varies (accents, station renames, "de Madrid" suffixes). Only applied to
+// buildings/stations/squares, and only when the OSM name really is that feature.
+const CANON = [
+  ['Templo de Debod', /templo de debod/i],
+  ['Palacio Real', /^palacio real( de madrid)?$/i],
+  ['Catedral de la Almudena', /almudena/i],
+  ['Plaza de España', /^plaza de espa(n|ñ)a$/i],
+  ['Museo Reina Sofía', /reina sof(i|í)a/i],
+  ['Estación de Atocha', /puerta de atocha|estaci(o|ó)n de atocha/i],
+  ['Estación de Príncipe Pío', /pr(i|í)ncipe p(i|í)o/i],
+];
+for (const [canonical, re] of CANON) {
+  if (landmarks[canonical]) continue;
+  let bestName = null, bestArea = -1;
+  for (const [name, lm] of Object.entries(landmarks)) {
+    if (!re.test(name) || !(lm.w > 8 && lm.d > 8)) continue; // a real footprint, not a POI pin
+    const area = lm.w * lm.d;
+    if (area > bestArea) { bestArea = area; bestName = name; }
+  }
+  if (bestName) {
+    landmarks[canonical] = { ...landmarks[bestName], osmName: bestName };
+    log(`  landmark ${canonical} <- OSM "${bestName}"`);
+  }
+}
+
+// Real landmark heights: the IDEAM parcel under the footprint (authoritative), never a guess. The OSM height tag is
+// only used where the cadastral layer has no parcel for the building.
+{
+  const CELL = 64;
+  const grid = new Map();
+  for (const p of parcels) {
+    p.bb = bbox(p.ring);
+    for (let ix = Math.floor(p.bb.x0 / CELL); ix <= Math.floor(p.bb.x1 / CELL); ix++) {
+      for (let iz = Math.floor(p.bb.z0 / CELL); iz <= Math.floor(p.bb.z1 / CELL); iz++) {
+        const k = ix * 100000 + iz;
+        if (!grid.has(k)) grid.set(k, []);
+        grid.get(k).push(p);
+      }
+    }
+  }
+  const inRing = (ring, x, z) => {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const a = ring[j], b = ring[i];
+      if ((a[1] > z) !== (b[1] > z) && x < ((b[0] - a[0]) * (z - a[1])) / (b[1] - a[1]) + a[0]) inside = !inside;
+    }
+    return inside;
+  };
+  const heightAt = (x, z) => {
+    let h = 0;
+    for (const p of grid.get(Math.floor(x / CELL) * 100000 + Math.floor(z / CELL)) || []) {
+      if (x < p.bb.x0 || x > p.bb.x1 || z < p.bb.z0 || z > p.bb.z1) continue;
+      if (p.h > h && inRing(p.ring, x, z)) h = p.h;
+    }
+    return h;
+  };
+  let measured = 0;
+  for (const lm of Object.values(landmarks)) {
+    if (!lm.building || !lm.ring || lm.ring.length < 6) continue;
+    let h = 0;
+    const N = 6;
+    for (let i = 0; i < N; i++) {
+      for (let j = 0; j < N; j++) {
+        const x = lm.cx - lm.w / 2 + (lm.w * (i + 0.5)) / N;
+        const z = lm.cz - lm.d / 2 + (lm.d * (j + 0.5)) / N;
+        const ph = heightAt(x, z);
+        if (ph > h) h = ph;
+      }
+    }
+    if (h > 0) { lm.h = h; lm.hSrc = 'IDEAM'; measured++; }
+  }
+  log(`landmark heights: ${measured} measured from IDEAM parcels`);
 }
 log(`${Object.keys(landmarks).length} landmark footprints: ${Object.keys(landmarks).join(', ') || '(none)'}`);
 
@@ -388,6 +600,73 @@ for (const [a, b, n, w, lanes, dir, hw, inner] of graphLinks) {
 }
 log(`road graph: ${outNodes.length / 2} nodes, ${outLinks.length} links, ${names.length} street names`);
 
+
+// =====================================================================================================================
+// 5b. LAND & BARRIOS — the phase box minus the real water polygons (the Manzanares, Madrid Río, ponds): the land
+//     rings are what the ground deck is built from, so the river is real geometry, never a decorative lake.
+//     Barrios come from the administrative boundaries (admin_level=9) when tools/madrid/fetch.sh got them.
+// =====================================================================================================================
+// Water is clipped to the phase box (Sutherland-Hodgman against the four box edges) so every polygon is a valid
+// hole in the ground deck. A channel that leaves and re-enters the frame becomes a band along the frame edge, which
+// is exactly what the cut looks like.
+function clipWater(ring, x0, z0, x1, z1) {
+  let out = ring;
+  const clip = (pts, keep, axis) => {
+    const res = [];
+    for (let i = 0; i < pts.length; i++) {
+      const a = pts[i];
+      const b = pts[(i + 1) % pts.length];
+      const da = keep * (a[axis] - (keep > 0 ? (axis === 0 ? x0 : z0) : (axis === 0 ? x1 : z1)));
+      const db = keep * (b[axis] - (keep > 0 ? (axis === 0 ? x0 : z0) : (axis === 0 ? x1 : z1)));
+      if (da >= 0) res.push(a);
+      if ((da >= 0) !== (db >= 0)) {
+        const t = da / (da - db);
+        res.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+      }
+    }
+    return res;
+  };
+  out = clip(out, 1, 0);
+  out = clip(out, -1, 0);
+  out = clip(out, 1, 1);
+  out = clip(out, -1, 1);
+  return out.length >= 3 ? out : null;
+}
+const waterClipped = [];
+for (const ring of water) {
+  const c = clipWater(ring, wx0, wz0, wx1, wz1);
+  if (!c) continue;
+  const simp = rdpRing(c, 0.8);
+  if (simp.length < 3 || Math.abs(ringArea(simp)) < 150) continue;
+  if (ringArea(simp) > 0) simp.reverse();
+  waterClipped.push(simp);
+}
+const waterInBox = waterClipped.reduce((t, r) => t + Math.abs(ringArea(r)), 0);
+log(`water clipped to the frame: ${waterClipped.length} polygons, ${(waterInBox / 1e6).toFixed(3)} km2 inside`);
+if (!waterClipped.length) throw new Error('no water inside the box: the Manzanares is missing from the extract');
+
+const barrios = [];
+const BARRIOS_FILE = path.join(DATA, 'barrios.json');
+if (fs.existsSync(BARRIOS_FILE)) {
+  const bd = JSON.parse(fs.readFileSync(BARRIOS_FILE, 'utf8'));
+  const rels = (bd.elements || []).filter((e) => e.type === 'relation' && e.members);
+  // Barrios of Madrid are admin_level=10, distritos admin_level=9: use the finest level the extract carries.
+  const level = rels.some((e) => (e.tags || {}).admin_level === '10') ? '10' : '9';
+  for (const e of rels) {
+    const t = e.tags || {};
+    const name = t.name || '';
+    if (!name || t.boundary !== 'administrative' || t.admin_level !== level) continue;
+    const rings = stitchOuterRings(e.members).map((raw) => rdpRing(raw.map((p) => toWorld(p.lon, p.lat)), 2.5))
+      .filter((r) => Math.abs(ringArea(r)) > 5000);
+    if (!rings.length) continue;
+    const ring = rings.reduce((a, r) => (Math.abs(ringArea(r)) > Math.abs(ringArea(a)) ? r : a));
+    if (ringArea(ring) > 0) ring.reverse();
+    const bb = bbox(ring);
+    barrios.push({ name, ring, x0: bb.x0, x1: bb.x1, z0: bb.z0, z1: bb.z1, cx: (bb.x0 + bb.x1) / 2, cz: (bb.z0 + bb.z1) / 2 });
+  }
+}
+log(`${barrios.length} barrios from admin boundaries${barrios.length ? `: ${barrios.map((b) => b.name).join(', ')}` : ' (none: run fetch.sh for barrios.json)'}`);
+
 // =====================================================================================================================
 // 6. Assemble GEO — same schema keys the NYC runtime consumes (city-config & co), plus Madrid
 //    additions (`parcels`, `water`, `plazasMadrid`) the Madrid city-config rewrite will use.
@@ -398,27 +677,33 @@ const GEO = {
   version: 1,
   phase: phase.name,
   frame: { bearingDeg: 0, origin: 'Puerta del Sol', units: 'm', cutZ: CUT_Z, strip: 0, sidewalk: 4.0, madrid: true },
-  // "coastline" = phase bbox ring: the land surface the city builds on
+  // "coastline" = the phase box (the frame cut). The real water is GEO.water: the ground deck is built with each of
+  // those polygons as a hole, so the Manzanares channel is a real hole in the city, not a rectangle.
   manhattan: flat([[wx0, wz0], [wx1, wz0], [wx1, wz1], [wx0, wz1]]),
+  landRings: [flat([[wx0, wz0], [wx1, wz0], [wx1, wz1], [wx0, wz1]])],
   upperManhattan: flat([[wx0, wz0 - 4000], [wx1, wz0 - 4000], [wx1, wz0], [wx0, wz0]]),
   // N-S corridors ( avenidas ) & E-W arterials, consumed by the Madrid city-config rewrite
   streets: streetRuns.map(({ n, label, z, w, lanes, dir, hw, segs }) => [n, label, z, w, lanes, dir, hw, segs]),
   avenues: avenues.map(({ id, label, x, width, lanes, dir, hw, segs }) => [id, label, x, width, lanes, dir, hw, segs]),
-  // barrios as [name, x0, x1, z0, z1]; Sol around the origin, Gran Vía band north of it
-  districts: [
-    ['Sol', -200, 250, -150, 150], ['Gran Vía', -650, 350, -400, -120], ['Chueca', -350, 400, -700, -250],
-    ['Justicia', -300, 450, -500, -150], ['Cortes', 150, 550, -50, 350], ['Huertas', 200, 550, 100, 550],
-    ['La Latina', -900, -350, 150, 650], ['Austrias', -700, -150, 100, 500], ['Lavapiés', 300, 800, 300, 800],
-    ['Universidad', -800, -300, -700, -250], ['Embajadores', 200, 700, 500, 900], ['Jerónimos', 450, 950, -100, 300],
-  ],
+  // Barrios as [name, x0, x1, z0, z1] (bounding boxes of the real administrative boundaries; districtAt also tests
+  // the polygons in `barrios`). Falls back to coarse rects around Sol / Gran Vía when boundaries were not fetched.
+  districts: barrios.length
+    ? barrios.map((b) => [b.name, r1(b.x0), r1(b.x1), r1(b.z0), r1(b.z1)])
+    : [
+      ['Sol', -200, 250, -150, 150], ['Gran Vía', -650, 350, -400, -120], ['Chueca', -350, 400, -700, -250],
+      ['Justicia', -300, 450, -500, -150], ['Cortes', 150, 550, -50, 350], ['Huertas', 200, 550, 100, 550],
+      ['La Latina', -900, -350, 150, 650], ['Austrias', -700, -150, 100, 500], ['Lavapiés', 300, 800, 300, 800],
+      ['Universidad', -800, -300, -700, -250], ['Embajadores', 200, 700, 500, 900], ['Jerónimos', 450, 950, -100, 300],
+    ],
+  barrios: barrios.map((b) => ({ name: b.name, ring: flat(b.ring), cx: r1(b.cx), cz: r1(b.cz) })),
   broadway: flat([[wx0 + (wx1 - wx0) / 2, wz0], [wx0 + (wx1 - wx0) / 2, wz1]]), // neutral spine; Madrid config replaces getBroadwayX
   plazas: [],
   roads: roadLines.map((r) => [r.name, r1(r.w), r.dir, r.lanes, r.hw, flat(r.pts)]),
   roadGraph: { nodes: outNodes, links: outLinks, names },
-  blocks: blocks.map((b) => [flat(b.ring), [], 0, '', 0, 0]),
+  blocks: blocks.map((b) => [flat(b.ring), b.rects, 0, '', 0, 0]),
   parcels: blocks.map((b) => b.parcels.map((p) => ({ ring: flat(p.ring), h: p.h }))),
   parks: parks.map((p) => ({ name: p.name, cat: p.cat, acres: Math.round(p.acres * 10) / 10, rings: p.rings.map(flat) })),
-  water: water.map(flat),
+  water: waterClipped.map(flat),
   plazasMadrid: [
     ...plazas.map((p) => ({ name: p.name, ring: flat(p.ring) })),
     ...PLAZA_NAMES.filter((n) => landmarks[n] && landmarks[n].ring.length > 6).map((n) => ({ name: n, ring: landmarks[n].ring })),
@@ -441,13 +726,37 @@ const GEO = {
   points: { castleClinton: [0, wz1 + 6000], whitehallTerminal: [0, wz1 + 6000], peterMinuitPlaza: [0, wz1 + 6000] },
 };
 
-const json = JSON.stringify(GEO);
+// ---------------------------------------------------------------------------------------------------------------------
+// Output: js/madrid-geodata.js (core GEO) + js/madrid-geodata-blocks.js (block slabs & cadastral parcels). The block
+// layer is the bulk of the data and is split out so both files stay parseable/reviewable and the browser can fetch
+// them in parallel (same contract: `import { GEO } from './madrid-geodata.js'`).
+// ---------------------------------------------------------------------------------------------------------------------
+const core = { ...GEO };
+const blockLayer = { blocks: core.blocks, parcels: core.parcels };
+core.blocks = [];
+core.parcels = [];
+
+const OUT_DIR = path.dirname(OUT);
+const BLOCKS_OUT = path.join(OUT_DIR, 'madrid-geodata-blocks.js');
+const credits = `// Building footprints & heights: Ayuntamiento de Madrid IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid).
+// Streets, parks, water, barrios & landmark footprints: © OpenStreetMap contributors (ODbL). See MADRID.md.`;
+
+fs.writeFileSync(BLOCKS_OUT, `// js/madrid-geodata-blocks.js — GENERATED by tools/madrid/build.mjs, do not edit by hand.
+// Phase ${phase.name}: ${phase.label}. Block slabs recovered from the cadastral parcels + every parcel with its IDEAM height (m).
+${credits}
+export const BLOCKS = ${JSON.stringify(blockLayer.blocks)};
+export const PARCELS = ${JSON.stringify(blockLayer.parcels)};
+`);
+
 const header = `// js/madrid-geodata.js — GENERATED by tools/madrid/build.mjs, do not edit by hand.
 // Real Madrid geography in the simulation's world frame: 1 unit = 1 m, x = east, z = south (north = -z),
 // origin at Puerta del Sol, no rotation (bearingDeg 0). Phase ${phase.name}: ${phase.label}.
-// Building footprints & heights: Ayuntamiento de Madrid IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid).
-// Streets, parks, water & landmark footprints: © OpenStreetMap contributors (ODbL). See MADRID.md.
+${credits}
+import { BLOCKS, PARCELS } from './madrid-geodata-blocks.js';
+
 export const GEO = `;
-fs.writeFileSync(OUT, `${header}${json};\n`);
-log(`wrote ${OUT} (${(fs.statSync(OUT).size / 1024).toFixed(0)} KB)`);
-for (const [k, v] of Object.entries(GEO)) log(`  ${k}: ${(JSON.stringify(v).length / 1024).toFixed(0)} KB`);
+fs.writeFileSync(OUT, `${header}${JSON.stringify(core)};\nGEO.blocks = BLOCKS;\nGEO.parcels = PARCELS;\n`);
+
+for (const f of [OUT, BLOCKS_OUT]) log(`wrote ${path.basename(f)} (${(fs.statSync(f).size / 1024).toFixed(0)} KB)`);
+for (const [k, v] of Object.entries(core)) log(`  ${k}: ${(JSON.stringify(v).length / 1024).toFixed(0)} KB`);
+log(`  blocks: ${(JSON.stringify(blockLayer.blocks).length / 1024).toFixed(0)} KB, parcels: ${(JSON.stringify(blockLayer.parcels).length / 1024).toFixed(0)} KB`);
