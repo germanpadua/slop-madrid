@@ -1,9 +1,19 @@
 # Dirección de fachadas Madrid (borrador de trabajo, 2026-10-28)
 
-Pregunta del usuario: "¿las fachadas se parecen a Madrid?" Respuesta honesta: todavía no. Este
-documento fija por qué y hacia dónde va el trabajo de fachadas. Es una propuesta de dirección,
+Pregunta del usuario: "¿las fachadas se parecen a Madrid?" Respuesta honesta: todavía no.
+
+**DIRECCIÓN DEL USUARIO (2026-10-28, prioritaria):** estilo más SIMPLE, tipo Warsaw, modificado
+levemente para parecer Madrid - no realismo de fachada ornamentado. Concretamente: fachadas
+limpias y planas (color plano + sombreado sutil, sin retícula de ventanas ruidosa), con rasgos
+madrileños seleccionados (paleta, tejados de teja, banda de planta baja y línea de cornisa como
+máximo). Antes de cualquier despliegue general: comparación mismo bloque actual vs propuesto
+para que el usuario decida. La propuesta ornamental de más abajo queda SUPERSEDED como referencia
+de fuentes, no como plan.
+
+Este documento fija por qué y hacia dónde va el trabajo de fachadas. Es una propuesta de dirección,
 no una decisión aprobada; cualquier prototipo se valida con renders contra referencias antes de
 integrarse.
+
 
 ## Estado actual (verificado en código)
 
@@ -43,7 +53,7 @@ Ensanche / zonas nobles (Salamanca, Cortes, ejes como Gran Vía):
   https://dialnet.unirioja.es/servlet/tesis?codigo=191267
 - Miradores acristalados como rasgo burgués (misma fuente IFEMA).
 
-## Dirección propuesta (a prototipar en este orden)
+## Dirección SUPERSEDED (ornamental; se conserva solo como referencia de fuentes)
 
 1. Composición vertical en el generador: bandas de planta baja (huecos mayores, paño distinto),
    piso principal (balcones con rejería marcada, molduras), pisos corrientes (retícula más
@@ -68,3 +78,17 @@ Ensanche / zonas nobles (Salamanca, Cortes, ejes como Gran Vía):
   de corralas y Ensanche; inspección de píxeles antes de commit.
 - Después: asignación de arquetipos y fachadas interiores de corrala. Cada paso con commit
   revisable en wip/madrid-experience.
+
+## Plan activo (Warsaw-simple, 2026-10-28)
+
+1. Prototipo de material de fachada simple: color plano por parcela (paletas Madrid actuales),
+   sombreado muy sutil de plantas SIN huecos dibujados, banda de planta baja y línea de cornisa
+   como únicos rasgos; cubiertas como hoy (teja en casco, pizarra oscura en Ensanche si aporta).
+2. Comparación A/B en el harness sobre el MISMO bloque real de k3j0 (block3-tilepath.html,
+   ?data=block17.json o manzana 315): render actual vs propuesto, misma cámara, para enseñársela
+   al usuario ANTES de cualquier integración. Sin commit de integración hasta su OK.
+3. Si el usuario aprueba: arquetipo por datos (casco/Ensanche/ejes) con la misma economía visual;
+   galerías de corrala solo si se leen limpias a esta escala; nunca por hash ruidoso.
+4. Referencia de simplicidad: tiny-warsaw (una malla por zona, atlas 1024x512, vertex colors,
+   medianeras = retranqueo + banda oscurecida, no supresión de huecos). Es guía de economía
+   visual, no plantilla a copiar.
