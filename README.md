@@ -1,15 +1,32 @@
-# Slop New York
+# Slop Madrid
 
-A New York City simulation built with [three.js](https://threejs.org/), WebGPURenderer, and TSL. Explore Manhattan on foot, by car, by bicycle, or by helicopter.
+Recreación explorable del centro de Madrid con Three.js, WebGPURenderer y materiales TSL, basada en [Slop New York](https://mrdoob.github.io/slop-newyork/). Permite recorrer las calles y observarlas desde una maqueta aérea. El objetivo acordado está en [PRODUCT.md](PRODUCT.md); el estado del prototipo anterior, en [CODEX-HANDOFF.md](CODEX-HANDOFF.md).
 
-[Try it live](https://mrdoob.github.io/slop-newyork/)
+## Arranque local
 
-## Make it your own
+Desde la raíz del repositorio:
 
-Fork it, remix it, improve it, break it. Make games, animations, films, experiments, or something completely different. Use it as a starting point and take it wherever you want. Have fun!
+```sh
+python3 -m http.server 8080
+```
 
-## License and data
+Abre `http://localhost:8080`. Las dependencias Three.js y las fuentes se descargan de Internet. `?webgl=1` fuerza WebGL2; `?debug=1` expone los diagnósticos. La cámara **Maqueta de Madrid** está en el selector de cámaras: arrastra para girar y usa rueda o pellizco para acercarte. El mapa (`M`) permite cambiar de zona.
 
-The project code is available under the [MIT License](LICENSE).
+## Verificación
 
-Geographic data: NYC Open Data and © [OpenStreetMap contributors](https://www.openstreetmap.org/copyright) (ODbL). Third-party data and dependencies retain their respective licenses.
+```sh
+node --test tests/*.test.cjs
+```
+
+Para el navegador se requiere Playwright y Chromium instalados:
+
+```sh
+PLAYWRIGHT_MODULE=/ruta/a/playwright/index.mjs CHROME_PATH=/ruta/a/chrome WEBGL=1 \
+  node tools/madrid/measure.mjs --boot-only
+```
+
+Opcionales: `VERBOSE=1` muestra la consola y `SCREENSHOT=/tmp/madrid.png` guarda una captura. Sin `--boot-only` el verificador prueba también streaming. Una pérdida de contexto gráfico o ausencia de fotogramas produce un resultado fallido. Los FPS de SwiftShader son diagnósticos de software y no una medida de GPU real.
+
+## Datos y licencias
+
+Código bajo [MIT](LICENSE). Consulta [MADRID.md](MADRID.md) para fuentes y generación geográfica. Los colores y detalles procedurales son ilustrativos. Los datos fuente pesados de Madrid con permisos de redistribución pendientes quedan fuera del repositorio. No se deben regenerar las teselas restantes sin disponer de esas fuentes y revisar sus permisos.

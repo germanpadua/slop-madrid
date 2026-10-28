@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Slop Madrid</title>
   <link rel="icon" href="data:," />
-  <meta name="description" content="Photorealistic GTA-style 3D Slop Madrid simulation built with Three.js WebGPURenderer and TSL shaders featuring Madrid's historic centre (Sol, Gran Vía, Cibeles, Puerta de Alcalá), third-person navigation (Person, Car, Cyclist, Helicopter), and 11 cinematic cameras at 60 FPS." />
+  <meta name="description" content="Explora una recreación 3D del centro de Madrid: Sol, Gran Vía, Cibeles y Puerta de Alcalá. Recorre sus calles o descubre la ciudad desde una maqueta aérea. Geometría geográfica y arquitectura de interpretación ilustrativa." />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <!-- three.js dev branch (builds committed to mrdoob/three.js@dev, served by jsDelivr) -->
   <script type="importmap">
@@ -254,6 +254,7 @@
 
   <!-- All Cameras: 3 Follow Cameras + 7 Madrid Vantage Cameras + Auto-Director Drone -->
   <div id="camera-popover" class="popover" popover data-side="above" data-anchor="hud-cluster" data-align="hud-cluster" aria-label="Multiple Camera Angles">
+    <button id="cam-maqueta" class="pop-item cam-btn" data-camera="maqueta" type="button"><span class="pop-name">Maqueta de Madrid</span><span class="pop-sub">Arrastra para girar · Rueda o pellizca para acercar</span></button>
     <div class="pop-title">Follow</div>
     <button id="cam-chase" class="pop-item cam-btn active" data-camera="chase" type="button"><span class="pop-name">3rd-Person Chase</span><kbd>5</kbd></button>
     <button id="cam-action" class="pop-item cam-btn" data-camera="action" type="button"><span class="pop-name">Low-Angle Action</span><kbd>6</kbd></button>

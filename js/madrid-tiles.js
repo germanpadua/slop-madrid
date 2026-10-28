@@ -118,6 +118,7 @@ export async function createTileStreamer({
   if (tiles.some((t) => t.id === SEED_TILE_ID)) loaded.set(SEED_TILE_ID, { bytes: seedBytes || tiles.find((t) => t.id === SEED_TILE_ID).bytes || 0 });
   const retries = new Map();
   const inFlight = new Set();
+  let cameraPosition = null;
   let lastX = Infinity, lastZ = Infinity, lastAt = -Infinity;
   let failures = 0;
 
@@ -132,6 +133,10 @@ export async function createTileStreamer({
     const tile = tiles.find((t) => t.id === id);
     // One retry, then the tile is left alone (no request storms); at most three modules in flight at once.
     if (!tile || loaded.has(id) || inFlight.has(id) || (retries.get(id) || 0) >= 2 || inFlight.size >= 3) return;
+    const reservedBytes = [...inFlight].reduce((n, key) => n + (tiles.find((t) => t.id === key)?.bytes || 0), 0);
+    const residentBytes = status().bytes;
+    if (loaded.size + inFlight.size >= budgetCfg.maxResidentTiles ||
+        residentBytes + reservedBytes + (tile.bytes || 0) > budgetCfg.maxResidentBytes) return;
     inFlight.add(id);
     const t0 = performance.now();
     try {
@@ -140,6 +145,8 @@ export async function createTileStreamer({
       const mod = await importModule(url);
       const data = mod.TILE;
       if (!data || data.id !== id) throw new Error(`module ${tile.module} does not export TILE ${id}`);
+      // Imports cannot be cancelled, but obsolete geometry need not be built after a teleport.
+      if (cameraPosition && distanceToCore(tile, cameraPosition.x, cameraPosition.z) > budgetCfg.dropRadius) return;
       world.addTile({ ...data, bytes: tile.bytes || 0 });
       loaded.set(id, { bytes: tile.bytes || 0, objects: world.meshCount() });
       console.info(`[madrid-tiles] +${id} ${Math.round(performance.now() - t0)}ms ${tile.bytes} B (${status().loaded.length} resident)`);
@@ -170,23 +177,24 @@ export async function createTileStreamer({
 
   /** Call every frame (cheap) or a few times per second; it self-throttles to 20 m / 400 ms. */
   function update(x, z, now = performance.now()) {
+    cameraPosition = { x, z };
     const moved = Math.hypot(x - lastX, z - lastZ);
     if (moved < 20 && now - lastAt < 400) return null;
     const dt = (now - lastAt) / 1000;
-    const vx = dt > 0 ? (x - lastX) / dt : 0;
-    const vz = dt > 0 ? (z - lastZ) / dt : 0;
+    const vx = dt > 0 && moved <= budgetCfg.dropRadius ? (x - lastX) / dt : 0;
+    const vz = dt > 0 && moved <= budgetCfg.dropRadius ? (z - lastZ) / dt : 0;
     lastX = x; lastZ = z; lastAt = now;
     const plan = planTiles({
       tiles,
-      loaded,
+      loaded: new Map([...loaded, ...[...inFlight].map((id) => [id, { bytes: tiles.find((t) => t.id === id)?.bytes || 0 }])]),
       x,
       z,
       vx,
       vz,
-      bytes: [...loaded.values()].reduce((n, v) => n + v.bytes, 0),
+      bytes: status().bytes + [...inFlight].reduce((n, id) => n + (tiles.find((t) => t.id === id)?.bytes || 0), 0),
       budget: budgetCfg
     });
-    for (const id of plan.drop) dropTile(id);
+    for (const id of plan.drop) { if (loaded.has(id)) dropTile(id); }
     for (const id of plan.load) loadTile(id);
     return plan;
   }

@@ -240,3 +240,20 @@ test('teleport releases every camera pointer and ignores old gestures before acc
   close(h.camera.orbitYawOffset, -0.065);
   assert.equal(h.camera.isDragging, true);
 });
+
+test('Madrid model camera stays above the explorer and responds to orbit and zoom', () => {
+  const h = cameraHarness();
+  const camera = h.camera;
+  camera.setCameraPreset('maqueta', true);
+  camera.update(0.016, 0);
+  const firstHeight = camera.camera.position.y;
+  assert.ok(firstHeight > 500, 'model view must clear the city roofs');
+  assert.equal(camera.currentLookAt.x, 0);
+  assert.equal(camera.currentLookAt.z, 100);
+  camera.zoomMultiplier = 0.5;
+  camera.orbitYawOffset = 1;
+  camera.initialized = false;
+  camera.update(0.016, 0);
+  assert.ok(camera.camera.position.y < firstHeight);
+  assert.ok(Number.isFinite(camera.camera.position.x));
+});

@@ -779,6 +779,7 @@ async function initApp() {
       markInit('warmup');
     }
     renderPipeline.render();
+    if (window.__madrid) window.__madrid.renderedFrames = (window.__madrid.renderedFrames || 0) + 1;
     if (!warmedUp) {
       warmedUp = true;
       markInit('firstFrame');
@@ -824,4 +825,19 @@ async function initApp() {
   });
 }
 
-initApp();
+initApp().catch((error) => {
+  console.error('[Madrid] No se ha podido iniciar la ciudad:', error);
+  const status = document.getElementById('loading-status');
+  if (status) {
+    status.textContent = 'No se ha podido iniciar la ciudad. Comprueba la conexión y la aceleración gráfica del navegador. ';
+    const retry = document.createElement('button');
+    retry.type = 'button';
+    retry.textContent = 'Reintentar con WebGL';
+    retry.addEventListener('click', () => {
+      const url = new URL(window.location.href);
+      url.searchParams.set('webgl', '1');
+      window.location.assign(url.href);
+    });
+    status.appendChild(retry);
+  }
+});

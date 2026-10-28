@@ -16,6 +16,7 @@ const CAMERA_PRESETS = [
   { id: 'observatory', name: 'Skyline Panorama',          short: 'Panorama',    category: 'scenic', fov: 52 },
   { id: 'bryantPark',  name: 'Plaza Mayor',               short: 'Plaza Mayor', category: 'scenic', fov: 52 },
   { id: 'waterfront',  name: 'Manzanares Skyline',        short: 'Skyline',     category: 'scenic', fov: 46 },
+  { id: 'maqueta', name: 'Maqueta de Madrid', short: 'Maqueta', category: 'scenic', fov: 35 },
   { id: 'drone',       name: 'Auto-Director Aerial',      short: 'Director',    category: 'scenic', fov: 50 }
 ];
 
@@ -177,7 +178,7 @@ class CameraSystem {
       this.userOrbitTimer = Math.max(0, this.userOrbitTimer - dt);
     }
 
-    if (!this.isDragging && this.userOrbitTimer <= 0 && Math.abs(entity.speed) > 0.5) {
+    if (this.activePresetId !== 'maqueta' && !this.isDragging && this.userOrbitTimer <= 0 && Math.abs(entity.speed) > 0.5) {
       this.orbitYawOffset -= Math.round(this.orbitYawOffset / (Math.PI * 2)) * (Math.PI * 2);
       this.orbitYawOffset += (0.0 - this.orbitYawOffset) * (1 - Math.exp(-dt * 2.2));
     }
@@ -310,6 +311,19 @@ class CameraSystem {
         const drift = Math.sin(elapsed * 0.15) * 40.0;
         desiredPos.set(-1150.0, 60.0, -120.0 + drift);
         desiredLook.set(150.0, 60.0, -150.0);
+        break;
+      }
+
+      case 'maqueta': {
+        // A quiet, user-controlled aerial view centred on the explorer. Narrow perspective
+        // keeps the roofs readable as a model while sharing the existing orbit/pinch controls.
+        const yaw = 0.65 + this.orbitYawOffset;
+        const pitch = Math.max(0.45, Math.min(1.25, 0.85 + this.orbitPitchOffset));
+        const distance = 1150 * this.zoomMultiplier;
+        const radius = Math.cos(pitch) * distance;
+        desiredLook.set(entity.position.x, 0, entity.position.z);
+        desiredPos.set(entity.position.x + Math.cos(yaw) * radius,
+          Math.sin(pitch) * distance, entity.position.z + Math.sin(yaw) * radius);
         break;
       }
 

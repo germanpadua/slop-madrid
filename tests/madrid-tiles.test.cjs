@@ -308,3 +308,33 @@ test('every Madrid facade tier uses the pre-war masonry factory, never tier-inde
   assert.ok(src.includes('MADRID_FACADE_OPTS.map((opts) => FACADE_DEFS[0][0]'), 'tile renderer must bind every Madrid tier to FACADE_DEFS[0][0] (pre-war masonry)');
   assert.ok(!/FACADE_DEFS\[i\s*%/.test(src), 'tier-indexed FACADE_DEFS selects NYC curtain-wall for tier >= 3');
 });
+
+// Delayed module resolution reproduces a camera moving while imports are pending.
+test('streamer reserves pending bytes and skips geometry left behind after teleporting', async () => {
+  const { createTileStreamer } = await import('../js/madrid-tiles.js');
+  const tiles = ['a', 'b', 'c'].map((id, i) => ({ id, status: 'ready', bytes: 6,
+    module: `${id}.js`, core: [[i * 10, 0, i * 10 + 10, 10]] }));
+  const pending = [];
+  const built = [];
+  const streamer = await createTileStreamer({
+    manifestUrl: 'https://example.test/manifest.json', baseUrl: 'https://example.test/',
+    fetchJson: async () => ({ tiles }),
+    budget: { maxResidentBytes: 10, maxResidentTiles: 3, preloadRadius: 100, dropRadius: 200 },
+    world: { addTile: (tile) => built.push(tile.id), meshCount: () => 1, removeTile: () => true },
+    importModule: (url) => new Promise((resolve) => pending.push(() => resolve({ TILE: { id: new URL(url).pathname.slice(1, -3) } })))
+  });
+  streamer.update(0, 0, 0);
+  streamer.update(0, 0, 500);
+  assert.equal(pending.length, 1, 'pending imports reserve the byte budget across updates');
+  streamer.update(10000, 0, 1000);
+  pending[0]();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(built, [], 'obsolete imports must not build geometry');
+  assert.equal(streamer.status().bytes, 0);
+  streamer.update(0, 0, 1500);
+  assert.equal(pending.length, 2, 'discarding a stale import releases its reservation');
+  pending[1]();
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.deepEqual(built, ['a']);
+  assert.equal(streamer.status().bytes, 6);
+});
