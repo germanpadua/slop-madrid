@@ -8,7 +8,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 // name -> { url, x, z, yawDeg }  (x/z: app world coords of the GLB local origin)
 const MESH_MONUMENTS = new Map([
   // filled per monument after export sidecar is baked; example:
-  // ['Templo de Debod', { url: 'assets/mesh-monuments/debod-d025fp3.glb', x: 0, z: 0, yawDeg: 0 }],
+  ['Templo de Debod', { url: 'assets/mesh-monuments/debod-d025fp3.glb', x: -1153.79, z: -819.61, yawDeg: 0 }],
 ]);
 
 const gateOn = () => new URLSearchParams(location.search).get('meshmonuments') === '1';
