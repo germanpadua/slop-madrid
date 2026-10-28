@@ -130,12 +130,19 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
   // Every Madrid tier is masonry revoco/ladrillo: always the pre-war factory. Indexing FACADE_DEFS by tier
   // was a bug: entries 3+ are NYC curtain-wall (glass) factories that ignore the Madrid palette and turned
   // tier-3 parcels into dark glass towers (caught by the real tile-path harness, block-tilepath.html).
-  const facades = MADRID_FACADE_OPTS.map((opts) => FACADE_DEFS[0][0]({ ...opts, boxLocal: true, madrid: true }));
+  // Warsaw-simple facade probe (user-steered 2026-10-28): flat tier-toned walls, no window grid.
+  // Prototype only, gated behind ?flatfacade=1 (harness sets globalThis.__FLATFACADE); default unchanged.
+  const flatFacade = globalThis.__FLATFACADE === true;
+  const facades = MADRID_FACADE_OPTS.map((opts) => flatFacade
+    ? new THREE.MeshStandardNodeMaterial({ color: opts.stoneColor, roughness: 0.95, metalness: 0 })
+    : FACADE_DEFS[0][0]({ ...opts, boxLocal: true, madrid: true }));
   // HYBRID-B prototype: plain tier-toned wall material for coherent holed massing (no window grid yet).
   const hybridWallMats = MADRID_FACADE_OPTS.map((o) => new THREE.MeshStandardNodeMaterial({ color: o.stoneColor, roughness: 0.95, metalness: 0 }));
   // HYBRID-B facade probe: WORLD-SPACE facade variant per tier (boxLocal omitted) - windows map by
   // world position+normal onto arbitrary wall orientations, incl. extruded concave/well walls.
-  const hybridFacadeMats = MADRID_FACADE_OPTS.map((o) => FACADE_DEFS[0][0]({ ...o, madrid: true }));
+  const hybridFacadeMats = MADRID_FACADE_OPTS.map((o) => flatFacade
+    ? new THREE.MeshStandardNodeMaterial({ color: o.stoneColor, roughness: 0.95, metalness: 0 })
+    : FACADE_DEFS[0][0]({ ...o, madrid: true }));
   const medianeraMat = new THREE.MeshStandardNodeMaterial({ color: 0xb9a684, roughness: 0.97, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); // warmer masonry tone; sits ON the owner wall (0.01), depth via polygonOffset not displacement
   const mats = {
     road: materials?.road || createRoadSurfaceMaterial(),

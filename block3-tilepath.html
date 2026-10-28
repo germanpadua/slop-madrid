@@ -49,7 +49,7 @@ CX /= n; CZ /= n;
 const pad = 30;
 const bbox = [x0 - pad, z0 - pad, x1 + pad, z1 + pad];
 const tile = { id: 'harness-315', bytes: 0, core: [bbox], frame: { bbox }, water: [], blocks: [], roads: [], parks: [], parcels: data.parcels, landmarks: {} };
-const FP = !location.search.includes('fp=0'); window.__FP = FP; window.__MERGED = location.search.includes('merged=1');
+const FP = !location.search.includes('fp=0'); window.__FP = FP; window.__MERGED = location.search.includes('merged=1'); window.__FLATFACADE = location.search.includes('flatfacade=1');
 if (!FP) fetch('/__shot?name=fpoff', { method: 'POST', body: 'aabb-mode' }).catch(() => {});
 const world = createTileWorld(scene, {});
 const entry = world.addTile(tile);
