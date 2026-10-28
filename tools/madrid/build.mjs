@@ -833,9 +833,11 @@ if (IS_TILE) {
     blocks: blockLayer.blocks,
     // Flat parcel list owned by this core (the tile renderer draws one facade box per parcel; ownership by the
     // parcel's own centre keeps every footprint in exactly one tile, whatever block its raster merged into).
-    // A footprint that sits on a block is written only by that block's owner (seam buildings included, so a block is
-    // whole in one tile); a footprint in no block belongs to the core that holds its centre.
-    parcels: parcels.filter((p) => (p.frameBlock >= 0 ? p.owned : inCore(p.cx, p.cz))).map((p) => ({ ring: flat(p.ring), h: p.h })),
+    // Ownership is pure geography: a footprint belongs to the tile whose core holds its centre, whether or not it
+    // sits on a block. Block ownership still decides slabs/sidewalks, but NOT facades: two builds can trace slightly
+    // different slabs from data fetched on different days, and attaching facades to slabs then emits the same
+    // footprint from two tiles (seen 28-10-2026: k0j-1/k1j-1 seam). Centres are build-independent, so they cannot.
+    parcels: parcels.filter((p) => inCore(p.cx, p.cz)).map((p) => ({ ring: flat(p.ring), h: p.h })),
     parks: parksClipped.map((p) => ({ name: p.name, cat: p.cat, acres: p.acres, rings: p.rings.map(flat) })),
     water: waterClipped.map(flat),
     roads: roadLines.map((r) => [r.name, r1(r.w), r.dir, r.lanes, r.hw, flat(r.pts)]),

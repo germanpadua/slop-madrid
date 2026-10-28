@@ -38,6 +38,7 @@ const tileArg = args.indexOf('--tiles');
 const walk = tileArg >= 0 ? args[tileArg + 1].split(',') : ['k3j1', 'k4j1', 'k4j2', 'k2j-1', 'k0j-1', 'k0j3', 'k2j4'];
 
 const browser = await chromium.launch({
+  executablePath: process.env.CHROME_PATH || undefined, // e.g. /usr/bin/google-chrome when no bundled chromium
   args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=swiftshader', '--enable-webgpu-developer-features']
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });

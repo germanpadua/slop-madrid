@@ -128,6 +128,26 @@ presupuesto de memoria); la fase 4 es llenar el término municipal.
   manzanas por km² en la almendra construida. El municipio completo a este LOD ≈ 200–300 MB: por red, nunca un
   solo JSON.
 
+## Referencia Tiny Warsaw (28-10-2026, engine notes de tinywarsaw.app/preview/engine/)
+
+El usuario pasó tinywarsaw.app como referencia. Proyecto comparable: escalaron de 49 km² a 332 km² (924 celdas de
+600 m, 141 617 edificios, 2,14 M árboles) manteniendo la carga usable en móvil. Lo que ya coincide con este repo:
+un módulo por celda + manifiesto, URLs versionadas, presupuesto por bytes y el extracto regional OSM
+(Geofabrik/osmium) previsto para la fase 4. Lo adoptado y lo anotado:
+
+- **Adoptado (28-10-2026)**: prefetch con anticipación por velocidad en `planTiles` (~6 s por delante del vector de
+  la cámara, tope 1,5× el radio; las expulsiones miden desde la posición real). Sus cifras: frames con una celda
+  sin construir en vuelo, 26 → 0. Test nuevo en `tests/madrid-tiles.test.cjs`.
+- **Para fase 4**: niveles lejanos preconstruidos en el pack (edificios bajos pintados en la textura del suelo,
+  >25 m como bloques, KTX2 con fallback WebP): su vista completa en móvil bajó de 4,58 M a 0,36 M triángulos y de
+  761 a 12 draw calls. Es la forma madura de nuestro "nivel 0" ya esbozado arriba y sustituiría el plano "fuera de
+  mapa" por ciudad lejana real.
+- **Riesgo señalado**: probaron WebGPU y lo descartaron por más lento que WebGL en su desktop y un Samsung S23.
+  Este fork es WebGPU+TSL: el rendimiento en móvil físico hay que validarlo en el dispositivo del usuario.
+- **Ideas menores**: reveal temprano + brillo sutil en celdas cargando; suelo con malla gruesa en zonas planas
+  dentro de una tolerancia de altura; malla de suelo recortada bajo las calzadas y horneada en el pack;
+  árboles como shaders/impostores (aún no hay árboles aquí); alojamiento en Cloudflare Workers con ficheros <25 MiB.
+
 ## Verificación
 
 - Datos (semilla): `node tools/madrid/build.mjs` sale a `js/madrid-geodata.js` +
@@ -380,11 +400,14 @@ Total 2,74 MB de módulos de tesela; semilla 721 KB + 3,09 MB.
   de manzanas que la fase 2.
 - **Propiedad** (dedupe entre teselas, sin duplicar ni recortar geometría): el ráster de manzanas se ancla a una
   cuadrícula global de 100 m (no a la caja de cada tesela), así la misma manzana se traza idéntica en todas las
-  teselas que la llevan. Una manzana completa pertenece a la tesela con **más de la mitad de su área** en el core;
-  una huella pertenece a la manzana que contiene su centro (tolerancia 2,5 m por la simplificación del contorno) y,
-  si no está en ninguna, a la tesela que contiene su centro. Manzanas que tocan el borde de descarga se descartan
-  (estarían cortadas); parques y agua se recortan al core (Sutherland–Hodgman por rectángulo); hitos por centroide;
-  los vanos de puente por el punto medio del segmento (un vano se dibuja una vez).
+  teselas que la llevan. Una manzana completa pertenece a la tesela con **más de la mitad de su área** en el core —
+  eso decide losas y aceras. Las **fachadas** (una caja por huella) pertenecen siempre a la tesela cuyo core contiene
+  el **centro de la huella**, esté o no sobre una manzana: dos builds con datos de días distintos pueden trazar
+  manzanas ligeramente distintas en una costura, y atar las fachadas a la manzana emitía la misma huella desde dos
+  teselas (detectado 28-10-2026 en la costura k0j-1/k1j-1, corregido en `build.mjs`); el centro de la huella no
+  depende de la segmentación. Manzanas que tocan el borde de descarga se descartan (estarían cortadas); parques y
+  agua se recortan al core (Sutherland–Hodgman por rectángulo); hitos por centroide; los vanos de puente por el
+  punto medio del segmento (un vano se dibuja una vez).
 - La semilla se regeneró con el mismo pipeline y 100 m de solape (`build-seed`): sus bordes ya no llevan manzanas
   cortadas, y las manzanas del anillo de solape pertenecen a la tesela vecina, que las dibuja enteras.
 - Salida: módulo autocontenido `export const TILE = {id, label, core, frame, blocks, parcels, parks, water, roads,
