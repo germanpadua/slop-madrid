@@ -271,3 +271,30 @@ test('budget constants match the phase-3 target (~12 MB of resident geodata)', (
   assert.ok(TILE_BUDGET.dropRadius > TILE_BUDGET.preloadRadius);
   assert.equal(manifest.budget.maxResidentBytes, TILE_BUDGET.maxResidentBytes);
 });
+
+test('madrid facade palettes are Madrid, not Manhattan', async () => {
+  const { MADRID_FACADE_OPTS, MADRID_PARCEL_FACE } = await import('../js/madrid-tiles.js');
+  assert.equal(MADRID_FACADE_OPTS.length, 3);
+  // Manhattan table uses 2.2-2.6 m bays and 3.4-3.5 m floors; Madrid blocks use ~1.4-1.6 m bays (balcones)
+  // and 3.1-3.4 m floors.
+  for (const o of MADRID_FACADE_OPTS) {
+    assert.ok(o.windowWidth <= 1.6, `bay too wide: ${o.windowWidth}`);
+    assert.ok(o.floorHeight >= 3.0 && o.floorHeight <= 3.4, `floor out of range: ${o.floorHeight}`);
+    assert.ok(typeof o.stoneColor === 'number' && typeof o.trimColor === 'number' && typeof o.windowGlassColor === 'number');
+  }
+  const stones = new Set(MADRID_FACADE_OPTS.map((o) => o.stoneColor));
+  assert.equal(stones.size, 3, 'palettes must be distinct');
+  assert.equal(MADRID_PARCEL_FACE, 'entry');
+});
+
+test('landmark styles match named monuments, not blanket tones', async () => {
+  const { MADRID_LANDMARK_STYLES } = await import('../js/madrid-tiles.js');
+  const match = (name) => MADRID_LANDMARK_STYLES.find(([re]) => re.test(name));
+  assert.ok(match('Palacio Real de Madrid'));
+  assert.ok(match('Catedral de la Almudena'));
+  assert.ok(match('Puerta de Alcalá'));
+  assert.ok(match('Edificio Metrópolis'));
+  assert.ok(!match('Monumento al General Vara de Rey y Héroes del Caney'), 'unlisted monuments keep the default');
+  const colors = new Set(MADRID_LANDMARK_STYLES.map(([, s]) => s.color));
+  assert.ok(colors.size >= 4, 'styles must not collapse into one blanket color');
+});

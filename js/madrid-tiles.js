@@ -193,3 +193,62 @@ export async function createTileStreamer({
 
   return { manifest, tiles, update, loadTile, dropTile, status, loaded, budget: budgetCfg };
 }
+
+/**
+ * Madrid facade palettes for the tile world (phase-4 style). The seed table FACADE_DEFS in buildings.js is
+ * Manhattan pre-war masonry; these are the almendra anchors instead (references in MADRID.md): caliza blanca de
+ * Colmenar, ladrillo visto and revoco encalado, with Madrid residential rhythm - narrow bays for balcones de
+ * forja (~1.5 m) and ~3.1-3.4 m floors - instead of the 2.2-2.6 m New York bays and storefront fronts.
+ * Plain data so the choice stays testable in Node; madrid-tile-world.js pairs each entry with FACADE_DEFS' factory.
+ */
+export const MADRID_FACADE_OPTS = Object.freeze([
+  Object.freeze({ // 0: caliza blanca (Gran Via / Palacio Real limestone)
+    stoneColor: 0xe7ddc6,
+    trimColor: 0xcfc2a6,
+    windowGlassColor: 0x202e3a,
+    windowWidth: 1.5,
+    floorHeight: 3.4,
+    litProbability: 0.5,
+    warmth: 0.85,
+    seed: 21.7
+  }),
+  Object.freeze({ // 1: ladrillo visto rojizo (residencial / neomudejar)
+    stoneColor: 0xa45538,
+    trimColor: 0xd8c39a,
+    windowGlassColor: 0x1c2833,
+    windowWidth: 1.5,
+    floorHeight: 3.3,
+    litProbability: 0.48,
+    warmth: 0.9,
+    seed: 33.2
+  }),
+  Object.freeze({ // 2: revoco encalado calido (La Latina / Lavapies)
+    stoneColor: 0xe3d7bd,
+    trimColor: 0xb09877,
+    windowGlassColor: 0x243441,
+    windowWidth: 1.4,
+    floorHeight: 3.1,
+    litProbability: 0.45,
+    warmth: 0.9,
+    seed: 47.9
+  })
+]);
+
+/** Face treatment for tile parcels: residential fronts with entrance bays, not four NYC storefronts. */
+export const MADRID_PARCEL_FACE = 'entry';
+
+/**
+ * Named-monument facade styles for the tile world: each identified landmark gets the material of its real
+ * reference (caliza blanca de Colmenar, granito berroqueno, the red fronts of the Plaza Mayor), not one blanket
+ * tone. First regex that matches the OSM name wins; unmatched landmarks keep the neutral stone default.
+ */
+export const MADRID_LANDMARK_STYLES = Object.freeze([
+  Object.freeze([/\bpalacio real\b/i, Object.freeze({ color: 0xece5d3, roughness: 0.7 })]),
+  Object.freeze([/\balmudena\b/i, Object.freeze({ color: 0xe8e1cf, roughness: 0.72 })]),
+  Object.freeze([/\bpuerta de alcal/i, Object.freeze({ color: 0xe5dfce, roughness: 0.65 })]),
+  Object.freeze([/\bcibeles\b/i, Object.freeze({ color: 0xeae3d1, roughness: 0.7 })]),
+  Object.freeze([/\bmetr[oó]polis\b/i, Object.freeze({ color: 0xdfd7c2, roughness: 0.68 })]),
+  Object.freeze([/\bteatro real\b/i, Object.freeze({ color: 0xe6dfd0, roughness: 0.7 })]),
+  Object.freeze([/\bplaza mayor\b/i, Object.freeze({ color: 0xb0624a, roughness: 0.8 })]),
+  Object.freeze([/\b(catedral|iglesia|basilica|basílica|ermita)\b/i, Object.freeze({ color: 0xe3dcc8, roughness: 0.74 })])
+]);

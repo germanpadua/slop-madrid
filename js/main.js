@@ -42,11 +42,14 @@ async function initApp() {
     loadingStatus.textContent = `Initializing Three.js r${THREE.REVISION} WebGPURenderer & TSL Shaders...`;
   }
 
-  // 1. Initialize Three.js WebGPURenderer with 32-bit float reversedDepthBuffer
+  // 1. Initialize Three.js WebGPURenderer with 32-bit float reversedDepthBuffer.
+  // ?webgl forces the WebGL2 backend (lighter on devices/headless captures where WebGPU is heavy).
+  const bootParams = new URLSearchParams(window.location.search);
   const renderer = new THREE.WebGPURenderer({
     antialias: true,
     powerPreference: 'high-performance',
-    reversedDepthBuffer: true
+    reversedDepthBuffer: true,
+    forceWebGL: bootParams.has('webgl')
   });
   renderer.setPixelRatio(1.0);
   renderer.setSize(window.innerWidth, window.innerHeight);
