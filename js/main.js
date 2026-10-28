@@ -49,7 +49,9 @@ async function initApp() {
     antialias: true,
     powerPreference: 'high-performance',
     reversedDepthBuffer: true,
-    forceWebGL: bootParams.has('webgl')
+    forceWebGL: bootParams.has('webgl'),
+    // ?capture keeps the drawing buffer after compositing so a frame can be read back for visual verification.
+    preserveDrawingBuffer: bootParams.has('capture')
   });
   renderer.setPixelRatio(1.0);
   renderer.setSize(window.innerWidth, window.innerHeight);
