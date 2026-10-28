@@ -41,10 +41,17 @@ function buildPuertaDeAlcala(mat) {
     p.closePath();
     return p;
   };
-  shape.holes.push(archHole(0, 6, 11));       // central arch, top ~14 m
-  shape.holes.push(archHole(-9, 5, 9.5));     // side arches, top ~12 m
+  const OPENINGS = [
+    { cx: 0, w: 6, top: 14 },      // central arch (spring 11, r 3)
+    { cx: -9, w: 5, top: 12 },     // side arches (spring 9.5, r 2.5)
+    { cx: 9, w: 5, top: 12 },
+    { cx: -16.8, w: 4, top: 8 },   // linteled outer doors
+    { cx: 16.8, w: 4, top: 8 },
+  ];
+  shape.holes.push(archHole(0, 6, 11));
+  shape.holes.push(archHole(-9, 5, 9.5));
   shape.holes.push(archHole(9, 5, 9.5));
-  shape.holes.push(doorHole(-16.8, 4, 8));    // linteled outer doors
+  shape.holes.push(doorHole(-16.8, 4, 8));
   shape.holes.push(doorHole(16.8, 4, 8));
 
   const g = new THREE.Group();
@@ -52,6 +59,41 @@ function buildPuertaDeAlcala(mat) {
   body.castShadow = true;
   body.receiveShadow = true;
   g.add(body);
+
+  // Shadowed passage: dark recessed liner behind every opening so the vanos read
+  // as depth (not notches) from oblique angles and in flat midday light.
+  const linerMat = new THREE.MeshStandardNodeMaterial({ color: 0x2c2823, roughness: 1, metalness: 0 });
+  for (const o of OPENINGS) {
+    const liner = new THREE.Mesh(new THREE.BoxGeometry(o.w - 0.06, o.top, D - 1.6), linerMat);
+    liner.position.set(o.cx, o.top / 2, D / 2);
+    g.add(liner);
+  }
+
+  // Pilasters flanking the bays, on both facades (the real gate has paired columns
+  // on pedestals; pilaster strips keep the game-style low-poly read).
+  const detailMat = new THREE.MeshStandardNodeMaterial({ color: 0xefe9dc, roughness: 0.66, metalness: 0.03 });
+  for (const px of [-20.5, -13.1, -4.9, 4.9, 13.1, 20.5]) {
+    for (const pz of [-0.35, D + 0.35]) {
+      const pil = new THREE.Mesh(new THREE.BoxGeometry(1.6, 17.8, 0.7), detailMat);
+      pil.position.set(px, 1.2 + 17.8 / 2, pz);
+      pil.castShadow = true;
+      g.add(pil);
+    }
+  }
+
+  // Main cornice running the full width at the y=19 crown line.
+  const cornice = new THREE.Mesh(new THREE.BoxGeometry(W + 1.0, 0.9, D + 1.0), detailMat);
+  cornice.position.set(0, 18.95, D / 2);
+  cornice.castShadow = true;
+  g.add(cornice);
+
+  // Attic inscription band (darker recessed stone) on both attic faces.
+  const bandMat = new THREE.MeshStandardNodeMaterial({ color: 0xb9ad97, roughness: 0.8, metalness: 0.02 });
+  for (const bz of [-0.15, D + 0.15]) {
+    const band = new THREE.Mesh(new THREE.BoxGeometry(11, 1.3, 0.3), bandMat);
+    band.position.set(0, 20.3, bz);
+    g.add(band);
+  }
 
   // Granite plinth (zócalo berroqueño), slightly wider than the body
   const plinthMat = new THREE.MeshStandardNodeMaterial({ color: 0x8d8272, roughness: 0.85, metalness: 0.02 });
