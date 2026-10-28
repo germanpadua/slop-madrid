@@ -565,3 +565,6 @@ cercanas. Ampliar radios/budget es un valor del manifiesto, no un cambio de cód
   pendiente en navegador con GPU.
 - Coste medido (submit CPU, 1280x720 SwiftShader, mediana de 15): +0,30 ms por frame con `madrid:true`.
   Sin cambio de geometría; el coste GPU no se puede aislar en SwiftShader.
+
+## Tejados (hip roofs, 2026-10-28)
+Madrid residential parts (prewar/walkup) get instanced terracotta hip roofs (tejado a cuatro aguas, 6 tris/roof) instead of NYC water towers: 72% of parcels, ridge along the long axis, 0.6m eaves overhang, 8% slate variant; footprints with min(w,d)>26m use a truncated flat-deck hip (patio-block approximation from AABB alone; real patio not modelled). Rest keep a flat roof with a small bulkhead. Grounded in Tiny-Madrid illustrated references (user-chosen); harness-verified (block-roof.html) before/after. FULL-MAP VISUAL VALIDATION OUTSTANDING.

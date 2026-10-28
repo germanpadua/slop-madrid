@@ -8,6 +8,7 @@ import {
   color,
   uv,
   positionWorld,
+  positionGeometry,
   normalWorldGeometry,
   abs,
   fract,
@@ -720,7 +721,45 @@ function buildCityBlocks(scene) {
 
     // 2. Rooftop gear on the highest roof: water tower on one half, bulkhead / mechanical penthouse on the other
     const roof = o.roof ?? 'mech';
-    if (roof !== 'none') {
+    if (madridParcels && (roof === 'prewar' || roof === 'walkup')) {
+      // Madrid residential roofscape (grounded in the Tiny-Madrid illustrated references): most prewar /
+      // walk-up parcels carry a terracotta hip roof (tejado a cuatro aguas, slight eaves overhang, rare
+      // slate variant); the rest keep a flat roof with a small stair bulkhead. NYC cedar water towers
+      // do not exist on Madrid rooflines and are never emitted here.
+      const tw = rectW(top);
+      const td = rectD(top);
+      if (tw >= 6 && td >= 6 && chance(0.72)) {
+        blk.hipRoofs.push({
+          x: (top.x0 + top.x1) * 0.5,
+          y: top.y1,
+          z: (top.z0 + top.z1) * 0.5,
+          w: tw,
+          d: td,
+          h: Math.min(4.2, Math.max(2.0, Math.min(tw, td) * range(0.26, 0.34))),
+          rot: td > tw ? Math.PI * 0.5 : 0,
+          ci: (rand() * 5) | 0,
+          slate: chance(0.08),
+          // Large footprints are usually patio blocks: a single ridge would bury the courtyard,
+          // so they get the truncated (flat-deck) hip instead
+          deck: Math.min(tw, td) > 26
+        });
+      } else {
+        const hw = Math.min(tw - 1.2, range(2.4, 4.2));
+        const hd = Math.min(td - 1.2, range(2.4, 4.2));
+        if (hw >= 1.8 && hd >= 1.8) {
+          const jx = (tw - hw) * 0.5 - 0.6;
+          const jz = (td - hd) * 0.5 - 0.6;
+          blk.hvacUnits.push({
+            x: (top.x0 + top.x1) * 0.5 + range(-jx, jx),
+            y: top.y1,
+            z: (top.z0 + top.z1) * 0.5 + range(-jz, jz),
+            w: hw,
+            h: o.hvacH ?? range(2.4, 3.2),
+            d: hd
+          });
+        }
+      }
+    } else if (roof !== 'none') {
       const tw = rectW(top);
       const td = rectD(top);
       const halves = tw >= td
@@ -1948,6 +1987,7 @@ function buildCityBlocks(scene) {
       cornices: [],
       waterTowers: [],
       hvacUnits: [],
+      hipRoofs: [],
       fireEscapes: [],
       awnings: [],
       scaffoldSheds: [],
@@ -2014,7 +2054,7 @@ function buildCityBlocks(scene) {
         b.ry = th;
       }
     });
-    for (const list of [blk.cornices, blk.waterTowers, blk.hvacUnits, blk.fireEscapes, blk.awnings, blk.scaffoldSheds]) {
+    for (const list of [blk.cornices, blk.waterTowers, blk.hvacUnits, blk.hipRoofs, blk.fireEscapes, blk.awnings, blk.scaffoldSheds]) {
       for (const o of list) {
         [o.x, o.z] = toWorld(o.x, o.z);
         o.ry = th;
@@ -2376,6 +2416,59 @@ function buildCityBlocks(scene) {
   barrelInst.frustumCulled = coneInst.frustumCulled = legsInst.frustumCulled = false;
   group.add(legsInst, barrelInst, coneInst);
 
+  // 2b. Madrid terracotta hip roofs: unit cuatro-aguas prism (ridge along x), instanced & scaled per parcel
+  const MAX_HIP_ROOFS = 1600;
+  const hipGeo = new THREE.BufferGeometry();
+  hipGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+    -0.5, 0, -0.5, 0.5, 0, -0.5, 0.25, 1, 0,
+    -0.5, 0, -0.5, 0.25, 1, 0, -0.25, 1, 0,
+    0.5, 0, 0.5, -0.5, 0, 0.5, -0.25, 1, 0,
+    0.5, 0, 0.5, -0.25, 1, 0, 0.25, 1, 0,
+    -0.5, 0, 0.5, -0.5, 0, -0.5, -0.25, 1, 0,
+    0.5, 0, -0.5, 0.5, 0, 0.5, 0.25, 1, 0
+  ]), 3));
+  hipGeo.computeVertexNormals();
+  // Truncated cuatro-aguas for patio blocks: four slopes to a flat deck (t = 0.35 of unit span)
+  const hipDeckGeo = new THREE.BufferGeometry();
+  {
+    const t = 0.35;
+    const A = [-0.5, 0, -0.5], B = [0.5, 0, -0.5], C = [0.5, 0, 0.5], D = [-0.5, 0, 0.5];
+    const TA = [-t, 1, -t], TB = [t, 1, -t], TC = [t, 1, t], TD = [-t, 1, t];
+    const tri = [];
+    const quad = (p, q, r, s) => { tri.push(...p, ...q, ...r, ...p, ...r, ...s); };
+    quad(A, B, TB, TA); // north slope
+    quad(C, D, TD, TC); // south slope
+    quad(D, A, TA, TD); // west slope
+    quad(B, C, TC, TB); // east slope
+    quad(TA, TB, TC, TD); // deck
+    hipDeckGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(tri), 3));
+  }
+  hipDeckGeo.computeVertexNormals();
+  const hipMat = new THREE.MeshStandardNodeMaterial({ roughness: 0.9, metalness: 0.0, side: THREE.DoubleSide });
+  hipMat.colorNode = Fn(() => {
+    // subtle horizontal tile-course shading up the slope
+    const course = smoothstep(0.35, 0.65, fract(positionGeometry.y.mul(22.0)));
+    return mix(color(0xffffff), color(0xd8cec6), course.mul(0.14));
+  })();
+  const hipPalette = [
+    new THREE.Color(0xb0512b),
+    new THREE.Color(0xbc5f33),
+    new THREE.Color(0xa6492a),
+    new THREE.Color(0xc06a3d),
+    new THREE.Color(0x9a5238)
+  ];
+  const hipSlate = new THREE.Color(0x5d646e);
+  const hipInst = new THREE.InstancedMesh(hipGeo, hipMat, MAX_HIP_ROOFS);
+  hipInst.castShadow = hipInst.receiveShadow = true;
+  hipInst.frustumCulled = false;
+  for (let i = 0; i < MAX_HIP_ROOFS; i++) hipInst.setColorAt(i, hipPalette[0]);
+  group.add(hipInst);
+  const hipDeckInst = new THREE.InstancedMesh(hipDeckGeo, hipMat, MAX_HIP_ROOFS);
+  hipDeckInst.castShadow = hipDeckInst.receiveShadow = true;
+  hipDeckInst.frustumCulled = false;
+  for (let i = 0; i < MAX_HIP_ROOFS; i++) hipDeckInst.setColorAt(i, hipPalette[0]);
+  group.add(hipDeckInst);
+
   // 3. Rooftop mechanical penthouses & HVAC chillers with top exhaust fans & side louvers
   const hvacMat = new THREE.MeshStandardNodeMaterial({ roughness: 0.52, metalness: 0.45 });
   hvacMat.colorNode = Fn(() => {
@@ -2525,6 +2618,8 @@ function buildCityBlocks(scene) {
     let corniceCount = 0;
     let wtCount = 0;
     let hvacCount = 0;
+    let hipCount = 0;
+    let hipDeckCount = 0;
     fireEscapeSystem.begin();
     let awningCount = 0;
     let shedCount = 0;
@@ -2574,6 +2669,25 @@ function buildCityBlocks(scene) {
         hvacInst.setMatrixAt(hvacCount++, dummy.matrix);
       }
 
+      // 3b. Madrid terracotta hip roofs (per-instance rotation: block turn + ridge along the long axis)
+      for (let i = 0; i < blk.hipRoofs.length && hipCount + hipDeckCount < MAX_HIP_ROOFS * 2; i++) {
+        const r = blk.hipRoofs[i];
+        dummy.rotation.set(0, (blk.ry || 0) + r.rot, 0);
+        dummy.position.set(r.x, r.y, r.z);
+        dummy.scale.set((r.rot ? r.d : r.w) + 0.6, r.h, (r.rot ? r.w : r.d) + 0.6);
+        dummy.updateMatrix();
+        if (r.deck) {
+          hipDeckInst.setMatrixAt(hipDeckCount, dummy.matrix);
+          hipDeckInst.setColorAt(hipDeckCount, r.slate ? hipSlate : hipPalette[r.ci % hipPalette.length]);
+          hipDeckCount++;
+        } else {
+          hipInst.setMatrixAt(hipCount, dummy.matrix);
+          hipInst.setColorAt(hipCount, r.slate ? hipSlate : hipPalette[r.ci % hipPalette.length]);
+          hipCount++;
+        }
+      }
+      dummy.rotation.set(0, blk.ry || 0, 0);
+
       // 4. Wrought-iron fire escapes
       for (const fe of blk.fireEscapes) fireEscapeSystem.add(fe, focusX, focusZ);
 
@@ -2622,6 +2736,13 @@ function buildCityBlocks(scene) {
 
     hvacInst.count = hvacCount;
     flagRange(hvacInst.instanceMatrix, hvacCount);
+
+    hipInst.count = hipCount;
+    flagRange(hipInst.instanceMatrix, hipCount);
+    if (hipInst.instanceColor) flagRange(hipInst.instanceColor, hipCount);
+    hipDeckInst.count = hipDeckCount;
+    flagRange(hipDeckInst.instanceMatrix, hipDeckCount);
+    if (hipDeckInst.instanceColor) flagRange(hipDeckInst.instanceColor, hipDeckCount);
 
     fireEscapeSystem.end();
 
