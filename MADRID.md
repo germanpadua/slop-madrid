@@ -517,4 +517,33 @@ cercanas. Ampliar radios/budget es un valor del manifiesto, no un cambio de cód
   (main.js: `captureFrame` implica `forceWebGL`) y el navegador cloud carece de
   WebGPU (`navigator.gpu === false`), así que TODA captura local es WebGL2 y no se
   puede descartar ni confirmar el artefacto en la experiencia pública WebGPU desde
-  ese navegador. Prueba pendiente: cloudCoverage=0 → captura A/B.
+  ese navegador. El A/B con cloudCoverage=0 en página pesada quedó descartado (5 caídas de pestaña;
+  ruta agotada). Diagnóstico acotado del código del SkyMesh: proyección de horizonte
+  sensible a precisión (cloudUV = direction.xz/(direction.y·elev), hash fract), pero
+  las bandas se observaron ALTAS en el cielo (pitch 25-45°), así que no lo explica
+  limpiamente: sin causa verificada.
+
+## 2026-10-28 — Losa blanca de las vistas NE = Palacio de Cibeles (geometría deficiente, no NYC)
+
+- La gran caja blanca al este de la Puerta de Alcalá en las vistas NE quedó
+  identificada por raycast Möller–Trumbore desde la cámara (1344,27,-293):
+  impacto en malla de `Landmarks` (material eae3d1) en (1066,49,-276), dentro de
+  la huella OSM del **Palacio de Cibeles** (x 948-1066, cx 1006.8, cz -221.2,
+  w 119.6 × d 133, h IDEAM 63.8). No es geometría de NYC ni un artefacto de
+  captura: es un hito madrileño real renderizado como extrusión genérica lisa
+  de 63.8 m (js/landmarks.js), un ejemplo directo de la queja del usuario de que
+  los edificios/monumentos no encajan con el estilo de Madrid.
+- Bug de convención corregido en landmarks.js: las huellas se construían en
+  espacio (x, +z), pero rotateX(-PI/2) exige (x, -z) (city-grid.js:222), así que
+  TODA huella asimétrica de hito y todo pavimento de plaza asimétrico quedaba
+  espejado N-S respecto a las calles. Las plazas rectangulares (Independencia,
+  Cibeles) no lo delataban por simetría. Corregido a (x, -z) en los dos sitios
+  (extrusión y pavimento).
+- Palacio de Cibeles v1 procedural (monuments.js): referencias públicas
+  (Patrimonio y Paisaje, Ayto. de Madrid; CentroCentro) - cuerpo blanco
+  neoplateresco de 5 plantas (~28 m) sobre la huella real OSM, cuerpo superior
+  retranqueado, dos torres pentagonales flanqueando la fachada principal
+  achaflanada hacia la fuente, cimborrio octogonal del reloj de 70 m real
+  (modelo: 72 m con chapitel), chapiteles de pizarra, pináculos y pórtico de
+  columnas al Paseo del Prado. Colisionador: bbox de la huella con maxY 72.
+

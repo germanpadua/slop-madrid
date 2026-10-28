@@ -43,8 +43,8 @@ function buildLandmarks(scene) {
       if (OPEN_SPACE.test(name)) {
         const n = lm.ring.length / 2;
         const shape = new THREE.Shape();
-        shape.moveTo(lm.ring[0] - lm.cx, lm.ring[1] - lm.cz);
-        for (let i = 1; i < n; i++) shape.lineTo(lm.ring[i * 2] - lm.cx, lm.ring[i * 2 + 1] - lm.cz);
+        shape.moveTo(lm.ring[0] - lm.cx, -(lm.ring[1] - lm.cz));
+        for (let i = 1; i < n; i++) shape.lineTo(lm.ring[i * 2] - lm.cx, -(lm.ring[i * 2 + 1] - lm.cz));
         shape.closePath();
         const flat = new THREE.Mesh(new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2).translate(0, 0.12, 0), plazaMat);
         flat.receiveShadow = true;
@@ -54,7 +54,7 @@ function buildLandmarks(scene) {
         continue;
       }
       // Procedural recognizable monuments replace the flat extrusion where modelled
-      const proc = buildProceduralMonument(name, matFor(name));
+      const proc = buildProceduralMonument(name, matFor(name), lm);
       if (proc) {
         g.add(proc);
         g.position.set(lm.cx, 0, lm.cz);
@@ -66,8 +66,8 @@ function buildLandmarks(scene) {
       }
       const n = lm.ring.length / 2;
       const shape = new THREE.Shape();
-      shape.moveTo(lm.ring[0] - lm.cx, lm.ring[1] - lm.cz);
-      for (let i = 1; i < n; i++) shape.lineTo(lm.ring[i * 2] - lm.cx, lm.ring[i * 2 + 1] - lm.cz);
+      shape.moveTo(lm.ring[0] - lm.cx, -(lm.ring[1] - lm.cz));
+      for (let i = 1; i < n; i++) shape.lineTo(lm.ring[i * 2] - lm.cx, -(lm.ring[i * 2 + 1] - lm.cz));
       shape.closePath();
       const body = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: H, bevelEnabled: false }), matFor(name));
       body.rotation.x = -Math.PI / 2; // extrude runs along +z; rotate the footprint to the ground plane

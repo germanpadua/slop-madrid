@@ -141,8 +141,100 @@ function buildPuertaDeAlcala(mat) {
   return g;
 }
 
+
+// Palacio de Cibeles (Palacios & Otamendi, 1919): the white "catedral de las
+// Comunicaciones" - neoplateresco 5-floor body (~28 m) on the real OSM footprint,
+// two pentagonal towers flanking the chamfered main facade toward the fountain,
+// octagonal clock cimborrio over the crossing (real height 70 m), dark pizarra
+// spires, corner pinnacles, and the columned portico on the Paseo del Prado side.
+// Coordinates: local (lx = ring_x - cx, lz = ring_z - cz), shapes in (x, -z) so
+// rotateX(-PI/2) maps them to true (x, z) - the city-grid.js:222 convention.
+function buildPalacioDeCibeles(mat, lm) {
+  const g = new THREE.Group();
+  const trimMat = new THREE.MeshStandardNodeMaterial({ color: 0xf0ebdf, roughness: 0.62, metalness: 0.03 });
+  const slateMat = new THREE.MeshStandardNodeMaterial({ color: 0x46423e, roughness: 0.6, metalness: 0.08 });
+  const plinthMat = new THREE.MeshStandardNodeMaterial({ color: 0x8d8272, roughness: 0.85, metalness: 0.02 });
+
+  const ringShape = (scale, ox, oz) => {
+    const s = new THREE.Shape();
+    const n = lm.ring.length / 2;
+    for (let i = 0; i < n; i++) {
+      const lx = (lm.ring[i * 2] - lm.cx) * scale + (ox || 0);
+      const lz = -((lm.ring[i * 2 + 1] - lm.cz) * scale + (oz || 0));
+      if (i === 0) s.moveTo(lx, lz); else s.lineTo(lx, lz);
+    }
+    s.closePath();
+    return s;
+  };
+  const slab = (shape, y0, h, m) => {
+    const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false }).rotateX(-Math.PI / 2).translate(0, y0, 0), m);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    return mesh;
+  };
+
+  // Granite plinth, main 5-floor body, recessed upper tier, cornices at both crown lines.
+  g.add(slab(ringShape(1.03), 0, 1.2, plinthMat));
+  g.add(slab(ringShape(1), 0, 28, mat));
+  g.add(slab(ringShape(1.015), 27.1, 0.9, trimMat));   // main cornice
+  g.add(slab(ringShape(0.8), 28, 10, mat));            // recessed upper body
+  g.add(slab(ringShape(0.815), 37.1, 0.9, trimMat));   // upper cornice
+
+  // Two pentagonal towers flanking the chamfered main facade (ring corners facing
+  // the fountain): local (-38.5, -4) and (-54.8, +9.5), body to y=50, slate spires.
+  const towerGeo = new THREE.CylinderGeometry(6.2, 7.0, 50, 5);
+  const spireGeo = new THREE.ConeGeometry(4.6, 8, 5);
+  for (const [tx, tz] of [[-38.5, -4], [-54.8, 9.5]]) {
+    const tower = new THREE.Mesh(towerGeo, mat);
+    tower.position.set(tx, 25, tz);
+    tower.castShadow = true;
+    g.add(tower);
+    const spire = new THREE.Mesh(spireGeo, slateMat);
+    spire.position.set(tx, 50 + 4, tz);
+    spire.castShadow = true;
+    g.add(spire);
+  }
+
+  // Octagonal clock cimborrio over the crossing: drum 38->58, clock band, slate spire to 72.
+  const drum = new THREE.Mesh(new THREE.CylinderGeometry(9, 10, 20, 8), mat);
+  drum.position.set(-12, 38 + 10, 2);
+  drum.castShadow = true;
+  g.add(drum);
+  const clock = new THREE.Mesh(new THREE.CylinderGeometry(9.3, 9.3, 3, 8), trimMat);
+  clock.position.set(-12, 55, 2);
+  g.add(clock);
+  const cimborrioSpire = new THREE.Mesh(new THREE.ConeGeometry(6.5, 14, 8), slateMat);
+  cimborrioSpire.position.set(-12, 58 + 7, 2);
+  cimborrioSpire.castShadow = true;
+  g.add(cimborrioSpire);
+
+  // White pinnacles on the two far corners of the main body (NE and SE).
+  const pinGeo = new THREE.ConeGeometry(1.6, 6, 6);
+  for (const [px, pz] of [[56, 62], [57, -60]]) {
+    const pin = new THREE.Mesh(pinGeo, trimMat);
+    pin.position.set(px, 28 + 3, pz);
+    g.add(pin);
+  }
+
+  // Portico on the Paseo del Prado side (east face, lx ~ +59.5): 8 columns + entablature.
+  const colGeo = new THREE.CylinderGeometry(0.5, 0.55, 9, 8);
+  for (let i = 0; i < 8; i++) {
+    const col = new THREE.Mesh(colGeo, mat);
+    col.position.set(59.5, 4.5, -30 + i * 6);
+    col.castShadow = true;
+    g.add(col);
+  }
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.2, 48), trimMat);
+  beam.position.set(59.5, 9.6, -9);
+  beam.castShadow = true;
+  g.add(beam);
+
+  return g;
+}
+
 const PROCEDURAL = {
   'Puerta de Alcalá': buildPuertaDeAlcala,
+  'Palacio de Cibeles': buildPalacioDeCibeles,
 };
 
 // Collision for procedural monuments: solid piers only, openings stay passable.
@@ -151,6 +243,10 @@ const PROCEDURAL = {
 // bbox was also misaligned by D/2 in x and sealed the arches.)
 const PUERTA_PIERS = [[-21.45, -18.8], [-14.8, -11.5], [-6.5, -3], [3, 6.5], [11.5, 14.8], [18.8, 21.45]];
 export function buildProceduralColliders(name, lm) {
+  if (name === 'Palacio de Cibeles') {
+    // Solid building: full footprint bbox, tall enough for the cimborrio spire (72 m).
+    return [{ minX: lm.cx - lm.w / 2, maxX: lm.cx + lm.w / 2, minZ: lm.cz - lm.d / 2, maxZ: lm.cz + lm.d / 2, maxY: 72 }];
+  }
   if (name !== 'Puerta de Alcalá') return null;
   const D = 14;
   return PUERTA_PIERS.map(([a, b]) => ({
@@ -160,7 +256,7 @@ export function buildProceduralColliders(name, lm) {
   }));
 }
 
-export function buildProceduralMonument(name, mat) {
+export function buildProceduralMonument(name, mat, lm) {
   const fn = PROCEDURAL[name];
-  return fn ? fn(mat) : null;
+  return fn ? fn(mat, lm) : null;
 }
