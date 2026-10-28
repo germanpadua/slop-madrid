@@ -20,6 +20,7 @@ import {
   createWaterMaterial
 } from './tsl-materials.js';
 import { FACADE_DEFS } from './buildings.js';
+import { partyWallHeights } from './madrid-adjacency.js';
 import { MADRID_FACADE_OPTS, MADRID_LANDMARK_STYLES } from './madrid-tiles.js';
 
 const toPts = (flat) => {
@@ -194,29 +195,19 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       const bb = bboxOf(ring);
       const w = bb.x1 - bb.x0, d = bb.z1 - bb.z0;
       if (w < 2 || d < 2) continue;
-      pabs.push({ x0: bb.x0, x1: bb.x1, z0: bb.z0, z1: bb.z1, w, d, h: parcel.h, index });
+      pabs.push({ x0: bb.x0, x1: bb.x1, z0: bb.z0, z1: bb.z1, w, d, h: parcel.h, index, ring: parcel.ring });
       tileColliders.push({ minX: bb.x0, maxX: bb.x1, minZ: bb.z0, maxZ: bb.z1, minY: 0, maxY: parcel.h });
     }
-    const MED_TOL = 1.5, MED_OV = 0.3;
-    const medianeraHeights = (P) => {
-      const out = [0, 0, 0, 0]; // max abutting-neighbor height on -x, +x, -z, +z; 0 = free side
-      for (const Q of pabs) {
-        if (Q === P) continue;
-        const oz = Math.min(P.z1, Q.z1) - Math.max(P.z0, Q.z0);
-        const ox = Math.min(P.x1, Q.x1) - Math.max(P.x0, Q.x0);
-        if (Math.abs(Q.x1 - P.x0) < MED_TOL && oz > MED_OV * P.d) out[0] = Math.max(out[0], Q.h);
-        if (Math.abs(Q.x0 - P.x1) < MED_TOL && oz > MED_OV * P.d) out[1] = Math.max(out[1], Q.h);
-        if (Math.abs(Q.z1 - P.z0) < MED_TOL && ox > MED_OV * P.w) out[2] = Math.max(out[2], Q.h);
-        if (Math.abs(Q.z0 - P.z1) < MED_TOL && ox > MED_OV * P.w) out[3] = Math.max(out[3], Q.h);
-      }
-      return out;
-    };
-    for (const P of pabs) {
+    // Party-wall detection on the real ring footprints (js/madrid-adjacency.js): a side becomes a
+    // windowless medianera tier only where shared boundary runs cover the majority of that side.
+    const nHArr = partyWallHeights(pabs);
+    for (let pi = 0; pi < pabs.length; pi++) {
+      const P = pabs[pi];
       const cx = (P.x0 + P.x1) / 2, cz = (P.z0 + P.z1) / 2;
       const tier = Math.floor(hash(cx, cz, P.index) * facades.length) % facades.length;
       const tone = hash(cz, cx, 3);
       const shop = WALL_KINDS.shop;
-      const nH = medianeraHeights(P);
+      const nH = nHArr[pi];
       const exposed = nH.map((n) => n >= 1 && P.h - n >= 2.5);
       if (!exposed.some(Boolean)) {
         items[tier].push({ x: cx, y: P.h / 2, z: cz, w: P.w, h: P.h, d: P.d, tone, faces: [shop, shop, shop, shop] });
