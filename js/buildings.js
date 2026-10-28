@@ -728,7 +728,10 @@ function buildCityBlocks(scene) {
       // do not exist on Madrid rooflines and are never emitted here.
       const tw = rectW(top);
       const td = rectD(top);
-      if (tw >= 6 && td >= 6 && chance(0.72)) {
+      // Single-span footprints only: an AABB-spanning hip on a patio block reads as an industrial
+      // shed (visual review 2026-10-28). Large parcels keep flat roofs until footprint-aware
+      // perimeter roof rings land.
+      if (tw >= 6 && td >= 6 && Math.max(tw, td) <= 24 && chance(0.72)) {
         blk.hipRoofs.push({
           x: (top.x0 + top.x1) * 0.5,
           y: top.y1,
@@ -738,10 +741,7 @@ function buildCityBlocks(scene) {
           h: Math.min(4.2, Math.max(2.0, Math.min(tw, td) * range(0.26, 0.34))),
           rot: td > tw ? Math.PI * 0.5 : 0,
           ci: (rand() * 5) | 0,
-          slate: chance(0.08),
-          // Large footprints are usually patio blocks: a single ridge would bury the courtyard,
-          // so they get the truncated (flat-deck) hip instead
-          deck: Math.min(tw, td) > 26
+          slate: chance(0.08)
         });
       } else {
         const hw = Math.min(tw - 1.2, range(2.4, 4.2));
@@ -2428,22 +2428,6 @@ function buildCityBlocks(scene) {
     0.5, 0, -0.5, 0.5, 0, 0.5, 0.25, 1, 0
   ]), 3));
   hipGeo.computeVertexNormals();
-  // Truncated cuatro-aguas for patio blocks: four slopes to a flat deck (t = 0.35 of unit span)
-  const hipDeckGeo = new THREE.BufferGeometry();
-  {
-    const t = 0.35;
-    const A = [-0.5, 0, -0.5], B = [0.5, 0, -0.5], C = [0.5, 0, 0.5], D = [-0.5, 0, 0.5];
-    const TA = [-t, 1, -t], TB = [t, 1, -t], TC = [t, 1, t], TD = [-t, 1, t];
-    const tri = [];
-    const quad = (p, q, r, s) => { tri.push(...p, ...q, ...r, ...p, ...r, ...s); };
-    quad(A, B, TB, TA); // north slope
-    quad(C, D, TD, TC); // south slope
-    quad(D, A, TA, TD); // west slope
-    quad(B, C, TC, TB); // east slope
-    quad(TA, TB, TC, TD); // deck
-    hipDeckGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(tri), 3));
-  }
-  hipDeckGeo.computeVertexNormals();
   const hipMat = new THREE.MeshStandardNodeMaterial({ roughness: 0.9, metalness: 0.0, side: THREE.DoubleSide });
   hipMat.colorNode = Fn(() => {
     // subtle horizontal tile-course shading up the slope
@@ -2463,11 +2447,6 @@ function buildCityBlocks(scene) {
   hipInst.frustumCulled = false;
   for (let i = 0; i < MAX_HIP_ROOFS; i++) hipInst.setColorAt(i, hipPalette[0]);
   group.add(hipInst);
-  const hipDeckInst = new THREE.InstancedMesh(hipDeckGeo, hipMat, MAX_HIP_ROOFS);
-  hipDeckInst.castShadow = hipDeckInst.receiveShadow = true;
-  hipDeckInst.frustumCulled = false;
-  for (let i = 0; i < MAX_HIP_ROOFS; i++) hipDeckInst.setColorAt(i, hipPalette[0]);
-  group.add(hipDeckInst);
 
   // 3. Rooftop mechanical penthouses & HVAC chillers with top exhaust fans & side louvers
   const hvacMat = new THREE.MeshStandardNodeMaterial({ roughness: 0.52, metalness: 0.45 });
@@ -2619,7 +2598,6 @@ function buildCityBlocks(scene) {
     let wtCount = 0;
     let hvacCount = 0;
     let hipCount = 0;
-    let hipDeckCount = 0;
     fireEscapeSystem.begin();
     let awningCount = 0;
     let shedCount = 0;
@@ -2670,21 +2648,15 @@ function buildCityBlocks(scene) {
       }
 
       // 3b. Madrid terracotta hip roofs (per-instance rotation: block turn + ridge along the long axis)
-      for (let i = 0; i < blk.hipRoofs.length && hipCount + hipDeckCount < MAX_HIP_ROOFS * 2; i++) {
+      for (let i = 0; i < blk.hipRoofs.length && hipCount < MAX_HIP_ROOFS; i++) {
         const r = blk.hipRoofs[i];
         dummy.rotation.set(0, (blk.ry || 0) + r.rot, 0);
         dummy.position.set(r.x, r.y, r.z);
         dummy.scale.set((r.rot ? r.d : r.w) + 0.6, r.h, (r.rot ? r.w : r.d) + 0.6);
         dummy.updateMatrix();
-        if (r.deck) {
-          hipDeckInst.setMatrixAt(hipDeckCount, dummy.matrix);
-          hipDeckInst.setColorAt(hipDeckCount, r.slate ? hipSlate : hipPalette[r.ci % hipPalette.length]);
-          hipDeckCount++;
-        } else {
-          hipInst.setMatrixAt(hipCount, dummy.matrix);
-          hipInst.setColorAt(hipCount, r.slate ? hipSlate : hipPalette[r.ci % hipPalette.length]);
-          hipCount++;
-        }
+        hipInst.setMatrixAt(hipCount, dummy.matrix);
+        hipInst.setColorAt(hipCount, r.slate ? hipSlate : hipPalette[r.ci % hipPalette.length]);
+        hipCount++;
       }
       dummy.rotation.set(0, blk.ry || 0, 0);
 
@@ -2740,9 +2712,6 @@ function buildCityBlocks(scene) {
     hipInst.count = hipCount;
     flagRange(hipInst.instanceMatrix, hipCount);
     if (hipInst.instanceColor) flagRange(hipInst.instanceColor, hipCount);
-    hipDeckInst.count = hipDeckCount;
-    flagRange(hipDeckInst.instanceMatrix, hipDeckCount);
-    if (hipDeckInst.instanceColor) flagRange(hipDeckInst.instanceColor, hipDeckCount);
 
     fireEscapeSystem.end();
 
