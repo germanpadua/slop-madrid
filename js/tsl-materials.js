@@ -683,6 +683,126 @@ function createCurtainWallMaterial(opts = {}) {
  * - Grimy Soda-Lime Window Glazing (pooled sill dirt + vertical rain streaks)
  * - Urban Canyon Global Illumination (`aoNode` + warm terracotta bounce)
  */
+// Warsaw-simple facade probe v3 (user-steered 2026-10-28): a genuinely simplified revoco material -
+// WIDE bays (few windows, not a dense grid), flat low-contrast glass, no brick coursing / sash bars / AC units /
+// lit interiors / ghost signs. Articulation is only: per-floor band line, top cornice with shadow, ground-floor
+// zocalo + tall openings with wide mullions, simple sills. Madrid in the palette (revoco ocre/salmon/caliza,
+// ladrillo rare) and in the zocalo + cornice, not in applied ornament.
+const _simpleRevocoCache = new Map();
+function createSimpleRevocoMaterial(opts = {}) {
+  const {
+    stoneColor = 0xe0ba7f,
+    trimColor = 0xf0e2c2,
+    windowGlassColor = 0x243441,
+    windowWidth = 4.2, // wide bays: few openings per front, the structural simplification
+    floorHeight = 3.2,
+    windowRatioX = 0.46,
+    windowRatioY = 0.52,
+    seed = 42.0,
+    boxLocal = false,
+    cornerPier = 1.2,
+    vertexTint = false
+  } = opts;
+  const cacheKey = `simple_${stoneColor}_${trimColor}_${windowGlassColor}_${windowWidth}_${floorHeight}_${windowRatioX}_${windowRatioY}_${seed}_${boxLocal}_${cornerPier}_${vertexTint}`;
+  if (_simpleRevocoCache.has(cacheKey)) {
+    return _simpleRevocoCache.get(cacheKey);
+  }
+
+  const mat = new THREE.MeshStandardNodeMaterial({ metalness: 0.04, roughness: 0.85 });
+  mat.vertexColors = vertexTint;
+
+  const cStone = uniform(new THREE.Color(stoneColor));
+  const cTrim = uniform(new THREE.Color(trimColor));
+  const cGlass = uniform(new THREE.Color(windowGlassColor));
+  const uWindowWidth = uniform(windowWidth);
+  const uFloorHeight = uniform(floorHeight);
+
+  const halfWinX = (1.0 - windowRatioX) * 0.5;
+  const halfWinY = (1.0 - windowRatioY) * 0.5;
+
+  mat.aoNode = canyonSkyAONode();
+
+  const facade = facadeCell(uWindowWidth, uFloorHeight, boxLocal, cornerPier);
+  const { isRoof, vCoord, cellUV, fw, isGroundFloor, solid, back, blank, door, tone, fromTop, coping } = facade;
+  const open = float(1.0).sub(solid).mul(float(1.0).sub(door));
+  const effHalfX = mix(float(halfWinX), float(0.11), isGroundFloor);
+  const effHalfY = mix(float(halfWinY), float(0.10), isGroundFloor);
+
+  mat.colorNode = Fn(() => {
+    const oneMinusEffY = float(1.0).sub(effHalfY);
+    const inX = filteredPulse(cellUV.x, effHalfX, float(1.0).sub(effHalfX), fw.x).mul(open);
+    const inY = filteredPulse(cellUV.y, effHalfY, oneMinusEffY, fw.y);
+    const isWindowOpening = inX.mul(inY).mul(float(1.0).sub(isRoof));
+
+    // Flat wall: per-building tone jitter only; back / court / party walls a plain lighter revoco
+    const backTone = mix(cStone, color(0xcfc0a4), 0.55);
+    const wallBase = mix(cStone.mul(mix(float(0.96), float(1.04), fract(tone.mul(7.31)))), backTone, max(back, blank));
+
+    // Per-floor band: one thin, low-contrast line at each floor division (upper floors only)
+    const floorBand = lineAA(cellUV.y.sub(0.985), 0.02).mul(float(1.0).sub(isGroundFloor));
+
+    // Ground floor zocalo in a slightly deeper stone tone
+    const withZocalo = mix(wallBase, cTrim.mul(0.88), isGroundFloor.mul(0.45));
+
+    // Top cornice: trim band over the last ~0.7 m + a soft shadow line just under it
+    const isCornice = step(fromTop, float(0.7)).mul(float(1.0).sub(isRoof));
+    const corniceShadow = lineAA(fromTop.sub(0.78), 0.06);
+
+    let wall = mix(withZocalo, cTrim, isCornice.mul(0.85));
+    wall = mix(wall, wall.mul(0.93), floorBand.mul(0.6));
+    wall = wall.mul(float(1.0).sub(corniceShadow.mul(0.22)));
+
+    // Flat glass: uniform pane, low contrast against the wall, a hint of sky reflection at grazing angles
+    const viewDir = normalize(cameraPosition.sub(positionWorld));
+    const fresnel = pow(clamp(float(1.0).sub(abs(dot(viewDir, normalWorldGeometry))), 0.0, 1.0), 2.0);
+    const lintelShadow = smoothstep(oneMinusEffY.sub(0.10), oneMinusEffY, cellUV.y).mul(0.35);
+    const jambShadow = float(1.0).sub(smoothstep(effHalfX, effHalfX.add(0.06), cellUV.x)).mul(0.25);
+    const recess = float(1.0).sub(max(lintelShadow, jambShadow));
+    const glassFlat = mix(cGlass, cStone, 0.25);
+    const glassCol = mix(glassFlat, cityUniforms.uSkyHorizonColor, fresnel.mul(0.35).add(0.05)).mul(recess);
+
+    // Wide mullions on the ground-floor openings only
+    const mullion = lineAA(fract(cellUV.x.mul(2.0)).sub(0.5), 0.03).mul(isGroundFloor);
+    const glassWithMullions = mix(glassCol, cStone.mul(0.5), mullion.mul(0.8));
+
+    let col = mix(wall, glassWithMullions, isWindowOpening);
+
+    // Simple sill: one thin trim line under each upper-floor opening
+    const sill = filteredPulse(cellUV.y, effHalfY.sub(0.03), effHalfY, fw.y)
+      .mul(filteredPulse(cellUV.x, effHalfX.sub(0.04), float(1.0).sub(effHalfX).add(0.04), fw.x))
+      .mul(open).mul(float(1.0).sub(isGroundFloor)).mul(float(1.0).sub(isRoof));
+    col = mix(col, cTrim, sill.mul(0.5));
+
+    // Door bays: plain dark portal with a trim surround, no panelled door detailing
+    const inDoorway = filteredPulse(cellUV.x, 0.28, 0.72, fw.x).mul(filteredPulse(cellUV.y, 0.0, 0.78, fw.y));
+    const surround = filteredPulse(cellUV.x, 0.22, 0.78, fw.x).mul(filteredPulse(cellUV.y, 0.0, 0.84, fw.y));
+    col = mix(col, cTrim.mul(0.85), door.mul(surround));
+    col = mix(col, cGlass.mul(0.5), door.mul(inDoorway));
+
+    // Coping cap + flat roof (same approach as the pre-war roofs)
+    col = mix(col, cTrim, coping.mul(0.8));
+    const roofCol = mix(cTrim.mul(0.42), cTrim.mul(0.62), noise2D(positionWorld.xz.mul(0.35)));
+    col = mix(col, roofCol, isRoof);
+
+    if (vertexTint) {
+      col = col.mul(vertexColor().rgb);
+    }
+    return col;
+  })();
+
+  mat.roughnessNode = Fn(() => {
+    const inX = filteredPulse(cellUV.x, effHalfX, float(1.0).sub(effHalfX), fw.x).mul(open);
+    const inY = filteredPulse(cellUV.y, effHalfY, float(1.0).sub(effHalfY), fw.y);
+    const isWindow = inX.mul(inY).mul(float(1.0).sub(isRoof));
+    return mix(float(0.85), float(0.18), isWindow);
+  })();
+
+  // No normalNode: flat by design (Warsaw-simple) - no brick relief to crawl or sparkle at distance.
+
+  _simpleRevocoCache.set(cacheKey, mat);
+  return mat;
+}
+
 function createPreWarBuildingMaterial(opts = {}) {
   const {
     stoneColor = 0xd8ceb8,
@@ -3037,6 +3157,7 @@ export {
   WALL_KINDS,
   createCurtainWallMaterial,
   createPreWarBuildingMaterial,
+  createSimpleRevocoMaterial,
   createFacadeBoxes,
   createChryslerCrownMaterial,
   createCarPaintMaterial,

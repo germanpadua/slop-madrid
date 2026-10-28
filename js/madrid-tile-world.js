@@ -17,6 +17,7 @@ import {
   createParkLawnMaterial,
   createRoadSurfaceMaterial,
   createSidewalkMaterial,
+  createSimpleRevocoMaterial,
   createWaterMaterial
 } from './tsl-materials.js';
 import { FACADE_DEFS } from './buildings.js';
@@ -140,18 +141,14 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     return (mix((stone >> 16) & 255, (other >> 16) & 255) << 16) | (mix((stone >> 8) & 255, (other >> 8) & 255) << 8) | mix(stone & 255, other & 255);
   };
   const facades = MADRID_FACADE_OPTS.map((opts) => flatFacade
-    ? FACADE_DEFS[0][0]({ ...opts, boxLocal: true, madrid: true,
-        windowGlassColor: soften(opts.stoneColor, opts.windowGlassColor, 0.35),
-        trimColor: soften(opts.stoneColor, opts.trimColor, 0.4), litProbability: 0 })
+    ? createSimpleRevocoMaterial({ ...opts, boxLocal: true })
     : FACADE_DEFS[0][0]({ ...opts, boxLocal: true, madrid: true }));
   // HYBRID-B prototype: plain tier-toned wall material for coherent holed massing (no window grid yet).
   const hybridWallMats = MADRID_FACADE_OPTS.map((o) => new THREE.MeshStandardNodeMaterial({ color: o.stoneColor, roughness: 0.95, metalness: 0 }));
   // HYBRID-B facade probe: WORLD-SPACE facade variant per tier (boxLocal omitted) - windows map by
   // world position+normal onto arbitrary wall orientations, incl. extruded concave/well walls.
   const hybridFacadeMats = MADRID_FACADE_OPTS.map((o) => flatFacade
-    ? FACADE_DEFS[0][0]({ ...o, madrid: true,
-        windowGlassColor: soften(o.stoneColor, o.windowGlassColor, 0.35),
-        trimColor: soften(o.stoneColor, o.trimColor, 0.4), litProbability: 0 })
+    ? createSimpleRevocoMaterial({ ...o })
     : FACADE_DEFS[0][0]({ ...o, madrid: true }));
   const medianeraMat = new THREE.MeshStandardNodeMaterial({ color: 0xb9a684, roughness: 0.97, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); // warmer masonry tone; sits ON the owner wall (0.01), depth via polygonOffset not displacement
   const mats = {
