@@ -1,6 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { LANDMARK_SITES } from './city-config.js';
 import { MADRID_LANDMARK_STYLES } from './madrid-tiles.js';
+import { buildProceduralMonument } from './monuments.js';
 import { batchStaticGroupMeshes } from './city-grid.js';
 
 // js/landmarks.js
@@ -20,6 +21,11 @@ function buildLandmarks(scene) {
     // Per-name Madrid materials (shared with the tile renderer); warm piedra default, pizarra roofs.
     const DEFAULT_BODY = { color: 0xcfc3ab, roughness: 0.74 };
     const slateMat = new THREE.MeshStandardNodeMaterial({ color: 0x4d4a46, roughness: 0.62, metalness: 0.08 });
+    // Open spaces (plazas, glorietas, parks) are NOT buildings: OSM maps their pedestrian area,
+    // and extruding it buries real monuments (Plaza de la Independencia covered Puerta de Alcalá
+    // with a 24 m slab). Render them as flat warm-granite pavement instead; no collider, walkable.
+    const OPEN_SPACE = /^(Plaza|Glorieta|Parque|Jardín|Jardines|Paseo|Campo|Cuesta)\b|^Puerta del Sol\b/i;
+    const plazaMat = new THREE.MeshStandardNodeMaterial({ color: 0xbfb49f, roughness: 0.9, metalness: 0.02 });
     const bodyMats = new Map();
     const matFor = (name) => {
       const hit = MADRID_LANDMARK_STYLES.find(([re]) => re.test(name));
@@ -34,6 +40,28 @@ function buildLandmarks(scene) {
       // box is Torre de Madrid (142 m)
       const H = Math.max(9, Math.min(lm.h || 0, 160) || (lm.w > 80 ? 24 : 14));
       const g = new THREE.Group();
+      if (OPEN_SPACE.test(name)) {
+        const n = lm.ring.length / 2;
+        const shape = new THREE.Shape();
+        shape.moveTo(lm.ring[0] - lm.cx, lm.ring[1] - lm.cz);
+        for (let i = 1; i < n; i++) shape.lineTo(lm.ring[i * 2] - lm.cx, lm.ring[i * 2 + 1] - lm.cz);
+        shape.closePath();
+        const flat = new THREE.Mesh(new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2).translate(0, 0.12, 0), plazaMat);
+        flat.receiveShadow = true;
+        g.add(flat);
+        g.position.set(lm.cx, 0, lm.cz);
+        group.add(g);
+        continue;
+      }
+      // Procedural recognizable monuments replace the flat extrusion where modelled
+      const proc = buildProceduralMonument(name, matFor(name));
+      if (proc) {
+        g.add(proc);
+        g.position.set(lm.cx, 0, lm.cz);
+        group.add(g);
+        colliders.push({ minX: lm.cx - lm.w / 2, maxX: lm.cx + lm.w / 2, minZ: lm.cz - lm.d / 2, maxZ: lm.cz + lm.d / 2, maxY: H });
+        continue;
+      }
       const n = lm.ring.length / 2;
       const shape = new THREE.Shape();
       shape.moveTo(lm.ring[0] - lm.cx, lm.ring[1] - lm.cz);
