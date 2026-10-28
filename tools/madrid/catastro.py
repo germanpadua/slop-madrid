@@ -40,6 +40,23 @@ def wfs(x0, y0, x1, y1, start=0):
     raise last
 
 
+def wfs_deep(x0, y0, x1, y1, depth=0):
+    """Bounded recovery: split a failing page into quadrants (max depth 2), then skip
+    the sub-bbox with a loud warning instead of killing the whole tile build."""
+    try:
+        return [wfs(x0, y0, x1, y1)]
+    except Exception as exc:  # noqa: BLE001
+        if depth >= 2:
+            print(f"WARNING: skipping bbox ({x0:.0f},{y0:.0f})-({x1:.0f},{y1:.0f}) after "
+                  f"subdivision: {exc}", flush=True)
+            return []
+        mx, my = (x0 + x1) / 2, (y0 + y1) / 2
+        roots = []
+        for qx0, qy0, qx1, qy1 in ((x0, y0, mx, my), (mx, y0, x1, my),
+                                   (x0, my, mx, y1), (mx, my, x1, y1)):
+            roots.extend(wfs_deep(qx0, qy0, qx1, qy1, depth + 1))
+        return roots
+
 def main():
     bbox = sys.argv[1]
     outpath = sys.argv[2]
@@ -52,8 +69,8 @@ def main():
         for gy in range(int((y1 - y0) // STEP) + 1):
             ax0, ay0 = x0 + gx * STEP, y0 + gy * STEP
             ax1, ay1 = min(ax0 + STEP, x1), min(ay0 + STEP, y1)
-            root = wfs(ax0, ay0, ax1, ay1)
-            feats = [m for fm in root.findall("gml:featureMember", NS) for m in fm]
+            roots = wfs_deep(ax0, ay0, ax1, ay1)
+            feats = [m for r in roots for fm in r.findall("gml:featureMember", NS) for m in fm]
             pages += 1
             new = 0
             for f in feats:

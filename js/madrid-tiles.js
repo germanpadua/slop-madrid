@@ -245,6 +245,7 @@ export const MADRID_PARCEL_FACE = 'entry';
 export const MADRID_LANDMARK_STYLES = Object.freeze([
   Object.freeze([/\bpalacio real\b/i, Object.freeze({ color: 0xece5d3, roughness: 0.7 })]),
   Object.freeze([/\balmudena\b/i, Object.freeze({ color: 0xe8e1cf, roughness: 0.72 })]),
+  Object.freeze([/\bplaza de toros\b/i, Object.freeze({ color: 0x9a4b38, roughness: 0.8 })]),
   Object.freeze([/\bpuerta de alcal/i, Object.freeze({ color: 0xe5dfce, roughness: 0.65 })]),
   Object.freeze([/\bcibeles\b/i, Object.freeze({ color: 0xeae3d1, roughness: 0.7 })]),
   Object.freeze([/\bmetr[oó]polis\b/i, Object.freeze({ color: 0xdfd7c2, roughness: 0.68 })]),
