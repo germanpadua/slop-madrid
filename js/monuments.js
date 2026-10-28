@@ -60,13 +60,19 @@ function buildPuertaDeAlcala(mat) {
   body.receiveShadow = true;
   g.add(body);
 
-  // Shadowed passage: dark recessed liner behind every opening so the vanos read
-  // as depth (not notches) from oblique angles and in flat midday light.
+  // Open passage lining: thin dark jamb + soffit panels inside every vano, OPEN at
+  // both ends - real passage (you can see and walk through), interior surfaces read
+  // as shadow so the openings stay legible from oblique angles in flat midday light.
   const linerMat = new THREE.MeshStandardNodeMaterial({ color: 0x2c2823, roughness: 1, metalness: 0 });
   for (const o of OPENINGS) {
-    const liner = new THREE.Mesh(new THREE.BoxGeometry(o.w - 0.06, o.top, D - 1.6), linerMat);
-    liner.position.set(o.cx, o.top / 2, D / 2);
-    g.add(liner);
+    for (const side of [-1, 1]) { // jambs
+      const jamb = new THREE.Mesh(new THREE.BoxGeometry(0.12, o.top, D - 0.3), linerMat);
+      jamb.position.set(o.cx + side * (o.w / 2 - 0.06), o.top / 2, D / 2);
+      g.add(jamb);
+    }
+    const soffit = new THREE.Mesh(new THREE.BoxGeometry(o.w - 0.1, 0.12, D - 0.3), linerMat);
+    soffit.position.set(o.cx, o.top - 0.06, D / 2);
+    g.add(soffit);
   }
 
   // Pilasters flanking the bays, on both facades (the real gate has paired columns
