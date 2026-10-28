@@ -19,8 +19,13 @@ export function createMadridDistanceDetail(nearMaterials, { geometry = false } =
         if (geometry) {
           const far = root.children?.find(mesh => mesh.name === 'TileFarBuildings');
           if (!far || entries.has(root)) return;
+          // The seed centre names its massing meshes Centre*: hide exactly what the proxy replaces
+          // (buildings, rear yards, cornices) and keep hip roofs, water towers, signs and lights.
+          const isCentre = root.name === 'ManhattanCityBlocks';
           entries.set(root, { root, bounds: root.userData.detailBounds, distant: false, geometry: true, far,
-            near: root.children.filter(mesh => /^TileBuildings/.test(mesh.name)) });
+            near: isCentre
+              ? root.children.filter(mesh => /^Centre(Buildings|Yards|Cornices)$/.test(mesh.name))
+              : root.children.filter(mesh => /^TileBuildings/.test(mesh.name)) });
           return;
         }
         root.traverse(mesh => {

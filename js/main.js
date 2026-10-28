@@ -7,6 +7,7 @@ import { getLocationLabel, isTypingInField, ROADS, NYC_LANDMARKS, TELEPORT_LOCAT
 import { buildCityGrid, cityMaterials } from './city-grid.js';
 import { buildLandmarks } from './landmarks.js';
 import { buildCityBlocks } from './buildings.js';
+import { GEO } from './madrid-geodata.js';
 import { buildStreetDetails } from './street-details.js';
 import { createTrafficSystem, createHighwayTraffic } from './traffic.js';
 import { buildRoadPaint } from './road-paint.js';
@@ -238,6 +239,17 @@ async function initApp() {
   markInit('culling');
   if (['distance', 'geometry'].includes(bootParams.get('detail'))) {
     distanceDetail = createMadridDistanceDetail(tileWorld.facadeMaterials, { geometry: bootParams.get('detail') === 'geometry' });
+    if (bootParams.get('detail') === 'geometry') {
+      // Seed-centre far proxy (experiment): one merged low-detail mesh for the fase2 parcels, so
+      // flying out of the centre can drop its ~26k detailed parcels behind the hysteresis band.
+      const { createCentreFarBuildings } = await import('./madrid-centre-far.js');
+      const centreFar = createCentreFarBuildings(GEO);
+      if (centreFar) {
+        cityBlocks.group.add(centreFar.mesh);
+        cityBlocks.group.userData.detailBounds = centreFar.bounds;
+        console.info('[madrid-centre-far]', JSON.stringify(centreFar.stats));
+      }
+    }
     distanceDetail.register(scene);
     tileCompileProbes.add(distanceDetail.createCompileProbes());
     if (window.__madrid) window.__madrid.distanceDetail = distanceDetail;

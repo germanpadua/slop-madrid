@@ -305,7 +305,8 @@ test('every Madrid facade tier uses the pre-war masonry factory, never tier-inde
   // use FACADE_DEFS[0][0] (pre-war masonry) for every Madrid tier.
   const { readFileSync } = require('node:fs');
   const src = readFileSync(require('node:path').join(__dirname, '..', 'js', 'madrid-tile-world.js'), 'utf8');
-  assert.ok(src.includes('MADRID_FACADE_OPTS.map((opts) => FACADE_DEFS[0][0]'), 'tile renderer must bind every Madrid tier to FACADE_DEFS[0][0] (pre-war masonry)');
+  assert.ok(src.includes('MADRID_FACADE_OPTS.map((opts) =>'), 'tile renderer must map every Madrid tier through MADRID_FACADE_OPTS');
+  assert.ok(!/FACADE_DEFS\[(?!0\]\[0\])/.test(src.replaceAll('FACADE_DEFS[0][0]', '')), 'every facade binding must be FACADE_DEFS[0][0] (pre-war masonry), incl. the gated flatfacade probe');
   assert.ok(!/FACADE_DEFS\[i\s*%/.test(src), 'tier-indexed FACADE_DEFS selects NYC curtain-wall for tier >= 3');
 });
 

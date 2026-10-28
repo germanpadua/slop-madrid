@@ -2287,6 +2287,7 @@ function buildCityBlocks(scene) {
     const inst = createFacadeBoxes(materials[matIdx], items);
     inst.castShadow = true;
     inst.receiveShadow = true;
+    inst.name = 'CentreBuildings'; // distance-detail geometry mode hides these when the far proxy shows
     group.add(inst);
   });
 
@@ -2350,6 +2351,7 @@ function buildCityBlocks(scene) {
     });
     dummy.rotation.set(0, 0, 0);
     yardInst.receiveShadow = true;
+    yardInst.name = 'CentreYards';
     group.add(yardInst);
   }
 
@@ -2368,6 +2370,7 @@ function buildCityBlocks(scene) {
   corniceInst.castShadow = true;
   corniceInst.receiveShadow = true;
   corniceInst.frustumCulled = false;
+  corniceInst.name = 'CentreCornices';
   group.add(corniceInst);
 
   // 2. 3-part rooftop cedar water towers with steel hoop bands & open 4-leg steel trestle
