@@ -274,7 +274,7 @@ test('budget constants match the phase-3 target (~12 MB of resident geodata)', (
 
 test('madrid facade palettes are Madrid, not Manhattan', async () => {
   const { MADRID_FACADE_OPTS, MADRID_PARCEL_FACE } = await import('../js/madrid-tiles.js');
-  assert.equal(MADRID_FACADE_OPTS.length, 3);
+  assert.equal(MADRID_FACADE_OPTS.length, 4);
   // Manhattan table uses 2.2-2.6 m bays and 3.4-3.5 m floors; Madrid blocks use ~1.4-1.6 m bays (balcones)
   // and 3.1-3.4 m floors.
   for (const o of MADRID_FACADE_OPTS) {
@@ -283,7 +283,7 @@ test('madrid facade palettes are Madrid, not Manhattan', async () => {
     assert.ok(typeof o.stoneColor === 'number' && typeof o.trimColor === 'number' && typeof o.windowGlassColor === 'number');
   }
   const stones = new Set(MADRID_FACADE_OPTS.map((o) => o.stoneColor));
-  assert.equal(stones.size, 3, 'palettes must be distinct');
+  assert.equal(stones.size, 4, 'palettes must be distinct');
   assert.equal(MADRID_PARCEL_FACE, 'entry');
 });
 

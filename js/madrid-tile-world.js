@@ -125,7 +125,7 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
   // Madrid almendra palettes (caliza / ladrillo visto / revoco encalado, balcones rhythm) - NOT the
   // Manhattan pre-war table. Same factories, Madrid options; faces keep the storefront ground floors (comercios
   // en bajos) until road-adjacency data picks entry vs shop per wall.
-  const facades = FACADE_DEFS.slice(0, 3).map(([create], i) => create({ ...MADRID_FACADE_OPTS[i % MADRID_FACADE_OPTS.length], boxLocal: true, madrid: true }));
+  const facades = MADRID_FACADE_OPTS.map((opts, i) => FACADE_DEFS[i % FACADE_DEFS.length][0]({ ...opts, boxLocal: true, madrid: true }));
   const mats = {
     road: materials?.road || createRoadSurfaceMaterial(),
     curb: materials?.curb || createCurbMaterial(),

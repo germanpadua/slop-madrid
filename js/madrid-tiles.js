@@ -222,15 +222,25 @@ export const MADRID_FACADE_OPTS = Object.freeze([
     warmth: 0.9,
     seed: 33.2
   }),
-  Object.freeze({ // 2: revoco encalado calido (La Latina / Lavapies)
-    stoneColor: 0xe3d7bd,
-    trimColor: 0xb09877,
+  Object.freeze({ // 2: revoco ocre claro (La Latina / Lavapies - el ocre luminoso de Tiny-Madrid)
+    stoneColor: 0xe0ba7f,
+    trimColor: 0xf0e2c2,
     windowGlassColor: 0x243441,
     windowWidth: 1.4,
     floorHeight: 3.1,
     litProbability: 0.45,
-    warmth: 0.9,
+    warmth: 0.95,
     seed: 47.9
+  }),
+  Object.freeze({ // 3: revoco salmon rosado (acentos del casco antiguo en Tiny-Madrid)
+    stoneColor: 0xdc9d7e,
+    trimColor: 0xecd3b8,
+    windowGlassColor: 0x223038,
+    windowWidth: 1.4,
+    floorHeight: 3.2,
+    litProbability: 0.45,
+    warmth: 0.95,
+    seed: 58.3
   })
 ]);
 

@@ -568,3 +568,13 @@ cercanas. Ampliar radios/budget es un valor del manifiesto, no un cambio de cód
 
 ## Tejados (hip roofs, 2026-10-28)
 Madrid residential parts (prewar/walkup) get instanced terracotta hip roofs (tejado a cuatro aguas, 6 tris/roof) instead of NYC water towers: 72% of SINGLE-SPAN parcels (max span <= 24m), ridge along the long axis, 0.6m eaves overhang, 8% slate variant; the rest and ALL large footprints keep a flat roof with a small bulkhead. Patio blocks (min span > 24m AND h <= 22; towers stay single-mass hips) get a perimeter roof RING with a visible patio opening (16 tris/roof): this fixed the first rollout's AABB-spanning megahip/flat-deck, which was visually rejected as an industrial shed. Collision containment: a ring falls back to flat when another parcel pokes through its inner-slope band (AABB-only model; tile path sees only same-tile neighbors). Roofs render in BOTH the procedural seed (js/buildings.js hipRoofs) and the phase-3 tile renderer (js/madrid-tile-world.js section 4b); decisions come from the shared pure module js/madrid-roofs.js pinned by tests/madrid-roofs.test.cjs. NOTE: harness renders before 62606c5 manually RECREATED roof rules and did not demonstrate tile-path integration; current harness (block-roof.html) imports the shared decision module but still recreates the instancing, so full-map visual validation remains outstanding. Grounded in Tiny-Madrid illustrated references (user-chosen); harness-verified (block-roof.html). FULL-MAP VISUAL VALIDATION OUTSTANDING.
+
+## Fachadas: paleta Madrid 4 tonos + menos hollín NYC (2026-10-28)
+`MADRID_FACADE_OPTS` grows from 3 to 4 tiers: caliza clara (0xe7ddc6), ladrillo (0xa45538), revoco ocre claro
+(0xe0ba7f), revoco salmón (0xdc9a7c); the tile renderer now builds facades from ALL tiers (was slice(0,3), so
+salmón never shipped). NYC soot/streak weathering is reduced for Madrid facades (`uMadrid` gates
+`sootDirt` from 0.36 to 0.13): the NYC grime was fighting the light sunny Tiny-Madrid references the user chose.
+Harness caveat corrected: earlier palette judgment used a dimmer hand-rolled lighting rig; block-roof.html now
+mirrors the game's golden preset (hemi 0x9abbe6/0xc88a62 @1.48, sun 0xffca92 @5.8, dir -0.44/0.58/-0.68) before
+pixel sign-off. FULL-MAP VISUAL VALIDATION STILL OUTSTANDING (harness = real modules on block #315 + one
+clearly-separated synthetic patio block, not the full map).
