@@ -1,0 +1,65 @@
+{
+  "environment": "Intel Iris Xe, Mesa 26.0.8, ANGLE OpenGL, WebGL2, 1280x720",
+  "samples": 1,
+  "passed": true,
+  "frameLatency": {
+    "samples": 371,
+    "routeMs": 9308,
+    "maxIntervalMs": 116.60000000000036,
+    "p95IntervalMs": 33.400000000001455,
+    "maxRenderMs": 30.5
+  },
+  "tiles": [
+    {
+      "id": "k0j-1",
+      "workerMs": 757.1000000014901,
+      "mountMs": 31.800000000745058
+    },
+    {
+      "id": "k1j-1",
+      "workerMs": 1067.300000000745,
+      "mountMs": 24.099999997764826
+    },
+    {
+      "id": "k2j-1",
+      "workerMs": 1752.6000000014901,
+      "mountMs": 29.899999998509884
+    },
+    {
+      "id": "k3j1",
+      "workerMs": 289.80000000074506,
+      "mountMs": 8
+    },
+    {
+      "id": "k3j0",
+      "workerMs": 596.3000000007451,
+      "mountMs": 22.300000000745058
+    },
+    {
+      "id": "k4j1",
+      "workerMs": 1469.5999999977648,
+      "mountMs": 28.799999997019768
+    },
+    {
+      "id": "k4j2",
+      "workerMs": 2578.2999999970198,
+      "mountMs": 38.399999998509884
+    },
+    {
+      "id": "k4j0",
+      "workerMs": 1244.199999999255,
+      "mountMs": 22.5
+    },
+    {
+      "id": "k3j-1",
+      "workerMs": 810.8999999985099,
+      "mountMs": 15.199999999254942
+    },
+    {
+      "id": "k2j-1",
+      "workerMs": 1907.5,
+      "mountMs": 25.200000002980232
+    }
+  ],
+  "limits": "Exploratory stress route, caches and resident sets vary. Roof transforms match original tile loop on k3j0 (1158 accepted parcels, 382 hips)."
+}

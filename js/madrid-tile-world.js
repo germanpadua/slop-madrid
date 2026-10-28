@@ -21,7 +21,7 @@ import {
 } from './tsl-materials.js';
 import { FACADE_DEFS } from './buildings.js';
 import { partyWallHeights, partyWallRuns } from './madrid-adjacency.js';
-import { roofDecision } from './madrid-roofs.js';
+import { tileRoofInstances } from './madrid-roofs.js';
 import { decomposeRing } from './madrid-footprint.js';
 import { MADRID_FACADE_OPTS, MADRID_LANDMARK_STYLES } from './madrid-tiles.js';
 
@@ -456,35 +456,9 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     // 4b. Tejados: decisions shared with the procedural city via js/madrid-roofs.js (rules documented
     //    there); the clash test sees same-tile parcels only (bounded approximation, as medianeras).
     {
-      const hips = [];
-      const rings = [];
-      for (let pi = 0; pi < pabs.length; pi++) {
-        const P = pabs[pi];
-        if (globalThis.__MERGED === true) continue; // merged-zone probe: flat merged caps only
-        if (P.fp) {
-          // Footprint prototype: one roof decision per decomposition rect, rotated with the rect.
-          const ang = Math.atan2(P.fp.frame.uz, P.fp.frame.ux);
-          for (const rc of P.fp.rects) {
-            const c = rc.corners;
-            const rw = Math.hypot(c[1][0] - c[0][0], c[1][1] - c[0][1]);
-            const rd = Math.hypot(c[3][0] - c[0][0], c[3][1] - c[0][1]);
-            const mx = (c[0][0] + c[2][0]) / 2, mz = (c[0][1] + c[2][1]) / 2;
-            const d = roofDecision({ x0: mx - rw / 2, x1: mx + rw / 2, z0: mz - rd / 2, z1: mz + rd / 2, w: rw, d: rd, h: P.h }, pabs, { minSpan: 4 });
-            if (!d) continue;
-            // The 90-degree width/depth swap is d.rot (ridge-axis decision); the yaw is d.rot - ang.
-            // Using r.rot's truthiness for the swap 90-degree-misorients every d.rot=0 rect on a
-            // rotated block (roof long axis pierces the taller neighbour - the street-view wedge).
-            const r = { ...d, x: mx, y: P.h, z: mz, sw: rw, sd: rd, rot: d.rot - ang, swap: d.rot !== 0, eave: 0 };
-            (d.kind === 'ring' ? rings : hips).push(r);
-          }
-          continue;
-        }
-        if (globalThis.__FP !== false && !P.fp && P.holes && P.holes.length) continue; // hybrid-B: flat ring cap already emitted
-        const d = roofDecision(P, pabs);
-        if (!d) continue;
-        const r = { ...d, x: (P.x0 + P.x1) / 2, y: P.h, z: (P.z0 + P.z1) / 2, sw: P.w, sd: P.d };
-        (d.kind === 'ring' ? rings : hips).push(r);
-      }
+      const { hips, rings } = matchingPreparation && globalThis.__FP !== false && globalThis.__MERGED !== true && tile.prepared.roofs
+        ? tile.prepared.roofs
+        : tileRoofInstances(pabs, { footprintEnabled: globalThis.__FP !== false, merged: globalThis.__MERGED === true });
       const dummy = new THREE.Object3D();
       const fill = (geo, list, name) => {
         if (!list.length) return;

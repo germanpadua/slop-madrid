@@ -116,3 +116,13 @@ En el mismo escenario de estrés n=1 por versión, el máximo dentro de renderiz
 Se añadieron `--places sol,cibeles,alcala` y `--aerial`. Usan los botones reales de modo/cámara y los destinos configurados del producto, teletransportan al peatón y observan tres segundos por punto. No equivalen a recorrer físicamente las calles entre ellos. Ambos modos pasaron sin errores, con p95 global de ~33,4 ms y máximo de ~200 ms; máximo de renderizado ~42 ms a pie y ~28 ms en maqueta. Capturas de escritorio y táctil emulado inspeccionadas en `/tmp/madrid-warmup-walk/`. El verificador comprueba que las sondas ya están ocultas.
 
 156/156 pruebas CJS pasan. Evidencia en `docs/validation/2026-10-28-shader-warmup.json`. Reversión: retirar createCompileProbes y sus dos llamadas en main; la instrumentación y los recorridos de validación son independientes. Quedan por reducir las pausas de montaje, implementar niveles lejanos, unificar cubiertas, completar las fuentes de patios y validar un recorrido continuo y teléfono físico. Sin publicación: no se ha completado la calidad objetivo.
+
+## Cubiertas preparadas fuera del hilo principal
+
+Se extrajo el bucle de decisiones y transformaciones de tejados de la tesela a `tileRoofInstances` (puro). El worker lo ejecuta sobre los mismos vecinos y descomposición de huellas. Se conservan las rutas síncronas de compatibilidad, deduplicación y prototipos `__FP`/`__MERGED`. No se alteran reglas de cubiertas ni sus colores ilustrativos.
+
+Una regresión contrasta el hash de todos los parámetros de las cubiertas de k3j0 con el bucle anterior de d953fe7: 1.158 parcelas aceptadas y 382 tejados. La comparación inicial también comprobó igualdad profunda completa. 157/157 pruebas CJS pasan.
+
+Estrés con GPU real, n=1: máximo montaje observado ~38,4 ms (k4j2, antes ~160 ms); máximo intervalo de frames 116,6 ms, p95 33,4 ms, máximo dentro de renderizado 30,5 ms. Sin errores gráficos ni teselas fallidas. Evidencia: `docs/validation/2026-10-28-roof-worker.json`. No equivale a un benchmark controlado ni elimina todos los picos.
+
+Reversión de esta unidad: devolver el bucle de tejados al tile world y retirar roofs de los resultados del worker; el resto de preparación y calentamiento permanece independiente.

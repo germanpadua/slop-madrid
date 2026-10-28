@@ -1,6 +1,7 @@
 // Pure CPU preparation, also usable without Worker support.
 import { decomposeRing } from './madrid-footprint.js';
 import { partyWallHeights, partyWallRuns } from './madrid-adjacency.js';
+import { tileRoofInstances } from './madrid-roofs.js';
 
 export function prepareTile(data) {
   const footprints = [];
@@ -14,7 +15,7 @@ export function prepareTile(data) {
     }
     if (x1 - x0 < 2 || z1 - z0 < 2) continue;
     footprints[index] = decomposeRing(p.ring, { stripW: 4, minD: 0.4, holes: p.holes || [] });
-    parcels.push({ ...p, index, x0, x1, z0, z1 });
+    parcels.push({ ...p, index, x0, x1, z0, z1, w: x1 - x0, d: z1 - z0, fp: footprints[index].deviation <= 0.10 ? footprints[index] : null });
   }
-  return { footprints, indices: parcels.map((p) => p.index), heights: partyWallHeights(parcels), runs: partyWallRuns(parcels) };
+  return { footprints, roofs: tileRoofInstances(parcels), indices: parcels.map((p) => p.index), heights: partyWallHeights(parcels), runs: partyWallRuns(parcels) };
 }
