@@ -741,7 +741,7 @@ function buildCityBlocks(scene) {
           rot: td > tw ? Math.PI * 0.5 : 0,
           ci: (rand() * 5) | 0,
           slate: chance(0.08),
-          ring: Math.min(tw, td) > 24
+          ring: Math.min(tw, td) > 24 && top.y1 <= 22
         });
       } else {
         const hw = Math.min(tw - 1.2, range(2.4, 4.2));

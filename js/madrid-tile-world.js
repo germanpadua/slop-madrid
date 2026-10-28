@@ -7,7 +7,7 @@
 // same parcels). Everything here is real geometry owned by the tile core; polygons crossing a seam were already
 // clipped by the builder, so adjacent tiles never draw the same surface twice.
 import * as THREE from 'three/webgpu';
-import { Fn, abs, color, fract, max, mix, positionWorld, smoothstep } from 'three/tsl';
+import { Fn, abs, color, fract, max, mix, positionGeometry, positionWorld, smoothstep } from 'three/tsl';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createExtrudedPolygonMesh, createFlatPolygonMesh, offsetPolygonInward } from './city-grid.js';
 import {
@@ -22,6 +22,40 @@ import {
 import { FACADE_DEFS } from './buildings.js';
 import { partyWallHeights } from './madrid-adjacency.js';
 import { MADRID_FACADE_OPTS, MADRID_LANDMARK_STYLES } from './madrid-tiles.js';
+
+// Tejados: shared terracotta material + palette (Tiny-Madrid illustrated references, user-chosen).
+// Geometry is per tile (eviction disposes mesh.geometry); materials stay alive like facades.
+const hipRoofMat = new THREE.MeshStandardNodeMaterial({ roughness: 0.9, metalness: 0.0, side: THREE.DoubleSide });
+hipRoofMat.colorNode = Fn(() => {
+  const course = smoothstep(0.35, 0.65, fract(positionGeometry.y.mul(22.0)));
+  return mix(color(0xffffff), color(0xd8cec6), course.mul(0.14));
+})();
+const HIP_PALETTE = [0xb0512b, 0xbc5f33, 0xa6492a, 0xc06a3d, 0x9a5238].map((c) => new THREE.Color(c));
+const HIP_SLATE = new THREE.Color(0x5d646e);
+const HIP_GEO_TRIS = new Float32Array([
+  -0.5, 0, -0.5, 0.5, 0, -0.5, 0.25, 1, 0,
+  -0.5, 0, -0.5, 0.25, 1, 0, -0.25, 1, 0,
+  0.5, 0, 0.5, -0.5, 0, 0.5, -0.25, 1, 0,
+  0.5, 0, 0.5, -0.25, 1, 0, 0.25, 1, 0,
+  -0.5, 0, 0.5, -0.5, 0, -0.5, -0.25, 1, 0,
+  0.5, 0, -0.5, 0.5, 0, 0.5, 0.25, 1, 0
+]);
+const RING_GEO_TRIS = (() => {
+  const k1 = 0.16, k2 = 0.30, yi = 0.45;
+  const O = 0.5, R = 0.5 - k1, I = 0.5 - k2;
+  const A = [-O, 0, -O], B = [O, 0, -O], C = [O, 0, O], D = [-O, 0, O];
+  const RA = [-R, 1, -R], RB = [R, 1, -R], RC = [R, 1, R], RD = [-R, 1, R];
+  const IA = [-I, yi, -I], IB = [I, yi, -I], IC = [I, yi, I], ID = [-I, yi, I];
+  const tri = [];
+  const quad = (p, q, r, s) => { tri.push(...p, ...q, ...r, ...p, ...r, ...s); };
+  const o = [A, B, C, D], rg = [RA, RB, RC, RD], inr = [IA, IB, IC, ID];
+  for (let s = 0; s < 4; s++) {
+    const t = (s + 1) % 4;
+    quad(o[s], o[t], rg[t], rg[s]);
+    quad(rg[s], rg[t], inr[t], inr[s]);
+  }
+  return new Float32Array(tri);
+})();
 
 const toPts = (flat) => {
   const out = [];
@@ -228,6 +262,66 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       mesh.name = `TileBuildings${i}`;
       group.add(mesh);
     });
+
+    // 4b. Tejados: instanced terracotta hip roofs on single-span parcels, perimeter rings with a patio
+    //    opening on patio blocks (min span > 24m; an AABB-spanning hip there read as an industrial shed,
+    //    visual review 2026-10-28). ~28% of parcels keep flat roofing (mix, not blanket conversion).
+    //    Collision containment: a ring falls back to flat when another parcel of this tile pokes through
+    //    its inner-slope band; neighbors in other tiles are not seen (bounded approximation, as medianeras).
+    {
+      const hips = [];
+      const rings = [];
+      for (let pi = 0; pi < pabs.length; pi++) {
+        const P = pabs[pi];
+        if (P.h < 9 || P.w < 6 || P.d < 6) continue;
+        const cx = (P.x0 + P.x1) / 2, cz = (P.z0 + P.z1) / 2;
+        if (hash(cx, cz, 11) > 0.72) continue;
+        const r = {
+          x: cx, y: P.h, z: cz,
+          h: Math.min(4.2, Math.max(2.0, Math.min(P.w, P.d) * (0.26 + hash(cx, cz, 12) * 0.08))),
+          rot: P.d > P.w ? Math.PI / 2 : 0,
+          ci: Math.floor(hash(cx, cz, 13) * 5),
+          slate: hash(cx, cz, 14) < 0.08
+        };
+        if (Math.min(P.w, P.d) > 24 && P.h <= 22) { // patio blocks: wide AND low; towers stay single-mass
+          const bX0 = P.x0 + P.w * 0.16, bX1 = P.x1 - P.w * 0.16;
+          const bZ0 = P.z0 + P.d * 0.16, bZ1 = P.z1 - P.d * 0.16;
+          const oX0 = P.x0 + P.w * 0.30, oX1 = P.x1 - P.w * 0.30;
+          const oZ0 = P.z0 + P.d * 0.30, oZ1 = P.z1 - P.d * 0.30;
+          const clash = pabs.some((Q, qi) => qi !== pi && Q.h > P.h * 0.45 &&
+            Q.x1 > bX0 && Q.x0 < bX1 && Q.z1 > bZ0 && Q.z0 < bZ1 &&
+            !(Q.x0 >= oX0 && Q.x1 <= oX1 && Q.z0 >= oZ0 && Q.z1 <= oZ1));
+          if (clash) continue;
+          rings.push({ ...r, sw: P.w, sd: P.d });
+        } else {
+          hips.push({ ...r, sw: P.w, sd: P.d });
+        }
+      }
+      const dummy = new THREE.Object3D();
+      const fill = (geo, list, name) => {
+        if (!list.length) return;
+        const inst = new THREE.InstancedMesh(geo, hipRoofMat, list.length);
+        list.forEach((r, i) => {
+          dummy.rotation.set(0, r.rot, 0);
+          dummy.position.set(r.x, r.y, r.z);
+          dummy.scale.set((r.rot ? r.sd : r.sw) + 0.6, r.h, (r.rot ? r.sw : r.sd) + 0.6);
+          dummy.updateMatrix();
+          inst.setMatrixAt(i, dummy.matrix);
+          inst.setColorAt(i, r.slate ? HIP_SLATE : HIP_PALETTE[r.ci % HIP_PALETTE.length]);
+        });
+        inst.castShadow = inst.receiveShadow = true;
+        inst.name = name;
+        group.add(inst);
+      };
+      const hipGeo = new THREE.BufferGeometry();
+      hipGeo.setAttribute('position', new THREE.BufferAttribute(HIP_GEO_TRIS, 3));
+      hipGeo.computeVertexNormals();
+      fill(hipGeo, hips, 'TileHipRoofs');
+      const ringGeo = new THREE.BufferGeometry();
+      ringGeo.setAttribute('position', new THREE.BufferAttribute(RING_GEO_TRIS, 3));
+      ringGeo.computeVertexNormals();
+      fill(ringGeo, rings, 'TileRingRoofs');
+    }
 
     // 5. Landmarks: real footprint extruded to its IDEAM/OSM height. No height = no volume (nothing invented); the
     //    footprint stays covered by its parcel box, so there is no gap to fill.
