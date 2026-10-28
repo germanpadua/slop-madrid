@@ -133,15 +133,25 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
   // Warsaw-simple facade probe (user-steered 2026-10-28): flat tier-toned walls, no window grid.
   // Prototype only, gated behind ?flatfacade=1 (harness sets globalThis.__FLATFACADE); default unchanged.
   const flatFacade = globalThis.__FLATFACADE === true;
+  // v2 (user-steered): keep the pre-war structure but with LOW-CONTRAST articulation - glass and
+  // trim blended toward the stone tone - so floors/windows read as subtle banding, Warsaw-style.
+  const soften = (stone, other, k) => {
+    const mix = (a, b) => Math.round(a + (b - a) * k);
+    return (mix((stone >> 16) & 255, (other >> 16) & 255) << 16) | (mix((stone >> 8) & 255, (other >> 8) & 255) << 8) | mix(stone & 255, other & 255);
+  };
   const facades = MADRID_FACADE_OPTS.map((opts) => flatFacade
-    ? new THREE.MeshStandardNodeMaterial({ color: opts.stoneColor, roughness: 0.95, metalness: 0 })
+    ? FACADE_DEFS[0][0]({ ...opts, boxLocal: true, madrid: true,
+        windowGlassColor: soften(opts.stoneColor, opts.windowGlassColor, 0.35),
+        trimColor: soften(opts.stoneColor, opts.trimColor, 0.4), litProbability: 0 })
     : FACADE_DEFS[0][0]({ ...opts, boxLocal: true, madrid: true }));
   // HYBRID-B prototype: plain tier-toned wall material for coherent holed massing (no window grid yet).
   const hybridWallMats = MADRID_FACADE_OPTS.map((o) => new THREE.MeshStandardNodeMaterial({ color: o.stoneColor, roughness: 0.95, metalness: 0 }));
   // HYBRID-B facade probe: WORLD-SPACE facade variant per tier (boxLocal omitted) - windows map by
   // world position+normal onto arbitrary wall orientations, incl. extruded concave/well walls.
   const hybridFacadeMats = MADRID_FACADE_OPTS.map((o) => flatFacade
-    ? new THREE.MeshStandardNodeMaterial({ color: o.stoneColor, roughness: 0.95, metalness: 0 })
+    ? FACADE_DEFS[0][0]({ ...o, madrid: true,
+        windowGlassColor: soften(o.stoneColor, o.windowGlassColor, 0.35),
+        trimColor: soften(o.stoneColor, o.trimColor, 0.4), litProbability: 0 })
     : FACADE_DEFS[0][0]({ ...o, madrid: true }));
   const medianeraMat = new THREE.MeshStandardNodeMaterial({ color: 0xb9a684, roughness: 0.97, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); // warmer masonry tone; sits ON the owner wall (0.01), depth via polygonOffset not displacement
   const mats = {
@@ -282,7 +292,10 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     for (let pi = 0; pi < pabs.length; pi++) {
       const P = pabs[pi];
       const cx = (P.x0 + P.x1) / 2, cz = (P.z0 + P.z1) / 2;
-      const tier = Math.floor(hash(cx, cz, P.index) * facades.length) % facades.length;
+      const tierRoll = hash(cx, cz, P.index);
+      const tier = flatFacade
+        ? (tierRoll < 0.5 ? 2 : tierRoll < 0.75 ? 3 : tierRoll < 0.9 ? 0 : 1) // Warsaw-coherent: light revoco dominant, ladrillo rare
+        : Math.floor(tierRoll * facades.length) % facades.length;
       const tone = hash(cz, cx, 3);
       const shop = WALL_KINDS.shop;
       if (globalThis.__MERGED === true) { mergedZone.push(P); continue; } // merged-zone probe owns this parcel's massing
