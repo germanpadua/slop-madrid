@@ -78,7 +78,7 @@ if (process.env.GL_PROFILE) await page.addInitScript(() => {
   }
 });
 const t0 = Date.now();
-await page.goto(`http://127.0.0.1:${port}/?debug=1${process.env.WEBGL ? '&webgl=1' : ''}${process.env.WEBGPU ? '&webgpu=1' : ''}`, { waitUntil: 'load', timeout: 180000 });
+await page.goto(`http://127.0.0.1:${port}/?debug=1${process.env.WEBGL ? '&webgl=1' : ''}${process.env.WEBGPU ? '&webgpu=1' : ''}${process.env.DISTANCE_DETAIL || process.env.DETAIL_COMPARE ? '&detail=distance' : ''}`, { waitUntil: 'load', timeout: 180000 });
 // SwiftShader compiles the ~500 pipelines of the Madrid materials slowly: the loading screen can take several minutes
 await page.waitForFunction(() => window.__madrid && window.__madrid.renderer && document.querySelector('#loading-overlay.hidden'), null, { timeout: 900000 });
 const bootMs = Date.now() - t0;
@@ -149,7 +149,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
   // Per-tile geometry: deck slab height, instanced buildings and the tiles' collider count.
   const sceneOf = window.__madrid.scene;
   const seedFacadeMaterials = new Set((sceneOf.getObjectByName('ManhattanCityBlocks')?.children || [])
-    .filter((o) => o.geometry?.getAttribute('box')).map((o) => o.material));
+    .filter((o) => o.geometry?.getAttribute('box')).map((o) => o.userData.madridDetailedMaterial || o.material));
   const tileStats = (tileWorld ? tileWorld.ids() : []).map((id) => {
     const g = sceneOf.getObjectByName(`MadridTile:${id}`);
     if (!g) return { id, missing: true };
@@ -159,7 +159,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
       if (!o.isMesh) return;
       meshes++;
       if (/^TileBuildings/.test(o.name)) {
-        if (seedFacadeMaterials.has(o.material)) sharedFacades++; else unsharedFacades++;
+        if (seedFacadeMaterials.has(o.userData.madridDetailedMaterial || o.material)) sharedFacades++; else unsharedFacades++;
       }
       kinds.add(o.name);
       if (o.isInstancedMesh) instances += o.count;
@@ -182,6 +182,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
     placeSamples,
     routeFrames: (window.__madrid.frameSamples || []).filter((s) => s.at >= routeStart),
     streaming: tileStreamer?.status(),
+    distanceDetail: window.__madrid.distanceDetail?.status(),
     shaderWarmupHidden: sceneOf.getObjectByName('MadridTileShaderWarmup')?.visible === false,
     backend: renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2',
     tileStats,
@@ -203,6 +204,27 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
     loaded: tileWorld ? tileWorld.ids() : []
   };
 }, { walk, bootOnly, stress, places, view });
+
+let detailComparison = null;
+if (process.env.DETAIL_COMPARE) detailComparison = await page.evaluate(async () => {
+  const api = window.__madrid;
+  const results = [];
+  for (const enabled of [false, true, false, true]) {
+    api.distanceDetail.setEnabled(enabled);
+    const first = api.renderedFrames;
+    await new Promise(resolve => {
+      const tick = () => api.renderedFrames > first + 5 ? resolve() : requestAnimationFrame(tick);
+      requestAnimationFrame(tick);
+    });
+    const start = performance.now(), frames = api.renderedFrames;
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    const samples = api.frameSamples.filter(s => s.at >= start);
+    results.push({ enabled, elapsedMs: performance.now() - start, frames: api.renderedFrames - frames,
+      meanRenderMs: samples.reduce((sum, s) => sum + s.renderMs, 0) / samples.length,
+      detail: api.distanceDetail.status() });
+  }
+  return results;
+});
 
 let screenshotError = null;
 if (process.env.SCREENSHOT) {
@@ -244,6 +266,7 @@ console.log(JSON.stringify({
   contextLost,
   graphicsErrors,
   screenshotError,
+  detailComparison,
   bootMs,
   stress,
   init: initLine,

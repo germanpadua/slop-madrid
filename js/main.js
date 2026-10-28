@@ -21,6 +21,7 @@ import { CityAudioSystem } from './audio-system.js';
 import { createTileWorld, createOutOfMapFloor } from './madrid-tile-world.js';
 import { createTileStreamer } from './madrid-tiles.js';
 import { createTilePreparer } from './madrid-tile-preparer.js';
+import { createMadridDistanceDetail } from './madrid-distance-detail.js';
 
 // js/main.js
 // Main entry point for Madrid (centro) in Three.js WebGPURenderer & TSL (three.js dev, see index.html)
@@ -177,6 +178,7 @@ async function initApp() {
   const tileWorld = createTileWorld(scene, { colliders: allColliders, materials: cityMaterials });
   const tileCompileProbes = tileWorld.createCompileProbes();
   let tileStreamer = null;
+  let distanceDetail = null;
   const tilePreparer = createTilePreparer();
   window.addEventListener('pagehide', (event) => { if (!event.persisted) tilePreparer.dispose(); });
   try {
@@ -185,7 +187,7 @@ async function initApp() {
       prepareTile: (tile) => tilePreparer.prepare(tile),
       manifestUrl: new URL('../tools/madrid/tiles.json', import.meta.url).href,
       baseUrl: new URL('..', import.meta.url).href,
-      onStatus: () => controllerManager.refreshColliders()
+      onStatus: () => { controllerManager.refreshColliders(); distanceDetail?.register(scene); }
     });
     const ring = tileStreamer.manifest?.almendra?.ring;
     if (ring && ring.length > 2) {
@@ -234,6 +236,12 @@ async function initApp() {
     .filter(Boolean);
   setupSceneCulling(scene, cullingRoots, lightingSystem.sunLight.shadow);
   markInit('culling');
+  if (bootParams.get('detail') === 'distance') {
+    distanceDetail = createMadridDistanceDetail(tileWorld.facadeMaterials);
+    distanceDetail.register(scene);
+    tileCompileProbes.add(distanceDetail.createCompileProbes());
+    if (window.__madrid) window.__madrid.distanceDetail = distanceDetail;
+  }
 
   // On WebGPU, small InstancedMeshes (<= 1000 instances) keep their matrices in uniform buffers that three.js
   // re-uploads on every draw of every pass (~2.5 MB/frame with the shadow cascades, stalling the GPU queue).
@@ -765,6 +773,7 @@ async function initApp() {
     audioSystem.update(dt, elapsed, cameraSystem.camera, lightingSystem.activePresetId === 'midnight');
     if (warmedUp) updateSceneCulling(cameraSystem.camera.position); // the warm-up frame draws every chunk
 
+    distanceDetail?.update(cameraSystem.camera.position);
     const renderStart = performance.now();
     // Render frame via TSL RenderPipeline (SSR + Bloom)
     if (!warmedUp) {

@@ -50,3 +50,5 @@ HARDWARE_GPU=1 GL_PROFILE=1 PLAYWRIGHT_MODULE=/ruta/a/playwright/index.mjs CHROM
 ```
 
 `GL_PROFILE=1` instrumenta llamadas WebGL que ocupan más de 2 ms en el hilo principal. Permite localizar esperas de programas y subidas de buffers; no mide por sí solo el tiempo de ejecución de la GPU. Las sondas de shaders se calientan durante el arranque y quedan ocultas después, conservando las cachés sin dibujarse en cada frame.
+
+El experimento `?detail=distance` simplifica solo los materiales de fachadas lejanas, conserva la geometría y restaura el material al acercarse. No está activo por defecto: la comparación no demostró una mejora consistente de FPS. Puede medirse con `DISTANCE_DETAIL=1` o con `DETAIL_COMPARE=1` para alternar detalle completo y lejano en la misma escena y cámara.

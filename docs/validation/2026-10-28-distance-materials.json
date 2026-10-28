@@ -1,0 +1,86 @@
+{
+  "environment": "Intel Iris Xe, Mesa 26.0.8, ANGLE OpenGL, WebGL2, 1280x720",
+  "status": "Experimental, opt-in only; no consistent FPS gain demonstrated. Geometry is unchanged.",
+  "aerial": {
+    "passed": true,
+    "frameLatency": {
+      "samples": 414,
+      "routeMs": 12058.900000002235,
+      "maxIntervalMs": 99.89999999999964,
+      "p95IntervalMs": 33.400000000001455,
+      "maxRenderMs": 34.19999999925494
+    },
+    "detail": {
+      "near": 8,
+      "far": 58,
+      "changes": 66
+    }
+  },
+  "comparison": [
+    {
+      "enabled": false,
+      "elapsedMs": 2000.2999999970198,
+      "frames": 72,
+      "meanRenderMs": 7.845205479748037,
+      "detail": {
+        "enabled": false,
+        "near": 66,
+        "far": 0,
+        "changes": 124
+      }
+    },
+    {
+      "enabled": true,
+      "elapsedMs": 2000.6000000014901,
+      "frames": 68,
+      "meanRenderMs": 12.850724637724351,
+      "detail": {
+        "enabled": true,
+        "near": 13,
+        "far": 53,
+        "changes": 177
+      }
+    },
+    {
+      "enabled": false,
+      "elapsedMs": 2000.3999999985099,
+      "frames": 66,
+      "meanRenderMs": 13.78939393947296,
+      "detail": {
+        "enabled": false,
+        "near": 66,
+        "far": 0,
+        "changes": 230
+      }
+    },
+    {
+      "enabled": true,
+      "elapsedMs": 2000.300000000745,
+      "frames": 69,
+      "meanRenderMs": 12.805797101362892,
+      "detail": {
+        "enabled": true,
+        "near": 13,
+        "far": 53,
+        "changes": 283
+      }
+    }
+  ],
+  "limits": "Two alternated full/distance pairs at one camera, 2 s each after five settling frames. Subject to drift; insufficient for performance claims. Desktop GPU with touch emulation for mobile captures.",
+  "walkConfirmation": {
+    "passed": true,
+    "detail": {
+      "enabled": true,
+      "near": 25,
+      "far": 49,
+      "changes": 61
+    },
+    "frameLatency": {
+      "samples": 544,
+      "routeMs": 12054.79999999702,
+      "maxIntervalMs": 116.70000000000073,
+      "p95IntervalMs": 33.400000000001455,
+      "maxRenderMs": 43.5
+    }
+  }
+}

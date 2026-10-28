@@ -126,3 +126,17 @@ Una regresión contrasta el hash de todos los parámetros de las cubiertas de k3
 Estrés con GPU real, n=1: máximo montaje observado ~38,4 ms (k4j2, antes ~160 ms); máximo intervalo de frames 116,6 ms, p95 33,4 ms, máximo dentro de renderizado 30,5 ms. Sin errores gráficos ni teselas fallidas. Evidencia: `docs/validation/2026-10-28-roof-worker.json`. No equivale a un benchmark controlado ni elimina todos los picos.
 
 Reversión de esta unidad: devolver el bucle de tejados al tile world y retirar roofs de los resultados del worker; el resto de preparación y calentamiento permanece independiente.
+
+## Experimento de materiales por distancia
+
+Se implementó un selector común para el centro y las teselas: mampostería simple más allá de 1.000 m y restauración de la fachada completa por debajo de 850 m (histéresis). Conserva el objeto de geometría, sus huecos, colisiones y tejados; no registra materiales de monumentos. Elimina referencias a teselas desalojadas y precalienta sus shaders mediante sondas ocultas.
+
+La prueba de invariantes verifica restitución de material, ausencia de modificaciones de geometría y monumentos, histéresis y retirada de teselas. 158/158 pruebas pasan. La pasada aérea de los destinos configurados, escritorio y móvil emulado, se inspeccionó sin errores gráficos; se observaron 58 mallas con material lejano y 8 con material cercano al finalizar la medición. Máximo intervalo global ~99,9 ms; los puntos tuvieron máximos ~66,7 ms. Estas muestras incluyen la preparación de cubiertas en worker.
+
+La comparación alternada en la MISMA escena/cámara y con shaders calientes dio 72/68/66/69 frames en cuatro periodos de dos segundos (completo/lejos/completo/lejos). No demuestra una mejora consistente. Por ello el experimento queda solo bajo `?detail=distance`, sin activar por defecto ni presentar como optimización conseguida. `DETAIL_COMPARE=1` y `DISTANCE_DETAIL=1` lo activan en el verificador. Evidencia: `docs/validation/2026-10-28-distance-materials.json`; capturas `/tmp/madrid-distance-aerial/`.
+
+Siguiente paso para el nivel lejano real: preparar en el worker una malla fusionada de las envolventes exteriores y sus patios, con menos paredes internas y dibujos que las tiras instanciadas actuales; mantener los monumentos independientes y comparar geometría y latencia. Este experimento de material no satisface por sí solo ese hito.
+
+Reversión de esta unidad: retirar madrid-distance-detail.js, su import/preload y la integración optativa en main; retirar detailBounds/facadeMaterials del tile world y la normalización de materiales detallados del verificador. La preparación exacta de cubiertas del commit anterior sigue independiente.
+
+La confirmación opcional a pie también pasó sin errores: al final se observaron 25 mallas con detalle cercano y 49 lejanas, con máximo de intervalo ~116,7 ms. No se interpreta como ganancia de FPS.

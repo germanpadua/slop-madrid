@@ -541,6 +541,8 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     group.userData.parcelKeys = drawnHere;
     group.userData.bytes = tile.bytes || 0;
     group.userData.id = tile.id;
+    group.userData.detailBounds = [Math.min(...core.map(r => r[0])), Math.min(...core.map(r => r[1])),
+      Math.max(...core.map(r => r[2])), Math.max(...core.map(r => r[3]))];
     scene.add(group);
     if (colliders && tileColliders.length) colliders.push(...tileColliders);
     groups.set(tile.id, { group, colliders: tileColliders });
@@ -593,6 +595,7 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
 
   return {
     addTile,
+    facadeMaterials: facades,
     createCompileProbes,
     removeTile,
     has: (id) => groups.has(id),
