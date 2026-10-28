@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { LANDMARK_SITES } from './city-config.js';
 import { MADRID_LANDMARK_STYLES } from './madrid-tiles.js';
-import { buildProceduralMonument } from './monuments.js';
+import { buildProceduralMonument, buildProceduralColliders } from './monuments.js';
 import { batchStaticGroupMeshes } from './city-grid.js';
 
 // js/landmarks.js
@@ -59,7 +59,9 @@ function buildLandmarks(scene) {
         g.add(proc);
         g.position.set(lm.cx, 0, lm.cz);
         group.add(g);
-        colliders.push({ minX: lm.cx - lm.w / 2, maxX: lm.cx + lm.w / 2, minZ: lm.cz - lm.d / 2, maxZ: lm.cz + lm.d / 2, maxY: H });
+        const pc = buildProceduralColliders(name, lm);
+        if (pc) colliders.push(...pc);
+        else colliders.push({ minX: lm.cx - lm.w / 2, maxX: lm.cx + lm.w / 2, minZ: lm.cz - lm.d / 2, maxZ: lm.cz + lm.d / 2, maxY: H });
         continue;
       }
       const n = lm.ring.length / 2;

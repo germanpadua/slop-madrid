@@ -117,6 +117,21 @@ const PROCEDURAL = {
   'Puerta de Alcalá': buildPuertaDeAlcala,
 };
 
+// Collision for procedural monuments: solid piers only, openings stay passable.
+// World mapping after rotation.y=PI/2: local (x,z) -> world (z,-x); the body spans
+// world x in [cx, cx+D] and world z in [cz-21.45, cz+21.45]. (The old whole-site
+// bbox was also misaligned by D/2 in x and sealed the arches.)
+const PUERTA_PIERS = [[-21.45, -18.8], [-14.8, -11.5], [-6.5, -3], [3, 6.5], [11.5, 14.8], [18.8, 21.45]];
+export function buildProceduralColliders(name, lm) {
+  if (name !== 'Puerta de Alcalá') return null;
+  const D = 14;
+  return PUERTA_PIERS.map(([a, b]) => ({
+    minX: lm.cx, maxX: lm.cx + D,
+    minZ: lm.cz - b, maxZ: lm.cz - a,
+    maxY: 21.9,
+  }));
+}
+
 export function buildProceduralMonument(name, mat) {
   const fn = PROCEDURAL[name];
   return fn ? fn(mat) : null;
