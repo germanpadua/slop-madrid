@@ -7,6 +7,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -27,8 +28,16 @@ def wfs(x0, y0, x1, y1, start=0):
     })
     url = "https://ovc.catastro.meh.es/inspire/wfsBU.aspx?" + qs
     req = urllib.request.Request(url, headers={"User-Agent": "slop-madrid/1.0 (cadastral buildings)"})
-    data = urllib.request.urlopen(req, timeout=120).read()
-    return ET.fromstring(data.decode("iso-8859-1"))
+    # The Catastro WFS drops connections under load; retry like the Overpass fetcher does.
+    last = None
+    for attempt in range(4):
+        try:
+            data = urllib.request.urlopen(req, timeout=120).read()
+            return ET.fromstring(data.decode("iso-8859-1"))
+        except Exception as exc:  # noqa: BLE001 - transient WFS failures are all retryable here
+            last = exc
+            time.sleep(3 * (attempt + 1))
+    raise last
 
 
 def main():
