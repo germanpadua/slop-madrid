@@ -64,3 +64,23 @@ test('decisions are deterministic and palette index is in range', async () => {
   assert.deepEqual(a, b);
   assert.ok(a.ci >= 0 && a.ci < 5);
 });
+
+test('tall towers always hip (flat mix does not apply above 22m)', async () => {
+  const { roofDecision } = await import('../js/madrid-roofs.js');
+  // #3 of block #315: 25.4x24.5, h=24.2 rolled flat by the 28% mix before the fix.
+  const P = { x0: 0, x1: 25.4, z0: 0, z1: 24.5, w: 25.4, d: 24.5, h: 24.2 };
+  const r = roofDecision(P, [P]);
+  assert.equal(r && r.kind, 'hip');
+});
+
+test('hip suppressed when its base emerges <3m above a containing flat slab', async () => {
+  const { roofDecision } = await import('../js/madrid-roofs.js');
+  // Inner building h=10.1 inside a container parcel whose slab top is 9.7: only 0.4m of wall would show.
+  const container = { x0: -30, x1: 30, z0: -30, z1: 30, w: 60, d: 60, h: 9.7 };
+  const inner = { x0: 3, x1: 22, z0: -2, z1: 17, w: 19, d: 19, h: 10.1 };
+  assert.equal(roofDecision(inner, [container, inner]), null);
+  // 3.5m of wall showing above the slab reads as supported: keep the hip.
+  const taller = { ...inner, h: 13.2 };
+  const r = roofDecision(taller, [container, taller]);
+  assert.equal(r && r.kind, 'hip');
+});

@@ -11,8 +11,9 @@
 // - Patio blocks (min span > 24m AND h <= 22m) get a perimeter ring with a patio opening. An
 //   AABB-spanning hip there read as an industrial shed (rejected).
 // - Collision containment: a ring falls back to flat when another known parcel pokes through its
-//   inner-slope band. Known = the caller's parcel list; the tile path passes same-tile parcels only
-//   (bounded approximation, as medianeras), the procedural path passes none.
+//   inner-slope band, and a hip is suppressed when its base emerges <3m above a containing parcel's
+//   flat slab (reads as a detached pyramid). Known = the caller's parcel list; the tile path passes
+//   same-tile parcels only (bounded approximation, as medianeras), the procedural path passes none.
 // - The ring's opening is a geometric opening in the roof mass; per-parcel evidence of a real courtyard
 //   does not exist in the AABB model, so callers must not claim one.
 const hash = (x, z, salt = 0) => {
@@ -25,7 +26,13 @@ const hash = (x, z, salt = 0) => {
 export function roofDecision(P, others = []) {
   if (P.h < 9 || P.w < 6 || P.d < 6) return null;
   const cx = (P.x0 + P.x1) / 2, cz = (P.z0 + P.z1) / 2;
-  if (hash(cx, cz, 11) > 0.72) return null;
+  const tall = P.h > 22; // towers always hip (documented rule); the 28% flat mix applies below them
+  if (!tall && hash(cx, cz, 11) > 0.72) return null;
+  // Floating-hip containment: when another known parcel's AABB contains this parcel's centre and its flat
+  // slab top sits less than 3m below this parcel's roof base, the hip would read as a detached pyramid
+  // sitting on the neighbour's slab (too little wall showing). Suppress it.
+  const cover = others.reduce((m, Q) => (Q !== P && Q.h < P.h && cx >= Q.x0 && cx <= Q.x1 && cz >= Q.z0 && cz <= Q.z1) ? Math.max(m, Q.h) : m, 0);
+  if (cover > 0 && P.h - cover < 3) return null;
   const base = {
     h: Math.min(4.2, Math.max(2.0, Math.min(P.w, P.d) * (0.26 + hash(cx, cz, 12) * 0.08))),
     rot: P.d > P.w ? Math.PI / 2 : 0,
