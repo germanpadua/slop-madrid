@@ -208,7 +208,9 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       const tone = hash(cz, cx, 3);
       const shop = WALL_KINDS.shop;
       const nH = nHArr[pi];
-      const exposed = nH.map((n) => n >= 1 && P.h - n >= 2.5);
+      // Guardrail: skip when the exposed strip would exceed half the parcel's height - blanking most of a
+      // tall interior tower reads as a monolith (unresolved: needs lotLine material work or street-side data)
+      const exposed = nH.map((n) => n >= 1 && P.h - n >= 2.5 && P.h - n <= P.h * 0.5);
       if (!exposed.some(Boolean)) {
         items[tier].push({ x: cx, y: P.h / 2, z: cz, w: P.w, h: P.h, d: P.d, tone, faces: [shop, shop, shop, shop] });
         continue;
