@@ -547,3 +547,21 @@ cercanas. Ampliar radios/budget es un valor del manifiesto, no un cambio de cód
   (modelo: 72 m con chapitel), chapiteles de pizarra, pináculos y pórtico de
   columnas al Paseo del Prado. Colisionador: bbox de la huella con maxY 72.
 
+
+## Fachada madrileña procedural (2026-10-28, 3a87920 + 2efed51)
+
+- `createPreWarBuildingMaterial` acepta `madrid: true` (flag aislado, NYC/NJ intactos): rejas de
+  forja en el tercio inferior de los vanos altos en vez de guillotina, sin unidades de AA, sin faja
+  de cornisa cada 6 plantas (se conservan fascia de bajos y copete), zócalo de piedra en planta baja.
+  Cableado en js/madrid-tile-world.js para los paquetes de parcelas.
+- Medianeras: cuando una parcela colindante es más baja, el lienzo por encima de su cubierta se emite
+  como piso apilado `WALL_KINDS.lotLine` (medianera ciega, sin vanos). Vecinos solo dentro de la
+  tesela (aproximación acotada; bordes entre teselas conservan frente de calle).
+- **Validación visual pendiente de mapa completo**: los cambios están verificados por píxeles en un
+  harness que importa los módulos reales del juego (material + instanciado de cajas + opciones
+  MADRID_FACADE_OPTS) sobre la manzana real #315, NO en el mapa completo. La captura headless del
+  arranque completo es inviable en este sandbox (compilación TSL bajo SwiftShader > 120 s de límite
+  por comando; los hijos detached se terminan al salir; sin cron/dbus de usuario). Verificación real
+  pendiente en navegador con GPU.
+- Coste medido (submit CPU, 1280x720 SwiftShader, mediana de 15): +0,30 ms por frame con `madrid:true`.
+  Sin cambio de geometría; el coste GPU no se puede aislar en SwiftShader.
