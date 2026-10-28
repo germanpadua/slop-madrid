@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { Raster, rdp, rdpRing, ringArea, bbox, r1, log } from '../geo-base.mjs';
 import { getPhase } from './config.mjs';
 import { toWorld, utmToWorld } from './projection.mjs';
+import { classifyRings } from './classify-rings.mjs';
 
 const DATA = process.env.MADRID_DATA || fileURLToPath(new URL('../../tools/data/madrid/', import.meta.url));
 const SOURCES = [
@@ -255,25 +256,45 @@ log(`${parks.length} parks, ${water.length} water bodies (${waterRelations} from
 // =====================================================================================================================
 const alturas = load('alturas.json');
 const parcels = [];
+const ringStats = { reversed: 0, extraExteriors: 0, failed: 0 };
 for (const f of alturas.features) {
   const h = f.attributes?.ALTURA;
   const g = f.geometry?.rings?.[0];
   if (!Number.isFinite(h) || !g || g.length < 4) continue;
-  const ring = rdpRing(g.map(([x, y]) => utmToWorld(x, y)), 0.4);
-  if (Math.abs(ringArea(ring)) < 12) continue; // kiosks & sheds
-  const bb = bbox(ring);
-  if (bb.x1 - bb.x0 < 1.2 || bb.z1 - bb.z0 < 1.2) continue;
-  if (ringArea(ring) > 0) ring.reverse();
-  // The WFS returns every footprint that intersects the box: keep the ones whose centre is inside the fetch box. A
-  // footprint carries no ownership of its own — it is emitted with the block that owns it (blocks are owned by the
-  // tile whose core holds the block centre), so a parcel in the fetch overlap is written by exactly one tile.
-  let cx = 0, cz = 0;
-  for (const q of ring) { cx += q[0]; cz += q[1]; }
-  cx /= ring.length; cz /= ring.length;
-  if (cx < wx0 || cx > wx1 || cz < wz0 || cz > wz1) continue;
-  parcels.push({ ring, h: Math.max(2.4, Math.round(h * 10) / 10), cx, cz });
+  // Source interior rings (patios/openings) are REAL in EDIFICIOS_ALTURAS (measured 2026-10-28: 117 of
+  // 1324 footprints in a 450x450m sample carry 137 holes, up to 37.6% of footprint area). rings[0]-only
+  // conversion filled them with massing. classifyRings assigns by CONTAINMENT (orientation is only a
+  // cross-check, so reversed/invalid source rings are caught), preserves multi-part footprints as
+  // extra parcels (no geometry silently dropped), and FAILS the feature loudly on ambiguous topology.
+  // Holes ship in the optional `holes` field (world frame, RDP 0.4, positive shoelace in x,z = opposite
+  // of the exterior's negative), absent when the source has none: older consumers are unaffected.
+  const srcRings = f.geometry.rings.map((r) => rdpRing(r.map(([x, y]) => utmToWorld(x, y)), 0.4)).filter((r) => r.length >= 4);
+  const cls = classifyRings(srcRings);
+  if (cls.stats.reversed) ringStats.reversed += cls.stats.reversed;
+  if (cls.stats.extraExteriors) ringStats.extraExteriors += cls.stats.extraExteriors;
+  if (cls.failed.length) {
+    ringStats.failed++;
+    log(`parcel feature dropped (ambiguous ring topology: ${cls.failed[0].reason}, ${cls.failed[0].ringCount} rings)`);
+    continue;
+  }
+  for (const part of cls.parcels) {
+    const ring = part.ring;
+    if (Math.abs(ringArea(ring)) < 12) continue; // kiosks & sheds
+    const bb = bbox(ring);
+    if (bb.x1 - bb.x0 < 1.2 || bb.z1 - bb.z0 < 1.2) continue;
+    // The WFS returns every footprint that intersects the box: keep the ones whose centre is inside the fetch box. A
+    // footprint carries no ownership of its own — it is emitted with the block that owns it (blocks are owned by the
+    // tile whose core holds the block centre), so a parcel in the fetch overlap is written by exactly one tile.
+    let cx = 0, cz = 0;
+    for (const q of ring) { cx += q[0]; cz += q[1]; }
+    cx /= ring.length; cz /= ring.length;
+    if (cx < wx0 || cx > wx1 || cz < wz0 || cz > wz1) continue;
+    const pr = { ring, h: Math.max(2.4, Math.round(h * 10) / 10), cx, cz };
+    if (part.holes.length) pr.holes = part.holes;
+    parcels.push(pr);
+  }
 }
-log(`${parcels.length} real building parcels (IDEAM alturas)`);
+log(`${parcels.length} real building parcels (IDEAM alturas); ring topology: ${ringStats.extraExteriors} extra exteriors kept as parcels, ${ringStats.reversed} reversed-orientation rings corrected by containment, ${ringStats.failed} features failed ambiguous`);
 
 // label connected components of the parcel raster, then trace each component's outer ring
 const RES = 2;
@@ -779,7 +800,7 @@ const GEO = {
   roads: roadLines.map((r) => [r.name, r1(r.w), r.dir, r.lanes, r.hw, flat(r.pts)]),
   roadGraph: { nodes: outNodes, links: outLinks, names },
   blocks: blocks.map((b) => [flat(b.ring), b.rects, 0, '', 0, 0]),
-  parcels: blocks.map((b) => b.parcels.map((p) => ({ ring: flat(p.ring), h: p.h }))),
+  parcels: blocks.map((b) => b.parcels.map((p) => ({ ring: flat(p.ring), h: p.h, ...(p.holes ? { holes: p.holes.map(flat) } : {}) }))),
   parks: parksClipped.map((p) => ({ name: p.name, cat: p.cat, acres: p.acres, rings: p.rings.map(flat) })),
   water: waterClipped.map(flat),
   plazasMadrid: [
@@ -837,7 +858,7 @@ if (IS_TILE) {
     // sits on a block. Block ownership still decides slabs/sidewalks, but NOT facades: two builds can trace slightly
     // different slabs from data fetched on different days, and attaching facades to slabs then emits the same
     // footprint from two tiles (seen 28-10-2026: k0j-1/k1j-1 seam). Centres are build-independent, so they cannot.
-    parcels: parcels.filter((p) => inCore(p.cx, p.cz)).map((p) => ({ ring: flat(p.ring), h: p.h })),
+    parcels: parcels.filter((p) => inCore(p.cx, p.cz)).map((p) => ({ ring: flat(p.ring), h: p.h, ...(p.holes ? { holes: p.holes.map(flat) } : {}) })),
     parks: parksClipped.map((p) => ({ name: p.name, cat: p.cat, acres: p.acres, rings: p.rings.map(flat) })),
     water: waterClipped.map(flat),
     roads: roadLines.map((r) => [r.name, r1(r.w), r.dir, r.lanes, r.hw, flat(r.pts)]),

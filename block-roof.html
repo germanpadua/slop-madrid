@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>block-roof</title>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.webgpu.js",
+  "three/webgpu": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.webgpu.js",
+  "three/tsl": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.tsl.js",
+  "three/addons/": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/jsm/"
+} }
+</script></head>
+<body style="margin:0">
+<script type="module">
+import * as THREE from 'three/webgpu';
+import { Fn, color, fract, mix, smoothstep, positionGeometry } from 'three/tsl';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { createPreWarBuildingMaterial, createFacadeBoxes } from './js/tsl-materials.js';
+import { partyWallHeights } from './js/madrid-adjacency.js';
+import { roofDecision } from './js/madrid-roofs.js';
+import { MADRID_FACADE_OPTS } from './js/madrid-tiles.js';
+window.onerror = (m) => { fetch('/__shot?name=err', { method: 'POST', body: String(m) }).catch(() => {}); };
+window.addEventListener('unhandledrejection', (e) => { fetch('/__shot?name=err', { method: 'POST', body: 'rej:' + String(e.reason && e.reason.message || e.reason) }).catch(() => {}); });
+const canvas = document.createElement('canvas');
+canvas.width = 1280; canvas.height = 720;
+const ctx = canvas.getContext('webgl2', { antialias: true, alpha: true, depth: true, stencil: false, preserveDrawingBuffer: true });
+const renderer = new THREE.WebGPURenderer({ canvas, context: ctx, antialias: true, forceWebGL: true });
+renderer.setSize(1280, 720);
+await renderer.init();
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xebd1b5);
+scene.add(new THREE.HemisphereLight(0x9abbe6, 0xc88a62, 1.48));
+const sun = new THREE.DirectionalLight(0xffca92, 5.8);
+sun.position.set(-44, 58, -68);
+scene.add(sun);
+
+const data = await (await fetch('./block.json')).json();
+const OPTS = MADRID_FACADE_OPTS;
+const hash = (x, z, salt = 0) => { const v = Math.sin(x * 12.9898 + z * 78.233 + salt * 37.719) * 43758.5453; return v - Math.floor(v); };
+const CX = data.parcels.reduce((a, p) => a + p.ring[0], 0) / data.parcels.length;
+const CZ = data.parcels.reduce((a, p) => a + p.ring[1], 0) / data.parcels.length;
+const pabs = [];
+data.parcels.forEach((p, index) => {
+  if (!p || !p.ring || !(p.h > 0) || p.ring.length < 6) return;
+  let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
+  for (let i = 0; i + 1 < p.ring.length; i += 2) {
+    x0 = Math.min(x0, p.ring[i]); x1 = Math.max(x1, p.ring[i]);
+    z0 = Math.min(z0, p.ring[i + 1]); z1 = Math.max(z1, p.ring[i + 1]);
+  }
+  const w = x1 - x0, d = z1 - z0;
+  if (w < 2 || d < 2) return;
+  pabs.push({ x0, x1, z0, z1, w, d, h: p.h, index, ring: p.ring });
+});
+// Synthetic clean patio block (no inner tower) to exercise the ring: 42x34, h=19, east of the block
+pabs.push({ x0: 55 - 21 + CX, x1: 55 + 21 + CX, z0: -10 - 17 + CZ, z1: -10 + 17 + CZ, w: 42, d: 34, h: 19, index: 900, ring: [0, 0, 1, 0, 1, 1, 0, 1] });
+// Facades (medianera-aware, game-exact)
+const NHH = partyWallHeights(pabs);
+const items = OPTS.map(() => []);
+for (const P of pabs) {
+  const cx = (P.x0 + P.x1) / 2 - CX, cz = (P.z0 + P.z1) / 2 - CZ;
+  const tier = Math.floor(hash(cx, cz, P.index) * OPTS.length) % OPTS.length;
+  const tone = hash(cz, cx, 3);
+  const nH = NHH[pabs.indexOf(P)];
+  const exposed = nH.map((n) => n >= 1 && P.h - n >= 2.5 && P.h - n <= P.h * 0.5);
+  if (!exposed.some(Boolean)) { items[tier].push({ x: cx, y: P.h / 2, z: cz, w: P.w, h: P.h, d: P.d, tone, faces: [0, 0, 0, 0] }); continue; }
+  const nMin = Math.min(...nH.filter((n, i) => exposed[i]));
+  items[tier].push({ x: cx, y: nMin / 2, z: cz, w: P.w, h: nMin, d: P.d, tone, faces: [0, 0, 0, 0] });
+  const upFaces = nH.map((n, i) => (exposed[i] && n <= nMin + 0.5 ? 3 : 0));
+  items[tier].push({ x: cx, y: nMin + (P.h - nMin) / 2, z: cz, w: P.w, h: P.h - nMin, d: P.d, tone, faces: upFaces });
+}
+items.forEach((list, i) => {
+  if (!list.length) return;
+  const mat = createPreWarBuildingMaterial({ ...OPTS[i], boxLocal: true, madrid: true });
+  scene.add(createFacadeBoxes(mat, list));
+});
+// Hip roofs: game-equivalent unit cuatro-aguas geometry + palette + distribution (js/buildings.js)
+const hipGeo = new THREE.BufferGeometry();
+hipGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+  -0.5, 0, -0.5, 0.5, 0, -0.5, 0.25, 1, 0,
+  -0.5, 0, -0.5, 0.25, 1, 0, -0.25, 1, 0,
+  0.5, 0, 0.5, -0.5, 0, 0.5, -0.25, 1, 0,
+  0.5, 0, 0.5, -0.25, 1, 0, 0.25, 1, 0,
+  -0.5, 0, 0.5, -0.5, 0, -0.5, -0.25, 1, 0,
+  0.5, 0, -0.5, 0.5, 0, 0.5, 0.25, 1, 0
+]), 3));
+hipGeo.computeVertexNormals();
+// Perimeter roof ring for patio blocks: outer slopes up to a ridge ring, inner slopes down to a
+// patio opening (the parcel box top face shows through as the patio floor). Unit span 1x1.
+const ringGeo = new THREE.BufferGeometry();
+{
+  const k1 = 0.16, k2 = 0.30, yi = 0.45;
+  const O = 0.5, R = 0.5 - k1, I = 0.5 - k2;
+  const A = [-O, 0, -O], B = [O, 0, -O], C = [O, 0, O], D = [-O, 0, O];
+  const RA = [-R, 1, -R], RB = [R, 1, -R], RC = [R, 1, R], RD = [-R, 1, R];
+  const IA = [-I, yi, -I], IB = [I, yi, -I], IC = [I, yi, I], ID = [-I, yi, I];
+  const tri = [];
+  const quad = (p, q, r, s) => { tri.push(...p, ...q, ...r, ...p, ...r, ...s); };
+  const o = [A, B, C, D], rg = [RA, RB, RC, RD], inr = [IA, IB, IC, ID];
+  for (let s = 0; s < 4; s++) {
+    const t = (s + 1) % 4;
+    quad(o[s], o[t], rg[t], rg[s]);
+    quad(rg[s], rg[t], inr[t], inr[s]);
+  }
+  ringGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(tri), 3));
+}
+ringGeo.computeVertexNormals();
+const hipMat = new THREE.MeshStandardNodeMaterial({ roughness: 0.9, metalness: 0.0, side: THREE.DoubleSide });
+hipMat.colorNode = Fn(() => {
+  const course = smoothstep(0.35, 0.65, fract(positionGeometry.y.mul(22.0)));
+  return mix(color(0xffffff), color(0xd8cec6), course.mul(0.14));
+})();
+const hipPalette = [0xb0512b, 0xbc5f33, 0xa6492a, 0xc06a3d, 0x9a5238].map((c) => new THREE.Color(c));
+const hipSlate = new THREE.Color(0x5d646e);
+const roofs = [];
+for (const P of pabs) {
+  const d = roofDecision(P, pabs); // real shared rules (js/madrid-roofs.js); centres shifted to harness frame
+  if (!d) continue;
+  roofs.push({ x: (P.x0 + P.x1) / 2 - CX, y: P.h, z: (P.z0 + P.z1) / 2 - CZ, w: P.w, d: P.d, h: d.h, rot: d.rot, ci: d.ci, slate: d.slate, ring: d.kind === 'ring' });
+}
+const roofGroup = new THREE.Group();
+const hipInst = new THREE.InstancedMesh(hipGeo, hipMat, Math.max(1, roofs.length));
+const ringInst = new THREE.InstancedMesh(ringGeo, hipMat, Math.max(1, roofs.length));
+{
+  const dummy = new THREE.Object3D();
+  let iF = 0, iD = 0;
+  roofs.forEach((r) => {
+    dummy.rotation.set(0, r.rot, 0);
+    dummy.position.set(r.x, r.y, r.z);
+    dummy.scale.set((r.rot ? r.d : r.w) + 0.6, r.h, (r.rot ? r.w : r.d) + 0.6);
+    dummy.updateMatrix();
+    if (r.ring) { ringInst.setMatrixAt(iD, dummy.matrix); ringInst.setColorAt(iD, r.slate ? hipSlate : hipPalette[r.ci]); iD++; }
+    else { hipInst.setMatrixAt(iF, dummy.matrix); hipInst.setColorAt(iF, r.slate ? hipSlate : hipPalette[r.ci]); iF++; }
+  });
+  hipInst.count = iF; ringInst.count = iD;
+  roofGroup.add(hipInst, ringInst);
+}
+scene.add(roofGroup);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 300).rotateX(-Math.PI / 2), new THREE.MeshStandardMaterial({ color: 0xb7ad99 }));
+ground.position.y = -0.05; scene.add(ground);
+const cam = new THREE.PerspectiveCamera(45, 1280 / 720, 0.5, 3000);
+async function postShot(name) {
+  const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.85));
+  await fetch('/__shot?name=' + name, { method: 'POST', body: blob });
+}
+roofGroup.visible = false;
+cam.position.set(-30, 40, 95); cam.lookAt(25, 8, 0);
+renderer.render(scene, cam); await postShot('roof-elev-before');
+roofGroup.visible = true;
+renderer.render(scene, cam); await postShot('roof-elev-after');
+roofGroup.visible = false;
+cam.position.set(-38, 1.7, 55); cam.lookAt(5, 9, -10);
+renderer.render(scene, cam); await postShot('roof-street-before');
+roofGroup.visible = true;
+renderer.render(scene, cam); await postShot('roof-street-after');
+window.__done = true;
+</script></body></html>

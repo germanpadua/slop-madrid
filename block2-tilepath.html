@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>block-tilepath</title>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.webgpu.js",
+  "three/webgpu": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.webgpu.js",
+  "three/tsl": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.tsl.js",
+  "three/addons/": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/jsm/"
+} }
+</script></head>
+<body style="margin:0">
+<script type="module">
+// block-tilepath.html — exercises the REAL phase-3 tile renderer (js/madrid-tile-world.js createTileWorld/addTile)
+// on the real parcels of manzana #315 (block2.json), golden-preset lighting synced to js/lighting.js.
+import * as THREE from 'three/webgpu';
+import { createTileWorld } from './js/madrid-tile-world.js';
+fetch('/__shot?name=boot', { method: 'POST', body: 'imports-ok' }).catch(() => {});
+window.onerror = (m) => { fetch('/__shot?name=err', { method: 'POST', body: String(m) }).catch(() => {}); };
+window.addEventListener('unhandledrejection', (e) => { fetch('/__shot?name=err', { method: 'POST', body: 'rej:' + String(e.reason && e.reason.message || e.reason) }).catch(() => {}); });
+const canvas = document.createElement('canvas');
+canvas.width = 1280; canvas.height = 720;
+const ctx = canvas.getContext('webgl2', { antialias: true, alpha: true, depth: true, stencil: false, preserveDrawingBuffer: true });
+const renderer = new THREE.WebGPURenderer({ canvas, context: ctx, antialias: true, forceWebGL: true });
+renderer.setSize(1280, 720);
+await renderer.init();
+fetch('/__shot?name=boot2', { method: 'POST', body: 'renderer-ok' }).catch(() => {});
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xebd1b5);
+scene.add(new THREE.HemisphereLight(0x9abbe6, 0xc88a62, 1.48));
+const sun = new THREE.DirectionalLight(0xffca92, 5.8);
+sun.position.set(-44, 58, -68);
+scene.add(sun);
+
+const data = await (await fetch('./block2.json')).json();
+let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9, CX = 0, CZ = 0, n = 0;
+for (const p of data.parcels) {
+  if (!p.ring) continue;
+  CX += p.ring[0]; CZ += p.ring[1]; n++;
+  for (let i = 0; i + 1 < p.ring.length; i += 2) {
+    x0 = Math.min(x0, p.ring[i]); x1 = Math.max(x1, p.ring[i]);
+    z0 = Math.min(z0, p.ring[i + 1]); z1 = Math.max(z1, p.ring[i + 1]);
+  }
+}
+CX /= n; CZ /= n;
+const pad = 30;
+const bbox = [x0 - pad, z0 - pad, x1 + pad, z1 + pad];
+const tile = { id: 'harness-315', bytes: 0, core: [bbox], frame: { bbox }, water: [], blocks: [], roads: [], parks: [], parcels: data.parcels, landmarks: {} };
+const FP = !location.search.includes('fp=0'); window.__FP = FP;
+if (!FP) fetch('/__shot?name=fpoff', { method: 'POST', body: 'aabb-mode' }).catch(() => {});
+const world = createTileWorld(scene, {});
+const entry = world.addTile(tile);
+const group = entry.group || entry;
+if (group.parent !== scene) scene.add(group);
+fetch('/__shot?name=fpstats', { method: 'POST', body: JSON.stringify(tile.footprintStats || []) }).catch(() => {});
+let boxInstances = 0, roofInstances = 0;
+group.traverse((o) => { if (/TileBuildings/i.test(o.name || '')) boxInstances += o.count; if (/Roofs/i.test(o.name || '')) roofInstances += o.count; });
+const roofMeshes = [];
+group.traverse((o) => { if (/Roofs/i.test(o.name || '')) roofMeshes.push(o); });
+
+async function postShot(name) {
+  const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.85));
+  await fetch('/__shot?name=' + name, { method: 'POST', body: blob });
+}
+const cam = new THREE.PerspectiveCamera(45, 1280 / 720, 0.5, 3000);
+const roofsVisible = (v) => roofMeshes.forEach((m) => { m.visible = v; });
+roofsVisible(false);
+cam.position.set(CX + 70, 45, CZ - 90); cam.lookAt(CX, 8, CZ); // sunlit side (sun at -44,58,-68)
+renderer.render(scene, cam); await postShot('tile-elev-before');
+roofsVisible(true);
+renderer.render(scene, cam); await postShot('tile-elev-after');
+roofsVisible(false);
+cam.position.set(CX + 63, 1.7, CZ - 55); cam.lookAt(CX + 20, 9, CZ + 10); // sunlit street view
+renderer.render(scene, cam); await postShot('tile-street-before');
+roofsVisible(true);
+renderer.render(scene, cam); await postShot('tile-street-after');
+fetch('/__shot?name=roofs', { method: 'POST', body: roofMeshes.map((m) => m.name + ':' + m.count).join(',') }).catch(() => {});
+cam.position.set(CX, 190, CZ + 1); cam.lookAt(CX, 0, CZ);
+renderer.render(scene, cam); await postShot('tile-top' + (FP ? '' : '-aabb'));
+
+// Hybrid-B evidence: close oblique + close top on the 5-patio fallback parcel (block2 index 11).
+{
+  const HP = data.parcels[11];
+  let hx = 0, hz = 0; for (let i = 0; i < HP.ring.length; i += 2) { hx += HP.ring[i]; hz += HP.ring[i + 1]; }
+  hx /= HP.ring.length / 2; hz /= HP.ring.length / 2;
+  cam.position.set(hx + 40, 55, hz - 40); cam.lookAt(hx, 4, hz);
+  renderer.render(scene, cam); await postShot('tile-well-oblique' + (FP ? '' : '-aabb'));
+  cam.position.set(hx, 110, hz + 1); cam.lookAt(hx, 0, hz);
+  renderer.render(scene, cam); await postShot('tile-well-top' + (FP ? '' : '-aabb'));
+}
+// Perf MUST measure from the SAME full-crop top camera every run (call counts are frustum-dependent).
+cam.position.set(CX, 190, CZ + 1); cam.lookAt(CX, 0, CZ);
+{ const names = {}; scene.traverse((o) => { if (o.isMesh || o.isInstancedMesh) names[o.name || '(anon)'] = (names[o.name || '(anon)'] || 0) + 1; });
+  fetch('/__shot?name=scenestats', { method: 'POST', body: JSON.stringify(names) }).catch(() => {});
+  const t0 = performance.now(); for (let i = 0; i < 10; i++) renderer.render(scene, cam); const ms = (performance.now() - t0) / 10;
+fetch('/__shot?name=perf', { method: 'POST', body: JSON.stringify({ boxInstances, roofInstances, frameMs: +ms.toFixed(2), calls: renderer.info.render.calls, tris: renderer.info.render.triangles }) }).catch(() => {}); }
+window.__done = true;
+</script></body></html>

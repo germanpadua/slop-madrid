@@ -84,3 +84,13 @@ test('hip suppressed when its base emerges <3m above a containing flat slab', as
   const r = roofDecision(taller, [container, taller]);
   assert.equal(r && r.kind, 'hip');
 });
+
+test('minSpan is caller policy: strips of 4.5m roof only when relaxed', async () => {
+  const { roofDecision } = await import('../js/madrid-roofs.js');
+  const strip = { x0: 0, x1: 30, z0: 0, z1: 4.7, w: 30, d: 4.7, h: 12 };
+  assert.equal(roofDecision(strip, [strip]) && 'x', roofDecision(strip, [strip]) ? 'x' : null); // parse guard
+  const relaxed = roofDecision(strip, [strip], { minSpan: 4 });
+  const strict = roofDecision(strip, [strip]);
+  assert.equal(strict, null, 'default 6m min span keeps narrow strips flat');
+  if (relaxed) assert.equal(relaxed.kind, 'hip');
+});

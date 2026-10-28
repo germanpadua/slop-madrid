@@ -91,3 +91,60 @@ export function partyWallHeights(parcels) {
   }
   return result;
 }
+
+/**
+ * Per-edge shared wall runs for the hybrid (extruded-ring) renderer: for each ring edge, the
+ * [t0,t1] intervals where a parallel neighbour wall sits within TOL_M, with the max abutter height.
+ * Same sampling/parallel-edge rules as partyWallHeights; runs shorter than MIN_RUN_M are dropped.
+ * @returns array per parcel of array per edge of { t0, t1, h }
+ */
+export function partyWallRuns(parcels) {
+  const rings = parcels.map((P) => {
+    const pts = [];
+    const r = P.ring;
+    for (let i = 0; i + 1 < r.length; i += 2) pts.push([r[i], r[i + 1]]);
+    return pts;
+  });
+  const result = [];
+  for (let i = 0; i < parcels.length; i++) {
+    const P = parcels[i], pts = rings[i];
+    const perEdge = [];
+    for (let e = 0; e < pts.length; e++) {
+      const [ax, az] = pts[e], [bx, bz] = pts[(e + 1) % pts.length];
+      const L = Math.hypot(bx - ax, bz - az);
+      if (L < 0.3) { perEdge.push([]); continue; }
+      const ux = (bx - ax) / L, uz = (bz - az) / L;
+      const n = Math.max(1, Math.round(L / SAMPLE_M));
+      const marks = new Array(n).fill(0); // 0 = exposed, else abutter height
+      for (let sIdx = 0; sIdx < n; sIdx++) {
+        const t = (sIdx + 0.5) / n;
+        const px = ax + (bx - ax) * t, pz = az + (bz - az) * t;
+        for (let j = 0; j < parcels.length; j++) {
+          if (j === i) continue;
+          const Q = parcels[j];
+          if (px < Q.x0 - TOL_M || px > Q.x1 + TOL_M || pz < Q.z0 - TOL_M || pz > Q.z1 + TOL_M) continue;
+          const d = nearestParallelEdge(px, pz, ux, uz, rings[j]);
+          // Overlay use: only COINCIDENT walls (d <= 0.5m) count as party wall; 0.5-1.5m is source
+          // uncertainty (noisy twin walls) - left glazed and reported, never blanked or bridged.
+          if (d <= 0.5) marks[sIdx] = Math.max(marks[sIdx], Q.h);
+        }
+      }
+      const runs = [];
+      let s0 = -1;
+      for (let sIdx = 0; sIdx <= n; sIdx++) {
+        const on = sIdx < n && marks[sIdx] > 0;
+        if (on && s0 < 0) s0 = sIdx;
+        if (!on && s0 >= 0) {
+          let h = 0;
+          for (let k = s0; k < sIdx; k++) h = Math.max(h, marks[k]);
+          const t0 = s0 / n, t1 = sIdx / n;
+          if ((t1 - t0) * L >= MIN_RUN_M) runs.push({ t0, t1, h });
+          s0 = -1;
+        }
+      }
+      perEdge.push(runs);
+    }
+    result.push(perEdge);
+  }
+  return result;
+}

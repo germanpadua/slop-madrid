@@ -54,7 +54,8 @@ import {
   sqrt,
   specularColor,
   specularColorBlended,
-  specularF90
+  specularF90,
+  vertexColor
 } from 'three/tsl';
 import {
   CENTRAL_PARK_BOUNDS,
@@ -698,10 +699,11 @@ function createPreWarBuildingMaterial(opts = {}) {
     seed = 42.0,
     boxLocal = false,
     cornerPier = 1.2, // solid masonry at both ends of every wall above the shopfronts (box-local mode)
-    madrid = false // Madrid dialect: iron balcony rails instead of sash bars, stone zocalo ground floor, no AC units, no 6-floor cornice belt
+    madrid = false, // Madrid dialect: iron balcony rails instead of sash bars, stone zocalo ground floor, no AC units, no 6-floor cornice belt
+    vertexTint = false // multiply masonry by the geometry color attribute (merged-zone illustrative tints)
   } = opts;
 
-  const cacheKey = `${stoneColor}_${trimColor}_${windowWidth}_${floorHeight}_${litProbability}_${warmth}_${crownGlowHeight}_${seed}_${boxLocal}_${cornerPier}_${madrid}`;
+  const cacheKey = `${stoneColor}_${trimColor}_${windowWidth}_${floorHeight}_${litProbability}_${warmth}_${crownGlowHeight}_${seed}_${boxLocal}_${cornerPier}_${madrid}_${vertexTint}`;
   if (_preWarCache.has(cacheKey)) {
     return _preWarCache.get(cacheKey);
   }
@@ -710,6 +712,7 @@ function createPreWarBuildingMaterial(opts = {}) {
     metalness: 0.06,
     roughness: 0.76
   });
+  mat.vertexColors = vertexTint;
 
   // The style's parameters are uniforms (not baked-in constants), so every masonry style compiles to one shader
   const cStone = uniform(new THREE.Color(stoneColor));
@@ -910,7 +913,7 @@ function createPreWarBuildingMaterial(opts = {}) {
       signPaint.assign(vec4(mix(ground, ink, max(letters, border)), cover));
     });
 
-    const wallTint = mix(mix(cStone, backTint, back), signPaint.xyz, signPaint.w);
+    const wallTint = mix(mix(cStone, backTint, back), signPaint.xyz, signPaint.w).mul(vertexTint ? vertexColor().rgb : vec3(1.0, 1.0, 1.0));
     const wallTintZ = mix(wallTint, cTrim.mul(0.82), isGroundFloor.mul(front).mul(uMadrid).mul(0.55)); // Madrid stone zocalo
     // Trim stone on the band courses, the storefront fascia and the coping capping every wall
     const trimMix = max(isCornice.mul(0.62).add(isGroundFloor.mul(0.28)), coping.mul(0.8));

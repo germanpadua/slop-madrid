@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>cibeles-viewer</title>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.webgpu.js",
+  "three/webgpu": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.webgpu.js",
+  "three/tsl": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.tsl.js",
+  "three/addons/": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/jsm/"
+} }
+</script></head>
+<body style="margin:0">
+<script type="module">
+import * as THREE from 'three/webgpu';
+import { buildProceduralMonument } from './js/monuments.js';
+
+const LM = {"ring": [968.3, -225.2, 964.4, -225.6, 962.1, -222.5, 960.3, -223.1, 953, -219.9, 952, -211.7, 954.1, -211.2, 950, -177.4, 948, -177.6, 947, -169.7, 951, -163, 1066.6, -154.8, 1065.6, -257.5, 1060.2, -257.4, 1060.3, -267.5, 1065.5, -267.5, 1065.3, -287.5, 1060, -286.6, 1060, -287.7, 1051.4, -286.5, 1051.5, -285.1, 1008.3, -277.5, 1007.6, -279, 999.3, -277.6, 998, -269.4, 998.6, -268.2, 996.3, -265.2, 997.4, -261.9, 1001.3, -260.7, 988.5, -245.6, 987.7, -246.3, 981.3, -237.8, 981.9, -237.2, 969.8, -221.8], "cx": 1006.8, "cz": -221.2, "w": 119.6, "d": 133, "h": 63.8, "hSrc": "IDEAM", "building": 1};
+window.__status = 'building';
+window.onerror = (m) => { window.__err = String(m); };
+const canvas = document.createElement('canvas');
+canvas.width = 1280; canvas.height = 720;
+const ctx = canvas.getContext('webgl2', { antialias: true, alpha: true, depth: true, stencil: false, preserveDrawingBuffer: true });
+const renderer = new THREE.WebGPURenderer({ canvas, context: ctx, antialias: true, forceWebGL: true });
+renderer.setSize(1280, 720);
+renderer.shadowMap.enabled = true;
+await renderer.init();
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9db8d6);
+scene.add(new THREE.HemisphereLight(0xffffff, 0x8a7f6a, 1.1));
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.2);
+sun.position.set(-80, 140, -60);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -150; sun.shadow.camera.right = 150;
+sun.shadow.camera.top = 150; sun.shadow.camera.bottom = -150;
+sun.shadow.camera.far = 500;
+scene.add(sun);
+
+const ground = new THREE.Mesh(new THREE.CircleGeometry(320, 48).rotateX(-Math.PI/2), new THREE.MeshStandardMaterial({ color: 0xb7ad99, roughness: 0.95 }));
+ground.receiveShadow = true;
+scene.add(ground);
+
+// fountain position marker (Fuente de Cibeles site relative to palace center)
+const marker = new THREE.Mesh(new THREE.ConeGeometry(3, 6, 8), new THREE.MeshStandardMaterial({ color: 0x3366aa }));
+marker.position.set(910 - LM.cx, 3, -276.8 - LM.cz);
+scene.add(marker);
+
+const model = buildProceduralMonument('Palacio de Cibeles', new THREE.MeshStandardMaterial({ color: 0xeae3d1, roughness: 0.7 }), LM);
+model.traverse((o) => {
+  if (o.isMesh && o.material) {
+    const m = o.material;
+    o.material = new THREE.MeshStandardMaterial({ color: (m.color && m.color.clone) ? m.color.clone() : new THREE.Color(0xcccccc), roughness: m.roughness ?? 0.8, metalness: m.metalness ?? 0 });
+    o.castShadow = true; o.receiveShadow = true;
+  }
+});
+scene.add(model);
+
+const cam = new THREE.PerspectiveCamera(45, 1280/720, 0.5, 2000);
+const views = [
+  ['cibv2-W',  [-150, 25, 30], [0, 22, 10]],      // frontal west facade from the plaza
+  ['cibv2-SW', [-126, 18, -72], [0, 26, 0]],      // from the fountain, toward main facade
+  ['cibv2-NE', [180, 70, 120], [0, 22, 0]],       // high oblique from NE (blockout view)
+];
+async function postShot(name) {
+  const blob = await new Promise((res) => renderer.domElement.toBlob(res, 'image/jpeg', 0.9));
+  await fetch('/__shot?name=' + name, { method: 'POST', body: blob });
+}
+window.__shots = [];
+for (const [name, pos, look] of views) {
+  cam.position.set(...pos);
+  cam.lookAt(...look);
+  renderer.render(scene, cam);
+  await postShot(name);
+  window.__shots.push(name);
+}
+window.__status = 'done';
+</script></body></html>

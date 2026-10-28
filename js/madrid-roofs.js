@@ -23,8 +23,11 @@ const hash = (x, z, salt = 0) => {
 
 // P: { x0, x1, z0, z1, w, d, h } (AABB + height in metres). others: known neighbour AABBs for the clash
 // test (may be empty). Returns null (flat) or { kind: 'hip' | 'ring', h, rot, ci, slate }.
-export function roofDecision(P, others = []) {
-  if (P.h < 9 || P.w < 6 || P.d < 6) return null;
+// opts.minSpan: caller policy for the smallest roofable span (default 6m). The tile path relaxes it to
+// 4m for footprint-decomposition strips, whose real depth is ~4.5-5m: perimeter blocks still get tejados.
+export function roofDecision(P, others = [], opts = {}) {
+  const minSpan = opts.minSpan ?? 6;
+  if (P.h < 9 || P.w < minSpan || P.d < minSpan) return null;
   const cx = (P.x0 + P.x1) / 2, cz = (P.z0 + P.z1) / 2;
   const tall = P.h > 22; // towers always hip (documented rule); the 28% flat mix applies below them
   if (!tall && hash(cx, cz, 11) > 0.72) return null;

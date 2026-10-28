@@ -20,8 +20,9 @@ import {
   createWaterMaterial
 } from './tsl-materials.js';
 import { FACADE_DEFS } from './buildings.js';
-import { partyWallHeights } from './madrid-adjacency.js';
+import { partyWallHeights, partyWallRuns } from './madrid-adjacency.js';
 import { roofDecision } from './madrid-roofs.js';
+import { decomposeRing } from './madrid-footprint.js';
 import { MADRID_FACADE_OPTS, MADRID_LANDMARK_STYLES } from './madrid-tiles.js';
 
 // Tejados: shared terracotta material + palette (Tiny-Madrid illustrated references, user-chosen).
@@ -129,6 +130,12 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
   // was a bug: entries 3+ are NYC curtain-wall (glass) factories that ignore the Madrid palette and turned
   // tier-3 parcels into dark glass towers (caught by the real tile-path harness, block-tilepath.html).
   const facades = MADRID_FACADE_OPTS.map((opts) => FACADE_DEFS[0][0]({ ...opts, boxLocal: true, madrid: true }));
+  // HYBRID-B prototype: plain tier-toned wall material for coherent holed massing (no window grid yet).
+  const hybridWallMats = MADRID_FACADE_OPTS.map((o) => new THREE.MeshStandardNodeMaterial({ color: o.stoneColor, roughness: 0.95, metalness: 0 }));
+  // HYBRID-B facade probe: WORLD-SPACE facade variant per tier (boxLocal omitted) - windows map by
+  // world position+normal onto arbitrary wall orientations, incl. extruded concave/well walls.
+  const hybridFacadeMats = MADRID_FACADE_OPTS.map((o) => FACADE_DEFS[0][0]({ ...o, madrid: true }));
+  const medianeraMat = new THREE.MeshStandardNodeMaterial({ color: 0xb9a684, roughness: 0.97, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); // warmer masonry tone; sits ON the owner wall (0.01), depth via polygonOffset not displacement
   const mats = {
     road: materials?.road || createRoadSurfaceMaterial(),
     curb: materials?.curb || createCurbMaterial(),
@@ -233,24 +240,104 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       const bb = bboxOf(ring);
       const w = bb.x1 - bb.x0, d = bb.z1 - bb.z0;
       if (w < 2 || d < 2) continue;
-      pabs.push({ x0: bb.x0, x1: bb.x1, z0: bb.z0, z1: bb.z1, w, d, h: parcel.h, index, ring: parcel.ring });
+      // Footprint-aware massing (prototype): decompose the real ring into rotated rectangles so
+      // block-perimeter parcels stop rendering as one AABB slab over the courtyard. Fallback to the
+      // AABB box when the approximation deviates too much (diagonal/curved boundaries stair-step).
+      let fp = null;
+      const fpEnabled = globalThis.__FP !== false; // harness A/B toggle (block-tilepath.html?fp=0)
+      // EVERY parcel gets the OBB-framed treatment (prototype): simple near-rectangular rings take ONE
+      // rotated box (exact for the ~40°-rotated local grid; world-AABB overcovers 83-171% here);
+      // complex concave rings take strip decomposition. Fallback to AABB when deviation is high.
+      {
+        // One event-aligned OBB decomposition: near-rectangular rings merge down to ONE rotated box;
+        // concave rings stay a set of aligned strips. dev threshold is a local working value (unapproved).
+        const d0 = decomposeRing(parcel.ring, { stripW: 4, minD: 0.4, holes: parcel.holes || [] });
+        tile.footprintStats = tile.footprintStats || [];
+        if (fpEnabled && d0.deviation <= 0.10) {
+          fp = d0;
+          tile.footprintStats.push({ index, mode: d0.rects.length === 1 ? 'obb' : 'strips', rects: d0.rects.length, deviation: +d0.deviation.toFixed(3), used: true });
+        } else {
+          tile.footprintStats.push({ index, mode: 'aabb-fallback', rects: d0.rects.length, deviation: +d0.deviation.toFixed(3), used: false });
+        }
+      }
+      pabs.push({ x0: bb.x0, x1: bb.x1, z0: bb.z0, z1: bb.z1, w, d, h: parcel.h, index, ring: parcel.ring, holes: parcel.holes || null, fp });
       tileColliders.push({ minX: bb.x0, maxX: bb.x1, minZ: bb.z0, maxZ: bb.z1, minY: 0, maxY: parcel.h });
     }
     // Party-wall detection on the real ring footprints (js/madrid-adjacency.js): a side becomes a
     // windowless medianera tier only where shared boundary runs cover the majority of that side.
     const nHArr = partyWallHeights(pabs);
+    const pRuns = partyWallRuns(pabs); // per parcel per edge shared intervals (hybrid medianera overlays)
+    const medianeraQuads = []; // {ax,az,bx,bz,h} world quads, batched into one mesh after the loop
+    const mergedZone = []; // MERGED-ZONE probe: parcels collected here skip per-parcel emission below
     for (let pi = 0; pi < pabs.length; pi++) {
       const P = pabs[pi];
       const cx = (P.x0 + P.x1) / 2, cz = (P.z0 + P.z1) / 2;
       const tier = Math.floor(hash(cx, cz, P.index) * facades.length) % facades.length;
       const tone = hash(cz, cx, 3);
       const shop = WALL_KINDS.shop;
+      if (globalThis.__MERGED === true) { mergedZone.push(P); continue; } // merged-zone probe owns this parcel's massing
+      if (globalThis.__FP !== false && !P.fp && P.holes && P.holes.length) {
+        // HYBRID-B (local prototype): coherent holed massing for the fallback cohort - the REAL
+        // exterior ring extruded full-height with the REAL holes as open wells (cap/perimeter/well
+        // from one source ring set). Facade = world-space tier material (windows on any orientation,
+        // wells included - corrala patios have windows). Material arrays on ExtrudeGeometry rendered
+        // all groups with one material in this renderer path (observed), so the azotea is a separate
+        // plain-tone ring cap overlay at P.h+0.02. +2 meshes per hybrid parcel; colliders stay AABB.
+        const toPts = (r) => { const o = []; for (let i = 0; i + 1 < r.length; i += 2) o.push({ x: r[i], z: r[i + 1] }); return o; };
+        const solid = createExtrudedPolygonMesh(toPts(P.ring), 0, P.h, hybridFacadeMats[tier], true, true, P.holes.map(toPts));
+        const cap = createFlatPolygonMesh(toPts(P.ring), P.h + 0.02, hybridWallMats[tier], true, P.holes.map(toPts));
+        cap.name = 'TileHybridCap';
+        group.add(cap);
+        solid.name = 'TileHybridWell';
+        group.add(solid);
+        // Medianera overlays: blank the wall runs shared with an abutter (the world-space facade
+        // glazes every wall; a party wall must be windowless up to the abutter's height). 3cm
+        // outward offset, orientation by inside-test against the source ring. Batched after the loop.
+        const ringPts = toPts(P.ring);
+        const runs = pRuns[pi] || [];
+        for (let e = 0; e < ringPts.length; e++) {
+          const A = ringPts[e], B = ringPts[(e + 1) % ringPts.length];
+          const L = Math.hypot(B.x - A.x, B.z - A.z);
+          if (L < 0.3 || !runs[e] || !runs[e].length) continue;
+          const ux = (B.x - A.x) / L, uz = (B.z - A.z) / L;
+          let nx = -uz, nz = ux;
+          const mx = (A.x + B.x) / 2 + nx * 0.5, mz = (A.z + B.z) / 2 + nz * 0.5;
+          let ins = false;
+          const rr = P.ring;
+          for (let i = 0, j = rr.length - 2; i < rr.length; j = i, i += 2) {
+            const xj = rr[j], zj = rr[j + 1], xi = rr[i], zi = rr[i + 1];
+            if ((zi > mz) !== (zj > mz) && mx < ((xj - xi) * (mz - zi)) / (zj - zi) + xi) ins = !ins;
+          }
+          if (ins) { nx = -nx; nz = -nz; }
+          for (const r of runs[e]) {
+            const h = Math.min(P.h, r.h);
+            if (h < 2) continue;
+            medianeraQuads.push({
+              ax: A.x + ux * L * r.t0 + nx * 0.01, az: A.z + uz * L * r.t0 + nz * 0.01,
+              bx: A.x + ux * L * r.t1 + nx * 0.01, bz: A.z + uz * L * r.t1 + nz * 0.01,
+              h, nx, nz });
+          }
+        }
+        continue;
+      }
       const nH = nHArr[pi];
       // Guardrail: skip when the exposed strip would exceed half the parcel's height - blanking most of a
       // tall interior tower reads as a monolith (unresolved: needs lotLine material work or street-side data)
       const exposed = nH.map((n) => n >= 1 && P.h - n >= 2.5 && P.h - n <= P.h * 0.5);
       if (!exposed.some(Boolean)) {
-        items[tier].push({ x: cx, y: P.h / 2, z: cz, w: P.w, h: P.h, d: P.d, tone, faces: [shop, shop, shop, shop] });
+        if (P.fp) {
+          // One rotated box per decomposition rect (bounded approx: street faces; medianera logic stays AABB-level)
+          const ang = Math.atan2(P.fp.frame.uz, P.fp.frame.ux);
+          for (const r of P.fp.rects) {
+            const c = r.corners;
+            const rw = Math.hypot(c[1][0] - c[0][0], c[1][1] - c[0][1]);
+            const rd = Math.hypot(c[3][0] - c[0][0], c[3][1] - c[0][1]);
+            const mx = (c[0][0] + c[2][0]) / 2, mz = (c[0][1] + c[2][1]) / 2;
+            items[tier].push({ x: mx, y: P.h / 2, z: mz, w: rw, h: P.h, d: rd, tone, ry: -ang, faces: [shop, shop, shop, shop], rect: { w: rw, d: rd, x: mx, z: mz } });
+          }
+        } else {
+          items[tier].push({ x: cx, y: P.h / 2, z: cz, w: P.w, h: P.h, d: P.d, tone, faces: [shop, shop, shop, shop] });
+        }
         continue;
       }
       const nMin = Math.min(...nH.filter((n, i) => exposed[i]));
@@ -266,6 +353,103 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       mesh.name = `TileBuildings${i}`;
       group.add(mesh);
     });
+    if (medianeraQuads.length) {
+      const pos = [], norm = [], idxArr = [];
+      medianeraQuads.forEach((q, qi) => {
+        const base = qi * 4;
+        pos.push(q.ax, 0, q.az, q.bx, 0, q.bz, q.bx, q.h, q.bz, q.ax, q.h, q.az);
+        for (let k = 0; k < 4; k++) norm.push(q.nx, 0, q.nz);
+        idxArr.push(base, base + 1, base + 2, base, base + 2, base + 3);
+      });
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setAttribute('normal', new THREE.Float32BufferAttribute(norm, 3));
+      g.setIndex(idxArr);
+      const mm = new THREE.Mesh(g, medianeraMat);
+      mm.name = 'TileMedianeraOverlay';
+      mm.castShadow = true;
+      mm.receiveShadow = true;
+      group.add(mm);
+    }
+
+    // MERGED-ZONE probe (TinyWarsaw 'everyday-buildings' analog, own code): every parcel extruded from
+    // its REAL outline with its REAL holes, merged into ONE mesh with ONE shared world-space pre-war
+    // facade material (TSL; no tier lottery, no strips, no per-parcel meshes) + ONE merged flat cap mesh.
+    // Party walls keep windows (the Warsaw model: no suppression observed in their code); no roof
+    // furniture/hips in this probe. Toggle: block harness ?merged=1 (window.__MERGED).
+    if (globalThis.__MERGED === true && mergedZone.length) {
+      const toPtsMz = (r) => { const o = []; for (let i = 0; i + 1 < r.length; i += 2) o.push({ x: r[i], z: r[i + 1] }); return o; };
+      // ILLUSTRATIVE per-building tints (hash palette toward the tiny-madrid references): the IDEAM
+      // payload carries only {ring, h, holes} - NO real facade/roof color data. Vertex colors carry the
+      // whole masonry tone (stoneColor driven to white), the caps take terracotta-ish tones.
+      const MZ_TINTS = [0xf4eee2, 0xf4e2ca, 0xeedebb, 0xe8d2b5, 0xf4e8d6, 0xeedac6, 0xe5cab0, 0xf4e5da].map((h) => new THREE.Color(h));
+      const MZ_CAPS = [0xc9a084, 0xc2937c, 0xcfa287, 0xbc9581, 0xc09479, 0xc79c7e, 0x9d968d, 0xb0a89b].map((h) => new THREE.Color(h));
+      const tintAttr = (geo, col, capCol) => {
+        const n = geo.attributes.position.count;
+        const arr = new Float32Array(n * 3);
+        // ExtrudeGeometry (non-indexed) emits group 0 = lids (front/back), group 1 = side walls;
+        // vertex ranges follow geo.groups so lids take the cap tone and walls the masonry tint.
+        const ranges = (geo.groups && geo.groups.length === 2) ? geo.groups : [{ start: 0, count: n, materialIndex: 1 }];
+        for (const g of ranges) {
+          const c = (g.materialIndex === 0 && capCol) ? capCol : col;
+          for (let i = g.start; i < g.start + g.count && i < n; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
+        }
+        geo.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+        return geo;
+      };
+      const mergedFacadeMat = FACADE_DEFS[0][0]({ ...MADRID_FACADE_OPTS[0], stoneColor: 0xffffff, madrid: true, vertexTint: true });
+      const mergedCapMat = new THREE.MeshStandardNodeMaterial({ color: 0xffffff, roughness: 0.95, metalness: 0, vertexColors: true });
+      const geos = [];
+      for (const P of mergedZone) {
+        const pcx = (P.x0 + P.x1) / 2, pcz = (P.z0 + P.z1) / 2;
+        const tint = location.search.includes('tintprobe=1') ? new THREE.Color(0x2060ff) : MZ_TINTS[Math.floor(hash(pcx, pcz, P.index) * MZ_TINTS.length) % MZ_TINTS.length];
+        const capTint = MZ_CAPS[Math.floor(hash(pcz, pcx, P.index + 7) * MZ_CAPS.length) % MZ_CAPS.length];
+        const holes = (P.holes && P.holes.length) ? P.holes.map(toPtsMz) : null;
+        // Walls+lids in ONE geometry: lids get the plain cap material via material-index groups, so no
+        // facade windows can land on horizontal faces and no separate cap mesh can fail to cover them.
+        geos.push(tintAttr(createExtrudedPolygonMesh(toPtsMz(P.ring), 0, P.h, mergedFacadeMat, true, true, holes).geometry, tint, capTint));
+      }
+      // Manual merge preserving each extrusion's 2 source groups (mergeGeometries(useGroups) would
+      // re-index groups per input geometry, forcing one material slot per parcel).
+      const mzGeo = new THREE.BufferGeometry();
+      {
+        const cat = (name, itemSize) => {
+          let total = 0; for (const g of geos) total += g.attributes[name].count;
+          const out = new Float32Array(total * itemSize); let off = 0;
+          for (const g of geos) { out.set(g.attributes[name].array, off); off += g.attributes[name].array.length; }
+          mzGeo.setAttribute(name, new THREE.BufferAttribute(out, itemSize));
+        };
+        cat('position', 3); cat('normal', 3); cat('uv', 2); cat('color', 3);
+        let vOff = 0;
+        for (const g of geos) {
+          for (const gr of g.groups) mzGeo.addGroup(vOff + gr.start, gr.count, gr.materialIndex);
+          vOff += g.attributes.position.count;
+        }
+      }
+      const mz = new THREE.Mesh(mzGeo, [mergedCapMat, mergedFacadeMat]);
+      mz.name = 'TileMergedZone'; mz.castShadow = true; mz.receiveShadow = true; group.add(mz);
+      if (location.search.includes('debug=outline')) {
+        // Source-validation overlay: magenta = parcel outline, cyan = holes, both drawn at source h + 0.3.
+        const lp = [], lc = [];
+        const pushRing = (r, y, col) => {
+          for (let i = 0; i + 3 < r.length; i += 2) {
+            lp.push(r[i], y, r[i + 1], r[i + 2], y, r[i + 3]);
+            lc.push(...col, ...col);
+          }
+        };
+        for (const P of mergedZone) {
+          const rr = P.ring.slice(); rr.push(rr[0], rr[1]);
+          pushRing(rr, P.h + 0.3, [1, 0, 1]);
+          for (const hRing of (P.holes || [])) { const hh = hRing.slice(); hh.push(hh[0], hh[1]); pushRing(hh, P.h + 0.3, [0, 1, 1]); }
+        }
+        const lg = new THREE.BufferGeometry();
+        lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3));
+        lg.setAttribute('color', new THREE.Float32BufferAttribute(lc, 3));
+        const lm = new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ vertexColors: true, depthTest: true }));
+        lm.name = 'TileMergedDebugOutline'; group.add(lm);
+      }
+      tile.footprintStats.push({ index: -1, mode: 'merged-zone', rects: mergedZone.length, deviation: 0, used: true });
+    }
 
     // 4b. Tejados: decisions shared with the procedural city via js/madrid-roofs.js (rules documented
     //    there); the clash test sees same-tile parcels only (bounded approximation, as medianeras).
@@ -274,6 +458,26 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       const rings = [];
       for (let pi = 0; pi < pabs.length; pi++) {
         const P = pabs[pi];
+        if (globalThis.__MERGED === true) continue; // merged-zone probe: flat merged caps only
+        if (P.fp) {
+          // Footprint prototype: one roof decision per decomposition rect, rotated with the rect.
+          const ang = Math.atan2(P.fp.frame.uz, P.fp.frame.ux);
+          for (const rc of P.fp.rects) {
+            const c = rc.corners;
+            const rw = Math.hypot(c[1][0] - c[0][0], c[1][1] - c[0][1]);
+            const rd = Math.hypot(c[3][0] - c[0][0], c[3][1] - c[0][1]);
+            const mx = (c[0][0] + c[2][0]) / 2, mz = (c[0][1] + c[2][1]) / 2;
+            const d = roofDecision({ x0: mx - rw / 2, x1: mx + rw / 2, z0: mz - rd / 2, z1: mz + rd / 2, w: rw, d: rd, h: P.h }, pabs, { minSpan: 4 });
+            if (!d) continue;
+            // The 90-degree width/depth swap is d.rot (ridge-axis decision); the yaw is d.rot - ang.
+            // Using r.rot's truthiness for the swap 90-degree-misorients every d.rot=0 rect on a
+            // rotated block (roof long axis pierces the taller neighbour - the street-view wedge).
+            const r = { ...d, x: mx, y: P.h, z: mz, sw: rw, sd: rd, rot: d.rot - ang, swap: d.rot !== 0, eave: 0 };
+            (d.kind === 'ring' ? rings : hips).push(r);
+          }
+          continue;
+        }
+        if (globalThis.__FP !== false && !P.fp && P.holes && P.holes.length) continue; // hybrid-B: flat ring cap already emitted
         const d = roofDecision(P, pabs);
         if (!d) continue;
         const r = { ...d, x: (P.x0 + P.x1) / 2, y: P.h, z: (P.z0 + P.z1) / 2, sw: P.w, sd: P.d };
@@ -286,7 +490,9 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
         list.forEach((r, i) => {
           dummy.rotation.set(0, r.rot, 0);
           dummy.position.set(r.x, r.y, r.z);
-          dummy.scale.set((r.rot ? r.sd : r.sw) + 0.6, r.h, (r.rot ? r.sw : r.sd) + 0.6);
+          const swp = r.swap !== undefined ? r.swap : !!r.rot;
+          const eave = r.eave !== undefined ? r.eave : 0.6; // fp strips sit on party walls: no overhang into a taller neighbour
+          dummy.scale.set((swp ? r.sd : r.sw) + eave, r.h, (swp ? r.sw : r.sd) + eave);
           dummy.updateMatrix();
           inst.setMatrixAt(i, dummy.matrix);
           inst.setColorAt(i, r.slate ? HIP_SLATE : HIP_PALETTE[r.ci % HIP_PALETTE.length]);
