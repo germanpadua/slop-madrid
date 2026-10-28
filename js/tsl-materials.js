@@ -725,8 +725,8 @@ function createSimpleRevocoMaterial(opts = {}) {
   const facade = facadeCell(uWindowWidth, uFloorHeight, boxLocal, cornerPier);
   const { isRoof, vCoord, cellUV, fw, isGroundFloor, solid, back, blank, door, tone, fromTop, coping } = facade;
   const open = float(1.0).sub(solid).mul(float(1.0).sub(door));
-  const effHalfX = mix(float(halfWinX), float(0.11), isGroundFloor);
-  const effHalfY = mix(float(halfWinY), float(0.10), isGroundFloor);
+  const effHalfX = mix(float(halfWinX), float(0.18), isGroundFloor);
+  const effHalfY = mix(float(halfWinY), float(0.16), isGroundFloor);
 
   mat.colorNode = Fn(() => {
     const oneMinusEffY = float(1.0).sub(effHalfY);
@@ -759,11 +759,13 @@ function createSimpleRevocoMaterial(opts = {}) {
     const jambShadow = float(1.0).sub(smoothstep(effHalfX, effHalfX.add(0.06), cellUV.x)).mul(0.25);
     const recess = float(1.0).sub(max(lintelShadow, jambShadow));
     const glassFlat = mix(cGlass, cStone, 0.25);
-    const glassCol = mix(glassFlat, cityUniforms.uSkyHorizonColor, fresnel.mul(0.35).add(0.05)).mul(recess);
+    // Ground floor: lighter, calmer shop glass (softened after the first A/B read too dark/empty up close)
+    const glassBase = mix(glassFlat, mix(cStone, cityUniforms.uSkyHorizonColor, 0.3), isGroundFloor.mul(0.45));
+    const glassCol = mix(glassBase, cityUniforms.uSkyHorizonColor, fresnel.mul(0.35).add(0.05)).mul(recess);
 
     // Wide mullions on the ground-floor openings only
     const mullion = lineAA(fract(cellUV.x.mul(2.0)).sub(0.5), 0.03).mul(isGroundFloor);
-    const glassWithMullions = mix(glassCol, cStone.mul(0.5), mullion.mul(0.8));
+    const glassWithMullions = mix(glassCol, cStone.mul(0.7), mullion.mul(0.8));
 
     let col = mix(wall, glassWithMullions, isWindowOpening);
 
