@@ -33,10 +33,12 @@ export function createCentreFarBuildings(GEO) {
   mesh.name = 'TileFarBuildings';
   mesh.castShadow = mesh.receiveShadow = true;
   mesh.visible = false; // distance-detail flips it past the hysteresis band
-  const [ax0, az0, ax1, az1] = GEO.manhattan;
+  // GEO.manhattan is a ring (x,z pairs), NOT a bbox - derive the box or the hysteresis band degenerates.
+  const xs = [], zs = [];
+  for (let i = 0; i + 1 < GEO.manhattan.length; i += 2) { xs.push(GEO.manhattan[i]); zs.push(GEO.manhattan[i + 1]); }
   return {
     mesh,
-    bounds: [ax0, az0, ax1, az1],
+    bounds: [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)],
     stats: {
       parcels: parcels.length,
       triangles: far.triangles,
