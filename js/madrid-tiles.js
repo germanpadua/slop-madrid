@@ -109,6 +109,7 @@ export async function createTileStreamer({
     if (!res.ok) throw new Error(`tiles manifest ${res.status}`);
     return res.json();
   },
+  prepareTile = async (tile) => tile,
   onStatus = null
 } = {}) {
   const budgetCfg = { ...TILE_BUDGET, ...(budget || {}) };
@@ -121,12 +122,15 @@ export async function createTileStreamer({
   let cameraPosition = null;
   let lastX = Infinity, lastZ = Infinity, lastAt = -Infinity;
   let failures = 0;
+  const timings = [];
 
   const status = () => ({
     loaded: [...loaded.keys()],
     bytes: [...loaded.values()].reduce((n, v) => n + v.bytes, 0),
     failures,
-    available: tiles.length
+    available: tiles.length,
+    pending: [...inFlight],
+    timings: timings.slice()
   });
 
   async function loadTile(id) {
@@ -143,11 +147,18 @@ export async function createTileStreamer({
       // The module URL carries the manifest hash: a deployed tile is fetched once and can never be served stale.
       const url = new URL(`${tile.module}?v=${tile.md5 || '0'}`, baseUrl).href;
       const mod = await importModule(url);
+      const importedAt = performance.now();
       const data = mod.TILE;
       if (!data || data.id !== id) throw new Error(`module ${tile.module} does not export TILE ${id}`);
       // Imports cannot be cancelled, but obsolete geometry need not be built after a teleport.
       if (cameraPosition && distanceToCore(tile, cameraPosition.x, cameraPosition.z) > budgetCfg.dropRadius) return;
-      world.addTile({ ...data, bytes: tile.bytes || 0 });
+      const prepared = await prepareTile(data);
+      const preparedAt = performance.now();
+      if (cameraPosition && distanceToCore(tile, cameraPosition.x, cameraPosition.z) > budgetCfg.dropRadius) return;
+      world.addTile({ ...prepared, bytes: tile.bytes || 0 });
+      const builtAt = performance.now();
+      timings.push({ id, importMs: importedAt - t0, prepareMs: preparedAt - importedAt, workerMs: prepared.workerMs || 0, buildMs: builtAt - preparedAt });
+      if (timings.length > 32) timings.shift();
       loaded.set(id, { bytes: tile.bytes || 0, objects: world.meshCount() });
       console.info(`[madrid-tiles] +${id} ${Math.round(performance.now() - t0)}ms ${tile.bytes} B (${status().loaded.length} resident)`);
       onStatus?.(status());

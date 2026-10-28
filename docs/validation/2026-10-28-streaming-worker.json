@@ -1,0 +1,143 @@
+{
+  "environment": "Intel Iris Xe (RPL-P), Mesa 26.0.8, ANGLE OpenGL, WebGL2, 1280x720",
+  "note": "Exploratory n=1 application runs; shader caches and resident sets vary. These are not controlled FPS speedup claims. Pure CPU algorithms have a separate paired benchmark.",
+  "runs": [
+    {
+      "scenario": "baseline",
+      "samples": 1,
+      "passed": true,
+      "bootMs": 23631,
+      "sampledFps": 0.1645068290897451,
+      "routeFrames": 4,
+      "maxFrameIntervalMs": 4683.0999999999985,
+      "maxRenderMs": 414.69999999925494,
+      "maxMountOrBuildMs": 15390.5,
+      "maxWorkerMs": 0,
+      "tileIds": [
+        "k0j-1",
+        "k1j-1",
+        "k2j-1",
+        "k3j1",
+        "k3j0",
+        "k4j1",
+        "k4j0",
+        "k4j2"
+      ],
+      "unsharedFacadeMeshes": null
+    },
+    {
+      "scenario": "cpu-indexed",
+      "samples": 1,
+      "passed": true,
+      "bootMs": 11931,
+      "sampledFps": 0.9407160730748906,
+      "routeFrames": 5,
+      "maxFrameIntervalMs": 1550,
+      "maxRenderMs": 409.59999999962747,
+      "maxMountOrBuildMs": 2299,
+      "maxWorkerMs": 0,
+      "tileIds": [
+        "k0j-1",
+        "k2j-1",
+        "k1j-1",
+        "k3j1",
+        "k3j0",
+        "k0j3",
+        "k4j0",
+        "k4j1",
+        "k4j2"
+      ],
+      "unsharedFacadeMeshes": null
+    },
+    {
+      "scenario": "worker",
+      "samples": 1,
+      "passed": true,
+      "bootMs": 9809,
+      "sampledFps": 34.309316811569495,
+      "routeFrames": 115,
+      "maxFrameIntervalMs": 583.2999999999993,
+      "maxRenderMs": 552.8000000007451,
+      "maxMountOrBuildMs": 150.5,
+      "maxWorkerMs": 1623.5999999996275,
+      "tileIds": [
+        "k0j-1",
+        "k1j-1",
+        "k2j-1",
+        "k3j1",
+        "k3j0"
+      ],
+      "unsharedFacadeMeshes": null
+    },
+    {
+      "scenario": "shared-materials",
+      "samples": 1,
+      "passed": true,
+      "bootMs": 9561,
+      "sampledFps": 33.99773348444282,
+      "routeFrames": 115,
+      "maxFrameIntervalMs": 550,
+      "maxRenderMs": 506.6000000014901,
+      "maxMountOrBuildMs": 142.40000000037253,
+      "maxWorkerMs": 1595.699999999255,
+      "tileIds": [
+        "k1j-1",
+        "k0j-1",
+        "k2j-1",
+        "k3j1",
+        "k3j0"
+      ],
+      "unsharedFacadeMeshes": null
+    },
+    {
+      "scenario": "confirmation",
+      "samples": 1,
+      "passed": true,
+      "bootMs": 9318,
+      "sampledFps": 34.224954311347396,
+      "routeFrames": 113,
+      "maxFrameIntervalMs": 516.6000000000004,
+      "maxRenderMs": 495.19999999925494,
+      "maxMountOrBuildMs": 127,
+      "maxWorkerMs": 1605.5,
+      "tileIds": [
+        "k0j-1",
+        "k1j-1",
+        "k2j-1",
+        "k3j1",
+        "k3j0"
+      ],
+      "unsharedFacadeMeshes": 0
+    }
+  ],
+  "stressConfirmation": {
+    "samples": 1,
+    "passed": true,
+    "frameLatency": {
+      "samples": 382,
+      "routeMs": 10267.199999999255,
+      "maxIntervalMs": 533.2999999999994,
+      "p95IntervalMs": 33.400000000001455,
+      "maxRenderMs": 508.80000000074506
+    },
+    "tileResults": [
+      {
+        "id": "k3j1",
+        "ok": true,
+        "ms": 1764
+      },
+      {
+        "id": "k4j1",
+        "ok": true,
+        "ms": 1845
+      },
+      {
+        "id": "k4j2",
+        "ok": true,
+        "ms": 2554
+      }
+    ],
+    "maxMainThreadMountMs": 159.80000000074506,
+    "maxWorkerMs": 2432.199999999255
+  }
+}

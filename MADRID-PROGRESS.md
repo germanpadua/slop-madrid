@@ -86,3 +86,19 @@ node --test tests/madrid-adjacency.test.cjs tests/madrid-footprint-holes.test.cj
 ```
 
 Resultados de CPU en `docs/validation/2026-10-28-preparation-cpu.json`. La prueba de regresión compara los resultados completos de medianeras con hashes generados por la búsqueda exhaustiva anterior. Reversión: madrid-footprint.js y madrid-adjacency.js; los cambios de cálculo no dependen del worker ni de los materiales.
+
+## Preparación en worker y materiales compartidos
+
+El streamer conserva su reserva de memoria mientras un worker de módulo calcula huellas y medianeras. El hilo principal recibe esos resultados y monta las mallas; vuelve a comprobar la posición de la cámara antes de construir. Si la deduplicación cambia el conjunto de parcelas, recalcula las medianeras para ese conjunto, preservando el comportamiento. Sin soporte de Worker sigue disponible la ruta síncrona anterior. Los errores del worker se comunican al mecanismo de reintentos existente, y se libera al abandonar la página (respetando bfcache).
+
+El centro activa ahora el dialecto `madrid` de las fachadas (balcones en lugar de detalles de ventana heredados) y comparte las cuatro opciones de mampostería y alturas de planta con las teselas. Los modelos de monumentos no se sustituyen. Se comprobó por identidad de material: 16 mallas de fachada en cuatro teselas, todas compartidas con el centro, ninguna independiente.
+
+Validación final: 156/156 pruebas CJS; captura de calle, maqueta y móvil táctil emulado inspeccionadas; sin errores gráficos, de página ni de peticiones. Confirmación exploratoria n=1 en la GPU indicada: arranque 9.318 ms; 113 frames durante 3.348 ms de ruta; máximo intervalo 516,6 ms y p95 50 ms; máximo dentro de renderizado 495,2 ms. Es una mejora de los bloqueos observados, **no su eliminación**. Las cachés y conjuntos residentes varían entre ejecuciones: los valores de arranque/FPS no son una comparación controlada de rendimiento.
+
+Evidencia resumida en `docs/validation/2026-10-28-streaming-worker.json`. Capturas locales: `/tmp/madrid-worker-confirmed/`. El verificador ahora distingue importación (incluye espera del event loop), espera de preparación/cola, CPU del worker, montaje en el hilo principal e intervalos/render de frames. Conserva una muestra acotada para evitar crecimiento continuo.
+
+Reversión de esta unidad: retirar preparer/worker/preparation y su inyección en main/streamer, restaurar los cálculos síncronos del tile world y la tabla de fachadas del centro; revertir su preload y prueba asociada. La optimización pura del commit anterior permanece utilizable sin worker.
+
+Pendiente: reducir el pico restante de ~0,5 s de renderizado; verificar rutas geográficas y aéreas más largas con latencia de frame, añadir niveles lejanos y resolver la diferencia de cubiertas centro/teselas. No se ha publicado y el objetivo completo sigue sin darse por logrado.
+
+La prueba adicional de estrés (k3j1 → k4j1 → k4j2, radio de precarga 5 km) pasó sin teselas fallidas ni errores gráficos. Se observaron 382 frames durante 10.267 ms, p95 de intervalo 33,4 ms y máximo 533,3 ms. Para k4j2, montaje en el hilo principal ~160 ms y análisis en el worker ~2.432 ms, frente a ~15.391 ms de construcción síncrona en la muestra inicial. Estas fases y ejecuciones no equivalen a un benchmark de FPS controlado. También se añadió una regresión que termina la preparación después de un teletransporte y comprueba descarte y liberación de la reserva.

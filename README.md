@@ -30,3 +30,13 @@ Opcionales: `HARDWARE_GPU=1` solicita ANGLE OpenGL con GPU local; el informe reg
 ## Datos y licencias
 
 Código bajo [MIT](LICENSE). Consulta [MADRID.md](MADRID.md) para fuentes y generación geográfica. Los colores y detalles procedurales son ilustrativos. Los datos fuente pesados de Madrid con permisos de redistribución pendientes quedan fuera del repositorio. No se deben regenerar las teselas restantes sin disponer de esas fuentes y revisar sus permisos.
+
+## Preparación de teselas
+
+Las huellas y medianeras se analizan en un worker de módulo antes de montar las mallas. El modo `?debug=1` registra tiempos de importación, preparación, montaje y muestras acotadas de latencia de frames. El informe del verificador incluye estos datos y comprueba que las fachadas de las teselas comparten materiales con el centro.
+
+Para comparar los algoritmos puros con la versión anterior, incluyendo igualdad exacta de resultados y tres pares de mediciones:
+
+```sh
+node tools/madrid/benchmark-preparation.mjs 77921de k3j0
+```

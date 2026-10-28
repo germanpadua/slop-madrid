@@ -20,6 +20,7 @@ import { setupSceneCulling, updateSceneCulling } from './scene-culling.js';
 import { CityAudioSystem } from './audio-system.js';
 import { createTileWorld, createOutOfMapFloor } from './madrid-tile-world.js';
 import { createTileStreamer } from './madrid-tiles.js';
+import { createTilePreparer } from './madrid-tile-preparer.js';
 
 // js/main.js
 // Main entry point for Madrid (centro) in Three.js WebGPURenderer & TSL (three.js dev, see index.html)
@@ -175,9 +176,12 @@ async function initApp() {
   //     Pending tiles show the "out of map" floor, never empty city ground.
   const tileWorld = createTileWorld(scene, { colliders: allColliders, materials: cityMaterials });
   let tileStreamer = null;
+  const tilePreparer = createTilePreparer();
+  window.addEventListener('pagehide', (event) => { if (!event.persisted) tilePreparer.dispose(); });
   try {
     tileStreamer = await createTileStreamer({
       world: tileWorld,
+      prepareTile: (tile) => tilePreparer.prepare(tile),
       manifestUrl: new URL('../tools/madrid/tiles.json', import.meta.url).href,
       baseUrl: new URL('..', import.meta.url).href,
       onStatus: () => controllerManager.refreshColliders()
@@ -760,6 +764,7 @@ async function initApp() {
     audioSystem.update(dt, elapsed, cameraSystem.camera, lightingSystem.activePresetId === 'midnight');
     if (warmedUp) updateSceneCulling(cameraSystem.camera.position); // the warm-up frame draws every chunk
 
+    const renderStart = performance.now();
     // Render frame via TSL RenderPipeline (SSR + Bloom)
     if (!warmedUp) {
       // First frame = pipeline warm-up behind the loading screen, for what precompileShaders() can't reach (the shadow
@@ -781,7 +786,12 @@ async function initApp() {
       markInit('warmup');
     }
     renderPipeline.render();
-    if (window.__madrid) window.__madrid.renderedFrames = (window.__madrid.renderedFrames || 0) + 1;
+    if (window.__madrid) {
+      window.__madrid.renderedFrames = (window.__madrid.renderedFrames || 0) + 1;
+      const samples = window.__madrid.frameSamples ||= [];
+      samples.push({ at: performance.now(), intervalMs: rawDt * 1000, renderMs: performance.now() - renderStart });
+      if (samples.length > 600) samples.shift();
+    }
     if (!warmedUp) {
       warmedUp = true;
       markInit('firstFrame');

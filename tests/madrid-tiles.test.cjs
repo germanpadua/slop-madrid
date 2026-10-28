@@ -338,3 +338,25 @@ test('streamer reserves pending bytes and skips geometry left behind after telep
   assert.deepEqual(built, ['a']);
   assert.equal(streamer.status().bytes, 6);
 });
+
+test('a tile that finishes worker preparation after teleporting is discarded and releases its reservation', async () => {
+  const { createTileStreamer } = await import('../js/madrid-tiles.js');
+  let finishPreparation;
+  const built = [];
+  const tile = { id: 'worker-tile', status: 'ready', bytes: 6, module: 'tile.js', core: [[0,0,10,10]] };
+  const streamer = await createTileStreamer({
+    manifestUrl: 'https://example.test/manifest.json', baseUrl: 'https://example.test/',
+    fetchJson: async () => ({ tiles: [tile] }), importModule: async () => ({ TILE: { id: tile.id } }),
+    prepareTile: data => new Promise(resolve => { finishPreparation = () => resolve(data); }),
+    world: { addTile: data => built.push(data.id), meshCount: () => 1, removeTile: () => true }
+  });
+  streamer.update(0, 0, 0);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(streamer.status().pending, [tile.id]);
+  streamer.update(10000, 0, 500);
+  finishPreparation();
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(built, []);
+  assert.deepEqual(streamer.status().pending, []);
+  assert.equal(streamer.status().bytes, 0);
+});

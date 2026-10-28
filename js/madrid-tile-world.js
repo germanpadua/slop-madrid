@@ -251,7 +251,7 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       {
         // One event-aligned OBB decomposition: near-rectangular rings merge down to ONE rotated box;
         // concave rings stay a set of aligned strips. dev threshold is a local working value (unapproved).
-        const d0 = decomposeRing(parcel.ring, { stripW: 4, minD: 0.4, holes: parcel.holes || [] });
+        const d0 = tile.prepared?.footprints[index] || decomposeRing(parcel.ring, { stripW: 4, minD: 0.4, holes: parcel.holes || [] });
         tile.footprintStats = tile.footprintStats || [];
         if (fpEnabled && d0.deviation <= 0.10) {
           fp = d0;
@@ -265,8 +265,10 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     }
     // Party-wall detection on the real ring footprints (js/madrid-adjacency.js): a side becomes a
     // windowless medianera tier only where shared boundary runs cover the majority of that side.
-    const nHArr = partyWallHeights(pabs);
-    const pRuns = partyWallRuns(pabs); // per parcel per edge shared intervals (hybrid medianera overlays)
+    const matchingPreparation = tile.prepared && pabs.length === tile.prepared.indices.length &&
+      pabs.every((p, i) => p.index === tile.prepared.indices[i]);
+    const nHArr = matchingPreparation ? tile.prepared.heights : partyWallHeights(pabs);
+    const pRuns = matchingPreparation ? tile.prepared.runs : partyWallRuns(pabs); // per parcel per edge shared intervals (hybrid medianera overlays)
     const medianeraQuads = []; // {ax,az,bx,bz,h} world quads, batched into one mesh after the loop
     const mergedZone = []; // MERGED-ZONE probe: parcels collected here skip per-parcel emission below
     for (let pi = 0; pi < pabs.length; pi++) {

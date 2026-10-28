@@ -73,6 +73,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress }) => {
     }
     return false;
   };
+  const routeStart = performance.now();
   const before = tileStreamer ? tileStreamer.status() : null;
   const tileMs = [];
   if (tileStreamer) {
@@ -105,14 +106,19 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress }) => {
   const info = renderer.info?.render || {};
   // Per-tile geometry: deck slab height, instanced buildings and the tiles' collider count.
   const sceneOf = window.__madrid.scene;
+  const seedFacadeMaterials = new Set((sceneOf.getObjectByName('ManhattanCityBlocks')?.children || [])
+    .filter((o) => o.geometry?.getAttribute('box')).map((o) => o.material));
   const tileStats = (tileWorld ? tileWorld.ids() : []).map((id) => {
     const g = sceneOf.getObjectByName(`MadridTile:${id}`);
     if (!g) return { id, missing: true };
-    let meshes = 0, instances = 0, deckMinY = Infinity, deckMaxY = -Infinity;
+    let meshes = 0, instances = 0, sharedFacades = 0, unsharedFacades = 0, deckMinY = Infinity, deckMaxY = -Infinity;
     const kinds = new Set();
     g.traverse((o) => {
       if (!o.isMesh) return;
       meshes++;
+      if (/^TileBuildings/.test(o.name)) {
+        if (seedFacadeMaterials.has(o.material)) sharedFacades++; else unsharedFacades++;
+      }
       kinds.add(o.name);
       if (o.isInstancedMesh) instances += o.count;
       if (o.name === 'TileDeck') {
@@ -121,9 +127,17 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress }) => {
         deckMaxY = Math.max(deckMaxY, o.geometry.boundingBox.max.y);
       }
     });
-    return { id, meshes, instances, deckMinY, deckMaxY, colliders: g.userData.colliders?.length ?? 0, kinds: [...kinds] };
+    return { id, meshes, instances, sharedFacades, unsharedFacades, deckMinY, deckMaxY, colliders: g.userData.colliders?.length ?? 0, kinds: [...kinds] };
   });
+  const routeFrames = (window.__madrid.frameSamples || []).filter((s) => s.at >= routeStart);
+  const intervals = routeFrames.map((s) => s.intervalMs).sort((a, b) => a - b);
   return {
+    frameLatency: { samples: intervals.length, routeMs: performance.now() - routeStart,
+      maxIntervalMs: intervals.at(-1) || 0,
+      p95IntervalMs: intervals[Math.max(0, Math.ceil(intervals.length * 0.95) - 1)] || 0,
+      maxRenderMs: Math.max(0, ...routeFrames.map((s) => s.renderMs)) },
+    routeFrames: (window.__madrid.frameSamples || []).filter((s) => s.at >= routeStart),
+    streaming: tileStreamer?.status(),
     backend: renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2',
     tileStats,
     tiles: before,
@@ -148,17 +162,17 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress }) => {
 let screenshotError = null;
 if (process.env.SCREENSHOT) {
   process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY = '1';
-  try { await page.screenshot({ path: process.env.SCREENSHOT, timeout: 30000 }); }
+  try { await page.screenshot({ animations: 'disabled', path: process.env.SCREENSHOT, timeout: 30000 }); }
   catch (error) { screenshotError = error.message; }
 }
 if (process.env.VIEWS_DIR) {
   fs.mkdirSync(process.env.VIEWS_DIR, { recursive: true });
   process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY = '1';
-  await page.screenshot({ path: path.join(process.env.VIEWS_DIR, 'street-desktop.png') });
+  await page.screenshot({ animations: 'disabled', path: path.join(process.env.VIEWS_DIR, 'street-desktop.png') });
   await page.locator('#cam-menu-btn').click();
   await page.locator('#cam-maqueta').click();
   await page.waitForFunction(() => window.__madrid.cameraSystem.currentPos.y > 500);
-  await page.screenshot({ path: path.join(process.env.VIEWS_DIR, 'model-desktop.png') });
+  await page.screenshot({ animations: 'disabled', path: path.join(process.env.VIEWS_DIR, 'model-desktop.png') });
   await page.setViewportSize({ width: 390, height: 844 });
   const touchSession = await page.context().newCDPSession(page);
   await touchSession.send('Emulation.setTouchEmulationEnabled', { enabled: true });
@@ -168,7 +182,7 @@ if (process.env.VIEWS_DIR) {
 
   const frame = await page.evaluate(() => window.__madrid.renderedFrames);
   await page.waitForFunction((frame) => window.__madrid.renderedFrames > frame + 2, frame);
-  await page.screenshot({ path: path.join(process.env.VIEWS_DIR, 'model-mobile.png') });
+  await page.screenshot({ animations: 'disabled', path: path.join(process.env.VIEWS_DIR, 'model-mobile.png') });
   const overlap = await page.evaluate(() => {
     const a = document.querySelector('.hud-bottom-left').getBoundingClientRect();
     const b = document.querySelector('#mode-switch').getBoundingClientRect();
@@ -178,7 +192,7 @@ if (process.env.VIEWS_DIR) {
 }
 const contextLost = logs.some((line) => /CONTEXT_LOST|Device Lost/i.test(line));
 const graphicsErrors = logs.filter((line) => /GPUValidationError|Shader Error|GL_INVALID|Error compiling/i.test(line));
-const passed = graphicsErrors.length === 0 && !contextLost && pageErrors.length === 0 && failed.length === 0 && result.frames > 0 && result.tileMs.every((tile) => tile.ok) && (result.after?.failures || 0) === 0 && !result.legacyBoroughs && result.fireEscapeInstances === 0;
+const passed = graphicsErrors.length === 0 && !contextLost && pageErrors.length === 0 && failed.length === 0 && result.frames > 0 && result.tileStats.every((tile) => !tile.unsharedFacades) && result.tileMs.every((tile) => tile.ok) && (result.after?.failures || 0) === 0 && !result.legacyBoroughs && result.fireEscapeInstances === 0;
 console.log(JSON.stringify({
   passed,
   gpu: gpuInfo.gpu,

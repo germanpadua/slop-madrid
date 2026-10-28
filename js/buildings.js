@@ -42,6 +42,7 @@ import {
 } from './tsl-materials.js';
 import { GEO } from './madrid-geodata.js';
 import { roofDecision } from './madrid-roofs.js';
+import { MADRID_FACADE_OPTS } from './madrid-tiles.js';
 import { fdrViaduct, pavedPlazaRects, parkTreeSites, sidewalkBlocks } from './city-grid.js';
 
 // js/buildings.js
@@ -380,8 +381,13 @@ function buildCityBlocks(scene) {
   }, 6, 9);
   const allBlocks = [];
 
-  const facades = FACADE_DEFS;
-  const materials = facades.map(([create, opts]) => create({ ...opts, boxLocal: true }));
+  // The centre and streamed parcels share the same four masonry materials.
+  // This also prepares their shaders during boot instead of compiling a second
+  // facade dialect when the first neighbouring tiles enter the view.
+  const facades = GEO.frame?.madrid
+    ? FACADE_DEFS.map((_, i) => [FACADE_DEFS[0][0], MADRID_FACADE_OPTS[i % MADRID_FACADE_OPTS.length]])
+    : FACADE_DEFS;
+  const materials = facades.map(([create, opts]) => create({ ...opts, boxLocal: true, madrid: Boolean(GEO.frame?.madrid) }));
   // Storey height of each facade: buildings are massed in whole storeys so every window row lines up across tiers
   const storeys = facades.map(([, opts]) => opts.floorHeight);
 
