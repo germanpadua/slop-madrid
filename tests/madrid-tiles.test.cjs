@@ -217,6 +217,29 @@ test('streaming prefetches around the camera, evicts far tiles and never drops t
   assert.ok(!plan.drop.includes('fase2'));
 });
 
+test('speed-aware look-ahead prefetches along the velocity, not behind it (tinywarsaw engine notes)', () => {
+  const mk = (id, coreRect, bytes = 500 * 1024) => ({ id, status: 'ready', core: [coreRect], bytes });
+  const seeded = () => new Map([[ 'fase2', { bytes: 4 * 1024 * 1024 } ]]);
+  const tiles = [
+    mk('fase2', [-500, -500, 500, 500], 4 * 1024 * 1024),
+    mk('ahead', [3500, -500, 4500, 500]),   // 3 000 m east of the camera
+    mk('behind', [-4500, -500, -3500, 500]) // 3 000 m west of the camera
+  ];
+  // parked at the origin: both are outside the 1 600 m preload radius, nothing loads
+  let plan = planTiles({ tiles, loaded: seeded(), x: 0, z: 0, bytes: 4 * 1024 * 1024 });
+  assert.deepEqual(plan.load, []);
+  // flying east at 400 m/s: the 6 s look-ahead (clamped to 1.5x the radius, 2 400 m) pulls 'ahead' into range,
+  // while 'behind' stays out — a flight never frames an unbuilt tile on its path
+  plan = planTiles({ tiles, loaded: seeded(), x: 0, z: 0, vx: 400, vz: 0, bytes: 4 * 1024 * 1024 });
+  assert.deepEqual(plan.load, ['ahead']);
+  // flying west: the mirror image
+  plan = planTiles({ tiles, loaded: seeded(), x: 0, z: 0, vx: -400, vz: 0, bytes: 4 * 1024 * 1024 });
+  assert.deepEqual(plan.load, ['behind']);
+  // eviction still measures from the true position: a tile left 3 km behind is dropped mid-flight
+  plan = planTiles({ tiles, loaded: new Map([...seeded(), ['behind', { bytes: 500 * 1024 }]]), x: 0, z: 0, vx: 400, vz: 0, bytes: 4.5 * 1024 * 1024 });
+  assert.deepEqual(plan.drop, ['behind']);
+});
+
 test('the memory budget is a hard cap: the resident set never exceeds it', () => {
   const tiles = [0, 1, 2, 3, 4, 5].map((i) => ({
     id: `t${i}`, status: 'ready', core: [[i * 400, -500, i * 400 + 800, 500]], bytes: 3 * 1024 * 1024

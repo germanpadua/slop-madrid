@@ -40,12 +40,22 @@ export function distanceToCore(tile, x, z) {
  * @param {object} [o.budget] TILE_BUDGET fields, any subset
  * @returns {{load: string[], drop: string[], distances: Map<string, number>}}
  */
-export function planTiles({ tiles, loaded, x, z, bytes = 0, budget = TILE_BUDGET }) {
+export function planTiles({ tiles, loaded, x, z, bytes = 0, budget = TILE_BUDGET, vx = 0, vz = 0 }) {
   const b = { ...TILE_BUDGET, ...budget };
   const has = (id) => loaded.has(id);
   const sizeOf = (t) => t.bytes || 0;
+  // Speed-aware look-ahead (tinywarsaw engine notes): while the camera moves, prefetch what the velocity vector
+  // reaches in LOOKAHEAD_S instead of what surrounds the current position, so a flight never frames an unbuilt
+  // tile ahead. Eviction still uses the true position: what you leave behind is dropped as before.
+  const LOOKAHEAD_S = 6;
+  const speed = Math.hypot(vx, vz);
+  const ahead = Math.min(speed * LOOKAHEAD_S, b.preloadRadius * 1.5); // clamp: a fast jet must not pull half the map
+  const ax = speed > 0.1 ? x + (vx / speed) * ahead : x;
+  const az = speed > 0.1 ? z + (vz / speed) * ahead : z;
   const distances = new Map();
   for (const t of tiles) distances.set(t.id, distanceToCore(t, x, z));
+  const aheadDistances = new Map();
+  for (const t of tiles) aheadDistances.set(t.id, distanceToCore(t, ax, az));
 
   const drop = [];
   const dropped = new Set();
@@ -72,8 +82,8 @@ export function planTiles({ tiles, loaded, x, z, bytes = 0, budget = TILE_BUDGET
   // 3. Prefetch the nearest ready tiles that fit (nearest first; no eviction beyond the caps above).
   const load = [];
   const candidates = tiles
-    .filter((t) => t.status === 'ready' && !has(t.id) && !dropped.has(t.id) && (distances.get(t.id) ?? Infinity) <= b.preloadRadius)
-    .sort((p, q) => (distances.get(p.id) ?? Infinity) - (distances.get(q.id) ?? Infinity));
+    .filter((t) => t.status === 'ready' && !has(t.id) && !dropped.has(t.id) && (aheadDistances.get(t.id) ?? Infinity) <= b.preloadRadius)
+    .sort((p, q) => (aheadDistances.get(p.id) ?? Infinity) - (aheadDistances.get(q.id) ?? Infinity));
   for (const t of candidates) {
     if (resident + sizeOf(t) > b.maxResidentBytes || count + 1 > b.maxResidentTiles) break;
     load.push(t.id);
@@ -162,12 +172,17 @@ export async function createTileStreamer({
   function update(x, z, now = performance.now()) {
     const moved = Math.hypot(x - lastX, z - lastZ);
     if (moved < 20 && now - lastAt < 400) return null;
+    const dt = (now - lastAt) / 1000;
+    const vx = dt > 0 ? (x - lastX) / dt : 0;
+    const vz = dt > 0 ? (z - lastZ) / dt : 0;
     lastX = x; lastZ = z; lastAt = now;
     const plan = planTiles({
       tiles,
       loaded,
       x,
       z,
+      vx,
+      vz,
       bytes: [...loaded.values()].reduce((n, v) => n + v.bytes, 0),
       budget: budgetCfg
     });
