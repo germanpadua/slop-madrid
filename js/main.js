@@ -45,13 +45,21 @@ async function initApp() {
   // 1. Initialize Three.js WebGPURenderer with 32-bit float reversedDepthBuffer.
   // ?webgl forces the WebGL2 backend (lighter on devices/headless captures where WebGPU is heavy).
   const bootParams = new URLSearchParams(window.location.search);
+  // ?capture keeps the drawing buffer readable for visual verification. three's WebGL2 backend hardcodes its
+  // context attributes, so the canvas+context must be supplied with preserveDrawingBuffer set; capture implies
+  // the WebGL2 backend (a WebGPU canvas cannot be read back this way).
+  const captureFrame = bootParams.has('capture');
+  const canvas = document.createElement('canvas');
+  const captureCtx = captureFrame
+    ? canvas.getContext('webgl2', { antialias: true, alpha: true, depth: true, stencil: false, preserveDrawingBuffer: true })
+    : null;
   const renderer = new THREE.WebGPURenderer({
+    canvas,
+    context: captureCtx || undefined,
     antialias: true,
     powerPreference: 'high-performance',
     reversedDepthBuffer: true,
-    forceWebGL: bootParams.has('webgl'),
-    // ?capture keeps the drawing buffer after compositing so a frame can be read back for visual verification.
-    preserveDrawingBuffer: bootParams.has('capture')
+    forceWebGL: bootParams.has('webgl') || captureFrame
   });
   renderer.setPixelRatio(1.0);
   renderer.setSize(window.innerWidth, window.innerHeight);
