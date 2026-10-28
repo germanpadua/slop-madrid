@@ -20,6 +20,7 @@ import {
   createWaterMaterial
 } from './tsl-materials.js';
 import { FACADE_DEFS } from './buildings.js';
+import { MADRID_FACADE_OPTS, MADRID_LANDMARK_STYLES } from './madrid-tiles.js';
 
 const toPts = (flat) => {
   const out = [];
@@ -85,7 +86,10 @@ function createOutOfMapFloor(scene, bbox) {
 
 export function createTileWorld(scene, { colliders = null, materials = null } = {}) {
   // Shared materials: the facades come from the seed's own table (cached by options, so one shader compile each).
-  const facades = FACADE_DEFS.slice(0, 3).map(([create, opts]) => create({ ...opts, boxLocal: true }));
+  // Madrid almendra palettes (caliza / ladrillo visto / revoco encalado, balcones rhythm) - NOT the
+  // Manhattan pre-war table. Same factories, Madrid options; faces keep the storefront ground floors (comercios
+  // en bajos) until road-adjacency data picks entry vs shop per wall.
+  const facades = FACADE_DEFS.slice(0, 3).map(([create], i) => create({ ...MADRID_FACADE_OPTS[i % MADRID_FACADE_OPTS.length], boxLocal: true }));
   const mats = {
     road: materials?.road || createRoadSurfaceMaterial(),
     curb: materials?.curb || createCurbMaterial(),
@@ -93,7 +97,9 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     water: materials?.water || createWaterMaterial(),
     lawn: materials?.lawn || createParkLawnMaterial(false),
     stone: new THREE.MeshStandardNodeMaterial({ color: 0xc9c2b4, roughness: 0.88, metalness: 0.02 }),
-    landmark: new THREE.MeshStandardNodeMaterial({ color: 0xd6cdbb, roughness: 0.85, metalness: 0.03 })
+    landmark: new THREE.MeshStandardNodeMaterial({ color: 0xcfc8b8, roughness: 0.85, metalness: 0.03 }),
+    // Named monuments get their own material (caliza blanca / granito berroqueno), not one blanket tone.
+    landmarkByName: new Map()
   };
   const groups = new Map(); // tile id -> { group, colliders }
   // Footprints already in the scene: the ownership rules keep each building in exactly one tile, and this guard makes
@@ -203,12 +209,22 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
 
     // 5. Landmarks: real footprint extruded to its IDEAM/OSM height. No height = no volume (nothing invented); the
     //    footprint stays covered by its parcel box, so there is no gap to fill.
-    for (const lm of Object.values(tile.landmarks || {})) {
+    for (const [lmName, lm] of Object.entries(tile.landmarks || {})) {
       if (!(lm.h > 0) || !lm.ring || lm.ring.length < 6) continue;
       const ring = toPts(lm.ring);
       if (ring.length < 3) continue;
       if (shoelace(ring) > 0) ring.reverse();
-      const mesh = createExtrudedPolygonMesh(ring, 0, lm.h, mats.landmark, true, true);
+      const lmStyle = MADRID_LANDMARK_STYLES.find(([re]) => re.test(lmName));
+      let lmMat = mats.landmark;
+      if (lmStyle) {
+        if (!mats.landmarkByName.has(lmStyle[0])) {
+          mats.landmarkByName.set(lmStyle[0], new THREE.MeshStandardNodeMaterial({
+            color: lmStyle[1].color, roughness: lmStyle[1].roughness, metalness: 0.03
+          }));
+        }
+        lmMat = mats.landmarkByName.get(lmStyle[0]);
+      }
+      const mesh = createExtrudedPolygonMesh(ring, 0, lm.h, lmMat, true, true);
       mesh.name = 'TileLandmark';
       group.add(mesh);
       const bb = bboxOf(ring);

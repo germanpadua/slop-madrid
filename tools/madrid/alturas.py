@@ -5,6 +5,7 @@
 import json
 import sys
 import urllib.parse
+import time
 import urllib.request
 
 URL = "https://sigma.madrid.es/hosted/rest/services/CARTOGRAFIA/EDIFICIOS_ALTURAS/MapServer/0/query"
@@ -24,7 +25,14 @@ def query(bbox, offset):
         "f": "json",
     })
     req = urllib.request.Request(URL + "?" + qs, headers={"User-Agent": "slop-madrid/1.0"})
-    return json.loads(urllib.request.urlopen(req, timeout=120).read())
+    last = None
+    for attempt in range(4):
+        try:
+            return json.loads(urllib.request.urlopen(req, timeout=120).read())
+        except Exception as exc:  # transient IDEAM drops; same policy as catastro.py
+            last = exc
+            time.sleep(3 * (attempt + 1))
+    raise last
 
 
 def main():
