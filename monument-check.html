@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>monument-check</title>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.webgpu.js",
+  "three/webgpu": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.webgpu.js",
+  "three/tsl": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.tsl.js",
+  "three/addons/": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/jsm/"
+} }
+</script></head>
+<body style="margin:0">
+<script type="module">
+// monument-check.html — renders the REAL procedural monument builders (js/monuments.js)
+// on their real OSM footprints (GEO.landmarks) for pixel validation before commit.
+// Same capture approach as block3-tilepath.html (preserveDrawingBuffer + toBlob POST).
+import * as THREE from 'three/webgpu';
+import { GEO } from './js/madrid-geodata.js';
+import { buildProceduralMonument } from './js/monuments.js';
+fetch('/__shot?name=boot', { method: 'POST', body: 'imports-ok' }).catch(() => {});
+window.onerror = (m) => { fetch('/__shot?name=err', { method: 'POST', body: String(m) }).catch(() => {}); };
+window.addEventListener('unhandledrejection', (e) => { fetch('/__shot?name=err', { method: 'POST', body: 'rej:' + String(e.reason && e.reason.message || e.reason) }).catch(() => {}); });
+const canvas = document.createElement('canvas');
+canvas.width = 1280; canvas.height = 720;
+const ctx = canvas.getContext('webgl2', { antialias: true, alpha: true, depth: true, stencil: false, preserveDrawingBuffer: true });
+const renderer = new THREE.WebGPURenderer({ canvas, context: ctx, antialias: true, forceWebGL: true });
+renderer.setSize(1280, 720);
+await renderer.init();
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xebd1b5);
+scene.add(new THREE.HemisphereLight(0x9abbe6, 0xc88a62, 1.48));
+const sun = new THREE.DirectionalLight(0xffca92, 5.8);
+sun.position.set(-44, 58, -68);
+scene.add(sun);
+// ground plane for shadow/scale reading
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(1200, 1200).rotateX(-Math.PI / 2), new THREE.MeshStandardNodeMaterial({ color: 0xbfb49f, roughness: 0.95 }));
+scene.add(ground);
+
+const bodyMat = new THREE.MeshStandardNodeMaterial({ color: 0xcfc3ab, roughness: 0.74, metalness: 0.05 });
+const ONLY = (location.search.match(/name=([^&]+)/i) || [])[1];
+const NAMES = ONLY ? [decodeURIComponent(ONLY)] : ['Puerta de Alcalá', 'Palacio de Cibeles', 'Edificio España', 'Torre de Madrid'];
+
+async function postShot(name) {
+  const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.85));
+  await fetch('/__shot?name=' + name, { method: 'POST', body: blob });
+}
+const cam = new THREE.PerspectiveCamera(45, 1280 / 720, 0.5, 5000);
+const stats = {};
+for (const name of NAMES) {
+  const lm = GEO.landmarks[name];
+  if (!lm) { await fetch('/__shot?name=missing', { method: 'POST', body: name }); continue; }
+  const g = buildProceduralMonument(name, bodyMat, lm);
+  if (!g) { await fetch('/__shot?name=nobuild', { method: 'POST', body: name }); continue; }
+  const holder = new THREE.Group();
+  holder.add(g);
+  scene.add(holder);
+  let meshes = 0, tris = 0;
+  holder.traverse((o) => { if (o.isMesh) { meshes++; const idx = o.geometry.index; tris += (idx ? idx.count : o.geometry.attributes.position.count) / 3; } });
+  const H = lm.h || 40;
+  const R = Math.max(lm.w || 40, lm.d || 40);
+  const tag = name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+  stats[name] = { meshes, tris: Math.round(tris), w: lm.w, d: lm.d, h: lm.h };
+  // oblique from the sunlit side
+  const D = Math.max(R * 1.25, H * 1.15);
+  cam.position.set(D * 0.8, H * 0.8, -D); cam.lookAt(0, H * 0.38, 0);
+  renderer.render(scene, cam); await postShot('mon-' + tag + '-oblique');
+  // higher wide
+  cam.position.set(D * 1.15, H * 1.7, -D * 1.45); cam.lookAt(0, H * 0.3, 0);
+  renderer.render(scene, cam); await postShot('mon-' + tag + '-wide');
+  // close ground view (what the player sees a pie)
+  cam.position.set(R * 0.85, 2.2, -R * 1.05); cam.lookAt(0, H * 0.32, 0);
+  renderer.render(scene, cam); await postShot('mon-' + tag + '-street');
+  scene.remove(holder);
+}
+await fetch('/__shot?name=stats', { method: 'POST', body: JSON.stringify(stats) });
+</script></body></html>

@@ -320,7 +320,154 @@ function buildPalacioDeCibeles(mat, lm) {
   return g;
 }
 
+// --- Plaza de España pair (Otamendi brothers) -------------------------------------
+// Shared helper: footprint shape + slab extrusion along the REAL OSM ring (the
+// city-grid.js:222 (x,-z)/rotateX(-PI/2) convention, same as buildPalacioDeCibeles).
+function ringTools(lm) {
+  const ringShape = (scale) => {
+    const sh = new THREE.Shape();
+    const n = lm.ring.length / 2;
+    for (let i = 0; i < n; i++) {
+      const lx = (lm.ring[i * 2] - lm.cx) * scale;
+      const lz = -((lm.ring[i * 2 + 1] - lm.cz) * scale);
+      if (i === 0) sh.moveTo(lx, lz); else sh.lineTo(lx, lz);
+    }
+    sh.closePath();
+    return sh;
+  };
+  const slab = (shape, y0, h, m) => {
+    const mesh = new THREE.Mesh(new THREE.ExtrudeGeometry(shape, { depth: h, bevelEnabled: false }).rotateX(-Math.PI / 2).translate(0, y0, 0), m);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    return mesh;
+  };
+  // Vertical dark window strips standing slightly proud of the wall, following the
+  // real ring segment by segment (handles chamfers/zigzags). Maqueta-scale rhythm,
+  // one mesh per strip so batchStaticGroupMeshes merges them into few draw calls.
+  const addVerticalStrips = (g, y0, y1, mat, spacing = 3.6, scale = 1.0, width = 0.75) => {
+    const n = lm.ring.length / 2;
+    const pts = [];
+    for (let i = 0; i < n; i++) pts.push([(lm.ring[i * 2] - lm.cx) * scale, (lm.ring[i * 2 + 1] - lm.cz) * scale]);
+    for (let i = 0; i < n; i++) {
+      const [ax, az] = pts[i], [bx, bz] = pts[(i + 1) % n];
+      const len = Math.hypot(bx - ax, bz - az);
+      if (len < 3) continue;
+      const dx = (bx - ax) / len, dz = (bz - az) / len;
+      let nx = -dz, nz = dx;
+      const mx = (ax + bx) / 2, mz = (az + bz) / 2;
+      if (nx * mx + nz * mz < 0) { nx = -nx; nz = -nz; }
+      const ang = Math.atan2(nx, nz);
+      const cols = Math.floor(len / spacing);
+      for (let c = 0; c <= cols; c++) {
+        const t = cols === 0 ? 0.5 : (c + 0.5) / (cols + 1);
+        const wx = ax + (bx - ax) * t, wz = az + (bz - az) * t;
+        const strip = new THREE.Mesh(new THREE.BoxGeometry(width, y1 - y0, 0.16), mat);
+        strip.position.set(wx + nx * 0.1, (y0 + y1) / 2, wz + nz * 0.1);
+        strip.rotation.y = ang;
+        strip.castShadow = false;
+        strip.receiveShadow = false;
+        g.add(strip);
+      }
+    }
+  };
+  return { ringShape, slab, addVerticalStrips };
+}
+
+// Edificio España (Julián & José María Otamendi, 1953): 117 m, 25-26 plantas,
+// neobarroco/neoherreriano; ladrillo visto + piedra caliza. Defining silhouette per
+// esmadrid/Wikipedia: "fachada escalonada en cuatro alturas" - four stepped tiers,
+// symmetric, caliza base, over the real (roughly rectangular) plaza-fronting footprint.
+function buildEdificioEspana(mat, lm) {
+  const g = new THREE.Group();
+  const { ringShape, slab, addVerticalStrips } = ringTools(lm);
+  const brickMat = new THREE.MeshStandardNodeMaterial({ color: 0x9c5a41, roughness: 0.82, metalness: 0.02 });
+  const trimMat = new THREE.MeshStandardNodeMaterial({ color: 0xe8dfca, roughness: 0.66, metalness: 0.03 });
+  const plinthMat = new THREE.MeshStandardNodeMaterial({ color: 0x8d8272, roughness: 0.85, metalness: 0.02 });
+  const openMat = new THREE.MeshStandardNodeMaterial({ color: 0x453d34, roughness: 1, metalness: 0 });
+  const H = Math.min(lm.h || 108, 117);
+
+  g.add(slab(ringShape(1.02), 0, 1.4, plinthMat));
+  // Caliza base (commercial + mezzanine), then four stepped brick tiers.
+  g.add(slab(ringShape(1.0), 0, 9, trimMat));
+  g.add(slab(ringShape(1.0), 9, 23, brickMat));           // tier 1: 9-32
+  g.add(slab(ringShape(1.012), 31.4, 0.9, trimMat));      // cornice
+  g.add(slab(ringShape(0.88), 32, 26, brickMat));         // tier 2: 32-58
+  g.add(slab(ringShape(0.892), 57.4, 0.9, trimMat));
+  g.add(slab(ringShape(0.72), 58, 26, brickMat));         // tier 3: 58-84
+  g.add(slab(ringShape(0.732), 83.4, 0.9, trimMat));
+  g.add(slab(ringShape(0.5), 84, H - 84, brickMat));      // tier 4 (central tower)
+  g.add(slab(ringShape(0.52), H - 0.6, 0.9, trimMat));    // crown cornice
+  // Neobarroque crown hint: small tempietto over the central tier
+  const crown = new THREE.Mesh(new THREE.BoxGeometry(10, 5, 10), trimMat);
+  crown.position.set(0, H + 2.2, 0);
+  crown.castShadow = true;
+  g.add(crown);
+  const cap = new THREE.Mesh(new THREE.ConeGeometry(6.4, 3.2, 4), brickMat);
+  cap.rotation.y = Math.PI / 4;
+  cap.position.set(0, H + 6.2, 0);
+  cap.castShadow = true;
+  g.add(cap);
+
+  // Vertical window rhythm on the brick tiers (maqueta legibility; strips proud of wall)
+  addVerticalStrips(g, 10, 31, openMat);
+  addVerticalStrips(g, 33, 56, openMat, 3.6, 0.88);
+  addVerticalStrips(g, 59, 82, openMat, 3.4, 0.72);
+  addVerticalStrips(g, 85, H - 2, openMat, 3.2, 0.5);
+  // Base: taller, darker shopfront band
+  addVerticalStrips(g, 1.6, 8.4, openMat, 4.2);
+  return g;
+}
+
+// Torre de Madrid (Otamendi, 1957): 142 m, 34 plantas, hormigón blanco; chaflán plan
+// with diagonal symmetry. Defining features per patrimonioypaisaje.madrid.es (official):
+// "entramado ascensional con resaltes" (vertical strip framework), "énfasis en las
+// esquinas con el juego de terrazas voladas" (flying corner terraces), "remate con una
+// amplia cornisa" (wide crown cornice), aesthetic "desornamentada, moderna y funcional".
+function buildTorreDeMadrid(mat, lm) {
+  const g = new THREE.Group();
+  const { ringShape, slab, addVerticalStrips } = ringTools(lm);
+  const concreteMat = new THREE.MeshStandardNodeMaterial({ color: 0xdcd7cb, roughness: 0.7, metalness: 0.04 });
+  const trimMat = new THREE.MeshStandardNodeMaterial({ color: 0xefece3, roughness: 0.6, metalness: 0.04 });
+  const plinthMat = new THREE.MeshStandardNodeMaterial({ color: 0x8d8272, roughness: 0.85, metalness: 0.02 });
+  const openMat = new THREE.MeshStandardNodeMaterial({ color: 0x55606a, roughness: 0.9, metalness: 0.05 });
+  const H = Math.min(lm.h || 128, 142);
+
+  g.add(slab(ringShape(1.02), 0, 1.4, plinthMat));
+  // Commercial base with dark shopfront band
+  g.add(slab(ringShape(1.0), 0, 11, concreteMat));
+  addVerticalStrips(g, 1.6, 10.2, openMat, 4.0);
+  // Main white prism up to the crown
+  g.add(slab(ringShape(1.0), 11, H - 14, concreteMat));
+  addVerticalStrips(g, 12, H - 4.5, openMat, 3.2);
+  // Flying corner terraces: small light slabs protruding at the footprint extremes,
+  // stacked every ~12 m - the corner play the official description emphasizes.
+  {
+    const n = lm.ring.length / 2;
+    const corners = [];
+    for (let i = 0; i < n; i++) corners.push([lm.ring[i * 2] - lm.cx, lm.ring[i * 2 + 1] - lm.cz]);
+    // the 4 vertices farthest from the centroid approximate the chamfered corners
+    corners.sort((a, b) => (b[0] * b[0] + b[1] * b[1]) - (a[0] * a[0] + a[1] * a[1]));
+    for (const [vx, vz] of corners.slice(0, 4)) {
+      const len = Math.hypot(vx, vz) || 1;
+      const ox = vx / len, oz = vz / len;
+      for (let y = 24; y < H - 16; y += 12) {
+        const t = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.55, 3.2), trimMat);
+        t.position.set(vx + ox * 1.2, y, vz + oz * 1.2);
+        t.castShadow = true;
+        g.add(t);
+      }
+    }
+  }
+  // Wide crown cornice + recessed penthouse (the real remate)
+  g.add(slab(ringShape(1.04), H - 3, 2.2, trimMat));
+  g.add(slab(ringShape(0.82), H - 0.8, 3.4, concreteMat));
+  return g;
+}
+
 const PROCEDURAL = {
+  'Edificio España': buildEdificioEspana,
+  'Torre de Madrid': buildTorreDeMadrid,
+
   'Puerta de Alcalá': buildPuertaDeAlcala,
   'Palacio de Cibeles': buildPalacioDeCibeles,
 };
@@ -331,6 +478,10 @@ const PROCEDURAL = {
 // bbox was also misaligned by D/2 in x and sealed the arches.)
 const PUERTA_PIERS = [[-21.45, -18.8], [-14.8, -11.5], [-6.5, -3], [3, 6.5], [11.5, 14.8], [18.8, 21.45]];
 export function buildProceduralColliders(name, lm) {
+  if (name === 'Edificio España' || name === 'Torre de Madrid') {
+    // Solid towers: full footprint bbox, up to the real tagged height.
+    return [{ minX: lm.cx - lm.w / 2, maxX: lm.cx + lm.w / 2, minZ: lm.cz - lm.d / 2, maxZ: lm.cz + lm.d / 2, maxY: lm.h || 100 }];
+  }
   if (name === 'Palacio de Cibeles') {
     // Solid building: full footprint bbox, tall enough for the cimborrio spire (72 m).
     return [{ minX: lm.cx - lm.w / 2, maxX: lm.cx + lm.w / 2, minZ: lm.cz - lm.d / 2, maxZ: lm.cz + lm.d / 2, maxY: 72 }];
