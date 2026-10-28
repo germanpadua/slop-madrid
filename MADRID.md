@@ -499,3 +499,22 @@ cercanas. Ampliar radios/budget es un valor del manifiesto, no un cambio de cód
 - **Vecinos de la semilla**: al regenerarla con 100 m de solape, las manzanas del anillo pertenecen a las celdas
   vecinas (488 manzanas interiores en la semilla), de modo que una parte del borde de fase 2 se completa al cargar esas
   celdas.
+
+
+## 2026-10-28 — Artefacto de bandas en el cielo: estado de la investigación
+
+- Las bandas luminosas visibles en capturas NO son el puente de Williamsburg ni los
+  puentes del East River: `EAST_RIVER_BRIDGES` y `OUTER_BRIDGES` están vacíos desde
+  f017b7f y los builders de boroughs.js no construyen nada. Cualquier atribución
+  previa a cables de puente queda retirada (vivía solo en notas de trabajo).
+- Evidencia reunida: sin meshes con NaN, sin InstancedMesh corruptos, sin
+  Points/Sprites/Lines, nada sobre la cámara en 200 m; raycast preciso hacia las
+  bandas solo toca el SkyMesh; persisten tras ocultar el root PlayerHelicopter y
+  HighwayTraffic. El disco de rotor del helicóptero sí produce estelas propias
+  (controllers.js, blurDisc) cuando la cámara chase queda bajo él.
+- Hipótesis abierta (NO conclusión): banding del shader procedural de nubes del
+  SkyMesh bajo el backend WebGL2. Contexto: ?capture fuerza WebGL2
+  (main.js: `captureFrame` implica `forceWebGL`) y el navegador cloud carece de
+  WebGPU (`navigator.gpu === false`), así que TODA captura local es WebGL2 y no se
+  puede descartar ni confirmar el artefacto en la experiencia pública WebGPU desde
+  ese navegador. Prueba pendiente: cloudCoverage=0 → captura A/B.
