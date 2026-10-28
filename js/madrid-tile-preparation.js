@@ -2,6 +2,7 @@
 import { decomposeRing } from './madrid-footprint.js';
 import { partyWallHeights, partyWallRuns } from './madrid-adjacency.js';
 import { tileRoofInstances } from './madrid-roofs.js';
+import { buildFarBuildings } from './madrid-far-buildings.js';
 
 export function prepareTile(data) {
   const footprints = [];
@@ -17,5 +18,6 @@ export function prepareTile(data) {
     footprints[index] = decomposeRing(p.ring, { stripW: 4, minD: 0.4, holes: p.holes || [] });
     parcels.push({ ...p, index, x0, x1, z0, z1, w: x1 - x0, d: z1 - z0, fp: footprints[index].deviation <= 0.10 ? footprints[index] : null });
   }
-  return { footprints, roofs: tileRoofInstances(parcels), indices: parcels.map((p) => p.index), heights: partyWallHeights(parcels), runs: partyWallRuns(parcels) };
+  const heights = partyWallHeights(parcels);
+  return { footprints, farBuildings: data.distanceGeometry ? buildFarBuildings(parcels, heights) : null, roofs: tileRoofInstances(parcels), indices: parcels.map((p) => p.index), heights, runs: partyWallRuns(parcels) };
 }

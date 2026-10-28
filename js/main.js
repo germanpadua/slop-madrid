@@ -179,7 +179,7 @@ async function initApp() {
   const tileCompileProbes = tileWorld.createCompileProbes();
   let tileStreamer = null;
   let distanceDetail = null;
-  const tilePreparer = createTilePreparer();
+  const tilePreparer = createTilePreparer({ distanceGeometry: bootParams.get('detail') === 'geometry' });
   window.addEventListener('pagehide', (event) => { if (!event.persisted) tilePreparer.dispose(); });
   try {
     tileStreamer = await createTileStreamer({
@@ -236,8 +236,8 @@ async function initApp() {
     .filter(Boolean);
   setupSceneCulling(scene, cullingRoots, lightingSystem.sunLight.shadow);
   markInit('culling');
-  if (bootParams.get('detail') === 'distance') {
-    distanceDetail = createMadridDistanceDetail(tileWorld.facadeMaterials);
+  if (['distance', 'geometry'].includes(bootParams.get('detail'))) {
+    distanceDetail = createMadridDistanceDetail(tileWorld.facadeMaterials, { geometry: bootParams.get('detail') === 'geometry' });
     distanceDetail.register(scene);
     tileCompileProbes.add(distanceDetail.createCompileProbes());
     if (window.__madrid) window.__madrid.distanceDetail = distanceDetail;

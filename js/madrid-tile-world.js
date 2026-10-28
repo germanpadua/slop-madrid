@@ -20,7 +20,7 @@ import {
   createWaterMaterial
 } from './tsl-materials.js';
 import { FACADE_DEFS } from './buildings.js';
-import { partyWallHeights, partyWallRuns } from './madrid-adjacency.js';
+import { partyWallHeights, partyWallRuns, exposedPartyWallSides } from './madrid-adjacency.js';
 import { tileRoofInstances } from './madrid-roofs.js';
 import { decomposeRing } from './madrid-footprint.js';
 import { MADRID_FACADE_OPTS, MADRID_LANDMARK_STYLES } from './madrid-tiles.js';
@@ -122,6 +122,7 @@ function createOutOfMapFloor(scene, bbox) {
 }
 
 export function createTileWorld(scene, { colliders = null, materials = null } = {}) {
+  const farBuildingMaterial = new THREE.MeshStandardNodeMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
   // Shared materials: the facades come from the seed's own table (cached by options, so one shader compile each).
   // Madrid almendra palettes (caliza / ladrillo visto / revoco encalado, balcones rhythm) - NOT the
   // Manhattan pre-war table. Same factories, Madrid options; faces keep the storefront ground floors (comercios
@@ -325,7 +326,7 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       const nH = nHArr[pi];
       // Guardrail: skip when the exposed strip would exceed half the parcel's height - blanking most of a
       // tall interior tower reads as a monolith (unresolved: needs lotLine material work or street-side data)
-      const exposed = nH.map((n) => n >= 1 && P.h - n >= 2.5 && P.h - n <= P.h * 0.5);
+      const exposed = exposedPartyWallSides(P, nH);
       if (!exposed.some(Boolean)) {
         if (P.fp) {
           // One rotated box per decomposition rect (bounded approx: street faces; medianera logic stays AABB-level)
@@ -537,6 +538,21 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       }
     }
 
+    const far = matchingPreparation && globalThis.__FP !== false && globalThis.__MERGED !== true && tile.prepared.farBuildings;
+    if (far?.indices.length) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(far.positions, 3));
+      geometry.setAttribute('normal', new THREE.BufferAttribute(far.normals, 3));
+      geometry.setAttribute('color', new THREE.BufferAttribute(far.colors, 3));
+      geometry.setIndex(new THREE.BufferAttribute(far.indices, 1));
+      const mesh = new THREE.Mesh(geometry, farBuildingMaterial);
+      mesh.name = 'TileFarBuildings';
+      mesh.castShadow = mesh.receiveShadow = true;
+      mesh.visible = false;
+      group.add(mesh);
+      group.userData.farGeometry = { nearTriangles: far.nearTriangles, triangles: far.triangles,
+        parcels: far.representedParcels, bytes: far.positions.byteLength + far.normals.byteLength + far.colors.byteLength + far.indices.byteLength };
+    }
     group.userData.colliders = tileColliders;
     group.userData.parcelKeys = drawnHere;
     group.userData.bytes = tile.bytes || 0;
@@ -589,6 +605,14 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     for (const material of hybridFacadeMats) group.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material));
     for (const material of hybridWallMats) group.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material));
     group.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+    const farProbeGeometry = new THREE.BufferGeometry();
+    farProbeGeometry.setAttribute('position', new THREE.Float32BufferAttribute([0,0,0, 1,0,0, 0,1,0], 3));
+    farProbeGeometry.setAttribute('normal', new THREE.Float32BufferAttribute([0,0,1, 0,0,1, 0,0,1], 3));
+    farProbeGeometry.setAttribute('color', new THREE.Float32BufferAttribute([1,1,1, 1,1,1, 1,1,1], 3));
+    const farProbe = new THREE.Mesh(farProbeGeometry, farBuildingMaterial);
+    farProbe.castShadow = farProbe.receiveShadow = true;
+    farProbe.frustumCulled = false;
+    group.add(farProbe);
     scene.add(group);
     return group;
   }

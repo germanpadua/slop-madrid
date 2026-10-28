@@ -140,3 +140,15 @@ Siguiente paso para el nivel lejano real: preparar en el worker una malla fusion
 Reversión de esta unidad: retirar madrid-distance-detail.js, su import/preload y la integración optativa en main; retirar detailBounds/facadeMaterials del tile world y la normalización de materiales detallados del verificador. La preparación exacta de cubiertas del commit anterior sigue independiente.
 
 La confirmación opcional a pie también pasó sin errores: al final se observaron 25 mallas con detalle cercano y 49 lejanas, con máximo de intervalo ~116,7 ms. No se interpreta como ganancia de FPS.
+
+## Malla lejana de teselas y guardia de patios
+
+Nuevo experimento `?detail=geometry`: el worker genera una malla indexada de las tiras de las parcelas, retirando caras inferiores y paredes internas coincidentes. Se transfieren los buffers sin copiarlos al hilo principal. Al alejarse, una malla sustituye a las cuatro fachadas de cada tesela; se conservan tejados, híbridos con huecos y monumentos. El centro procedural todavía no tiene proxy geométrico. El modo predeterminado sigue sin activar este experimento.
+
+k3j0: 1.105 parcelas representadas, 31.452 → 23.860 triángulos para esa cohorte, ~2 MB adicionales de buffers indexados. k4j2: 125.256 → 92.870 triángulos y ~7,8 MB adicionales. La memoria importa: todavía se conservan las mallas cercanas para volver sin reconstrucción.
+
+La cámara centrada en el centro no mostró mejora consistente. Sobre teselas orientales (`--tiles k4j1,k4j2 --aerial --zoom 2`), dos pares alternados dieron 90/100/90/102 frames por ~2 s (completo/lejos/completo/lejos). Es una señal favorable local, no suficiente para activar el modo por defecto. La inspección visual inicial del centro y móvil no mostró cambios de monumentos ni huecos tapados. Evidencia: `docs/validation/2026-10-28-far-geometry.json`; capturas `/tmp/madrid-geometry-lod/` y `/tmp/madrid-geometry-east/` (temporales).
+
+La revisión de datos detectó 17 parcelas con fp+holes en k3j0 donde las medianeras aplicaban un split de AABB que tapaba el patio. `exposedPartyWallSides` impide ese split en el renderer cercano y el proxy. Las pruebas geométricas verifican área de tapa, perímetro exterior+patio, orientación de caras y reducción de triángulos incluso con un vecino alto. 160/160 pruebas pasan tras corregirlo. **Falta repetir la inspección visual de esta última corrección**; los informes anteriores son previos a ella.
+
+Reversión: el proxy está optativo y se puede retirar sin afectar el worker normal; la guardia de patios es una corrección independiente que conviene mantener. Siguiente prioridad: confirmar visualmente los 17 patios, medir memoria/frames en escenas donde las teselas son visibles y diseñar el proxy del centro antes de activar LOD geométrico por defecto. El objetivo global continúa pendiente.

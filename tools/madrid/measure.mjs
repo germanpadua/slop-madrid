@@ -40,6 +40,9 @@ const stress = args.includes('--stress');
 const placesArg = args.indexOf('--places');
 const places = placesArg >= 0 ? args[placesArg + 1].split(',') : [];
 const view = args.includes('--aerial') ? 'maqueta' : 'chase';
+const zoomArg = args.indexOf('--zoom');
+const aerialZoom = zoomArg >= 0 ? Number(args[zoomArg + 1]) : 1;
+if (!(aerialZoom >= 0.45 && aerialZoom <= 2.4)) throw new Error('--zoom must be 0.45..2.4');
 const walk = bootOnly || places.length ? [] : tileArg >= 0 ? args[tileArg + 1].split(',') : ['k3j1', 'k4j1', 'k4j2', 'k2j-1', 'k0j-1', 'k0j3', 'k2j4'];
 
 let browser;
@@ -78,13 +81,13 @@ if (process.env.GL_PROFILE) await page.addInitScript(() => {
   }
 });
 const t0 = Date.now();
-await page.goto(`http://127.0.0.1:${port}/?debug=1${process.env.WEBGL ? '&webgl=1' : ''}${process.env.WEBGPU ? '&webgpu=1' : ''}${process.env.DISTANCE_DETAIL || process.env.DETAIL_COMPARE ? '&detail=distance' : ''}`, { waitUntil: 'load', timeout: 180000 });
+await page.goto(`http://127.0.0.1:${port}/?debug=1${process.env.WEBGL ? '&webgl=1' : ''}${process.env.WEBGPU ? '&webgpu=1' : ''}${process.env.GEOMETRY_DETAIL ? '&detail=geometry' : process.env.DISTANCE_DETAIL || process.env.DETAIL_COMPARE ? '&detail=distance' : ''}`, { waitUntil: 'load', timeout: 180000 });
 // SwiftShader compiles the ~500 pipelines of the Madrid materials slowly: the loading screen can take several minutes
 await page.waitForFunction(() => window.__madrid && window.__madrid.renderer && document.querySelector('#loading-overlay.hidden'), null, { timeout: 900000 });
 const bootMs = Date.now() - t0;
 const initLine = logs.find((l) => l.startsWith('[init]')) || '';
 
-const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view }) => {
+const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view, aerialZoom }) => {
   const { renderer, tileStreamer, tileWorld, controllerManager } = window.__madrid;
   const waitFor = async (fn, timeoutMs = 120000) => {
     const start = performance.now();
@@ -94,6 +97,8 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
     }
     return false;
   };
+  window.__madrid.cameraSystem.zoomMultiplier = aerialZoom;
+  if (view === 'maqueta') document.querySelector('#cam-maqueta').click();
   const routeStart = performance.now();
   const before = tileStreamer ? tileStreamer.status() : null;
   const tileMs = [];
@@ -125,6 +130,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
       const x = (tile.core[0][0] + tile.core[0][2]) / 2;
       const z = (tile.core[0][1] + tile.core[0][3]) / 2;
       controllerManager.teleportActiveTo(x, z, 0);
+      if (view === 'maqueta') document.querySelector('#cam-maqueta').click();
       const t = performance.now();
       tileStreamer.update(x, z, performance.now());
       const ok = await waitFor(() => tileStreamer.loaded.has(id), 90000);
@@ -169,7 +175,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
         deckMaxY = Math.max(deckMaxY, o.geometry.boundingBox.max.y);
       }
     });
-    return { id, meshes, instances, sharedFacades, unsharedFacades, deckMinY, deckMaxY, colliders: g.userData.colliders?.length ?? 0, kinds: [...kinds] };
+    return { id, meshes, instances, sharedFacades, unsharedFacades, farGeometry: g.userData.farGeometry, farVisible: g.getObjectByName('TileFarBuildings')?.visible, deckMinY, deckMaxY, colliders: g.userData.colliders?.length ?? 0, kinds: [...kinds] };
   });
   const routeFrames = (window.__madrid.frameSamples || []).filter((s) => s.at >= routeStart);
   const intervals = routeFrames.map((s) => s.intervalMs).sort((a, b) => a - b);
@@ -203,7 +209,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
     meshes: tileWorld ? tileWorld.meshCount() : 0,
     loaded: tileWorld ? tileWorld.ids() : []
   };
-}, { walk, bootOnly, stress, places, view });
+}, { walk, bootOnly, stress, places, view, aerialZoom });
 
 let detailComparison = null;
 if (process.env.DETAIL_COMPARE) detailComparison = await page.evaluate(async () => {

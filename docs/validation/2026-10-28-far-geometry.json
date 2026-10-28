@@ -1,0 +1,178 @@
+{
+  "status": "Experimental under ?detail=geometry; not enabled by default. Measurements precede the final shared-wall/patio guard correction; latest sources have 160 passing tests and need a new visual run.",
+  "environment": "Intel Iris Xe, Mesa 26.0.8, ANGLE OpenGL, WebGL2, 1280x720",
+  "eastComparison": [
+    {
+      "enabled": false,
+      "elapsedMs": 2000.3999999985099,
+      "frames": 90,
+      "meanRenderMs": 8.99230769247963,
+      "detail": {
+        "enabled": false,
+        "mode": "geometry",
+        "near": 7,
+        "far": 0,
+        "changes": 17
+      }
+    },
+    {
+      "enabled": true,
+      "elapsedMs": 2001.7000000029802,
+      "frames": 100,
+      "meanRenderMs": 8.633663366410401,
+      "detail": {
+        "enabled": true,
+        "mode": "geometry",
+        "near": 0,
+        "far": 7,
+        "changes": 24
+      }
+    },
+    {
+      "enabled": false,
+      "elapsedMs": 2000.3999999985099,
+      "frames": 90,
+      "meanRenderMs": 8.876666666815678,
+      "detail": {
+        "enabled": false,
+        "mode": "geometry",
+        "near": 7,
+        "far": 0,
+        "changes": 31
+      }
+    },
+    {
+      "enabled": true,
+      "elapsedMs": 2001.300000000745,
+      "frames": 102,
+      "meanRenderMs": 7.596116504767566,
+      "detail": {
+        "enabled": true,
+        "mode": "geometry",
+        "near": 0,
+        "far": 7,
+        "changes": 38
+      }
+    }
+  ],
+  "eastLatency": {
+    "samples": 600,
+    "routeMs": 13491.199999999255,
+    "maxIntervalMs": 83.29999999999927,
+    "p95IntervalMs": 33.39999999999782,
+    "maxRenderMs": 16.900000002235174
+  },
+  "centreComparison": [
+    {
+      "enabled": false,
+      "elapsedMs": 2000.300000000745,
+      "frames": 66,
+      "meanRenderMs": 13.444776119247301,
+      "detail": {
+        "enabled": false,
+        "mode": "geometry",
+        "near": 8,
+        "far": 0,
+        "changes": 18
+      }
+    },
+    {
+      "enabled": true,
+      "elapsedMs": 2010,
+      "frames": 67,
+      "meanRenderMs": 13.665671641924488,
+      "detail": {
+        "enabled": true,
+        "mode": "geometry",
+        "near": 1,
+        "far": 7,
+        "changes": 25
+      }
+    },
+    {
+      "enabled": false,
+      "elapsedMs": 2000.199999999255,
+      "frames": 66,
+      "meanRenderMs": 13.09848484865418,
+      "detail": {
+        "enabled": false,
+        "mode": "geometry",
+        "near": 8,
+        "far": 0,
+        "changes": 32
+      }
+    },
+    {
+      "enabled": true,
+      "elapsedMs": 2013,
+      "frames": 66,
+      "meanRenderMs": 14.187878788025541,
+      "detail": {
+        "enabled": true,
+        "mode": "geometry",
+        "near": 1,
+        "far": 7,
+        "changes": 39
+      }
+    }
+  ],
+  "tileGeometry": [
+    {
+      "id": "k1j-1",
+      "nearTriangles": 64920,
+      "triangles": 49376,
+      "parcels": 2261,
+      "bytes": 4147512
+    },
+    {
+      "id": "k2j-1",
+      "nearTriangles": 100536,
+      "triangles": 75522,
+      "parcels": 3779,
+      "bytes": 6343740
+    },
+    {
+      "id": "k3j1",
+      "nearTriangles": 11748,
+      "triangles": 8566,
+      "parcels": 476,
+      "bytes": 719544
+    },
+    {
+      "id": "k3j0",
+      "nearTriangles": 31452,
+      "triangles": 23860,
+      "parcels": 1105,
+      "bytes": 2003952
+    },
+    {
+      "id": "k3j-1",
+      "nearTriangles": 44316,
+      "triangles": 33684,
+      "parcels": 1390,
+      "bytes": 2829420
+    },
+    {
+      "id": "k4j1",
+      "nearTriangles": 77388,
+      "triangles": 58700,
+      "parcels": 2823,
+      "bytes": 4930800
+    },
+    {
+      "id": "k4j2",
+      "nearTriangles": 125256,
+      "triangles": 92870,
+      "parcels": 4849,
+      "bytes": 7800720
+    },
+    {
+      "id": "k4j0",
+      "nearTriangles": 72324,
+      "triangles": 55078,
+      "parcels": 2670,
+      "bytes": 4626120
+    }
+  ],
+  "limits": "Centre largely remains procedural geometry; proxy applies only to geographic tiles. Extra indexed geometry consumes memory. Two 2-second alternating pairs per camera; exploratory, not a universal FPS benchmark."
+}

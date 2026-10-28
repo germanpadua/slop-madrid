@@ -168,3 +168,10 @@ export function partyWallRuns(parcels) {
   }
   return result;
 }
+
+// A whole-AABB facade split would fill real patios even when footprint strips
+// already describe them correctly. Keep those strips and their openings intact.
+export function exposedPartyWallSides(parcel, heights) {
+  if (parcel.fp && parcel.holes?.length) return [false, false, false, false];
+  return heights.map(n => n >= 1 && parcel.h - n >= 2.5 && parcel.h - n <= parcel.h * 0.5);
+}

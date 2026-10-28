@@ -3,7 +3,7 @@ import { MADRID_FACADE_OPTS } from './madrid-tiles.js';
 
 // Distant masonry keeps the original footprint/height/roof geometry, but omits
 // subpixel windows, interiors and balcony shading. Monuments are never registered.
-export function createMadridDistanceDetail(nearMaterials) {
+export function createMadridDistanceDetail(nearMaterials, { geometry = false } = {}) {
   const farMaterials = MADRID_FACADE_OPTS.map(o => new THREE.MeshStandardNodeMaterial({
     color: o.stoneColor, roughness: 0.95, metalness: 0
   }));
@@ -16,6 +16,13 @@ export function createMadridDistanceDetail(nearMaterials) {
     register(scene) {
       scene.traverse(root => {
         if (root.name !== 'ManhattanCityBlocks' && !root.name.startsWith('MadridTile:')) return;
+        if (geometry) {
+          const far = root.children?.find(mesh => mesh.name === 'TileFarBuildings');
+          if (!far || entries.has(root)) return;
+          entries.set(root, { root, bounds: root.userData.detailBounds, distant: false, geometry: true, far,
+            near: root.children.filter(mesh => /^TileBuildings/.test(mesh.name)) });
+          return;
+        }
         root.traverse(mesh => {
           if (!mesh.isMesh || entries.has(mesh) || !materialIndex.has(mesh.material)) return;
           const tileBounds = root.userData.detailBounds;
@@ -36,7 +43,10 @@ export function createMadridDistanceDetail(nearMaterials) {
           Math.max(z0 - position.z, 0, position.z - z1));
         const distant = enabled && (e.distant ? distance > 850 : distance > 1000);
         if (distant !== e.distant) {
-          mesh.material = distant ? e.far : e.original;
+          if (e.geometry) {
+            e.far.visible = distant;
+            for (const near of e.near) near.visible = !distant;
+          } else mesh.material = distant ? e.far : e.original;
           mesh.userData.madridFarDetail = distant;
           e.distant = distant;
           changes++;
@@ -44,11 +54,12 @@ export function createMadridDistanceDetail(nearMaterials) {
       }
     },
     status() {
-      return { enabled, near: [...entries.values()].filter(e => !e.distant).length,
+      return { enabled, mode: geometry ? 'geometry' : 'material', near: [...entries.values()].filter(e => !e.distant).length,
         far: [...entries.values()].filter(e => e.distant).length, changes };
     },
     createCompileProbes() {
       const group = new THREE.Group();
+      if (geometry) return group;
       for (const material of farMaterials) {
         const mesh = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), material, 1);
         mesh.setMatrixAt(0, new THREE.Matrix4());
