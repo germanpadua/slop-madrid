@@ -1,35 +1,95 @@
-# Handoff para Codex - rama wip/merged-zone (2026-10-28 ~21:00 CET)
+# Continuar Madrid desde wip/madrid-experience
 
-## Que es esta rama
-Trabajo local en curso sobre feat/madrid (HEAD 3a5c2b0). feat/madrid NO se ha tocado: es la rama que publica GitHub Pages (verificado: live == HEAD byte a byte), y este prototipo no debe activarse en la web sin verificacion de arranque del mapa completo.
+Retoma **`wip/madrid-experience`**, no `main` ni `feat/madrid`. El último commit de implementación de este traspaso es **`1700d56`**; el commit posterior contiene esta documentación. La web publicada no se ha actualizado. Consulta `git status` y `git log` antes de actuar.
 
-## Contenido
-1. **Prototipo merged-zone** (js/madrid-tile-world.js, rama `globalThis.__MERGED===1`, harness `block3-tilepath.html?merged=1`): cada parcela se extruye con su contorno REAL + huecos reales en UNA geometria (paredes+tapa via grupos de material de ExtrudeGeometry; merge manual que preserva grupos). UN material de fachada pre-war TSL compartido con tinte por parcela via vertex colors (puerta `vertexTint` nueva en js/tsl-materials.js createPreWarBuildingMaterial; cacheKey lo incluye; solo mamposteria, ventanas no tenidas). Tapas planas con material propio vertex-colored. Paletas MZ_TINTS/MZ_CAPS derivadas de referencias tiny-madrid, etiquetadas ILUSTRATIVAS (IDEAM solo trae {ring,h,holes}; NO hay datos reales de color).
-2. **Fix de datos de huecos** (tools/madrid/classify-rings.mjs + tools/madrid/build.mjs + tests): emision de `holes` en tiles. tile-k3j0.js reconstruido CON huecos (106 parcelas). Las OTRAS 10 teselas NO tienen huecos todavia: regenerar con `tiles.mjs build --no-fetch <id>` tras revisar la decision de publicar el fix.
-3. **Harness de verificacion visual**: block3-tilepath.html (ruta real createTileWorld/addTile, WebGPURenderer forceWebGL). Datos: block3.json (29 parcelas), block4.json (204), block5.json (tile k3j0 completo, 1160). Params: ?merged=1, ?data=<file>, ?neutral=1 (luz neutra), ?debug=outline (overlay magenta=contorno fuente a h+0.3, cian=huecos), ?tintprobe=1 (paredes azules), ?perfskip=1 (control de overhead, 0 renders).
-4. Otros: js/madrid-footprint.js (slicer de huecos), madrid-adjacency.js (partyWallRuns clamp d<=0.5), cambios menores en madrid-roofs.js e index.html, viewer-cibeles.html, block*.html harnesses anteriores.
+## Objetivo y criterio de trabajo
 
-## Verificado (con evidencia)
-- 17/17 suites cjs verdes (incl. footprint-holes, classify-rings); tile-world + tsl parsean.
-- Censo por malla (geometria x instancias): merged block4 = 5508 tris emitidos / 2 mallas (zona 5496 + deck 12; zona lleva 2 grupos de material = 2 draw calls en pase principal) vs baseline strips = 7907 / 19 mallas. calls 38=38 (renderer.info, incluye pases de sombra).
-- Topologia: probe azul + overlay validan contornos/huecos/alturas en block4 y en k3j0 completo (cobertura visual muestreada; NO prueba universal ni multipart). 0 anillos degenerados en 26344 parcelas de 11 teselas; 0 huecos fuera de anillo.
-- Ruta de vertexTint efectiva (probe azul mueve todas las fachadas).
+Crear una experiencia de Madrid comparable a [Tiny Warsaw](https://tinywarsaw.app/), sus [notas de motor](https://tinywarsaw.app/preview/engine/) y [Slop New York](https://mrdoob.github.io/slop-newyork/): exploración razonablemente fiel a pie y maqueta aérea, con monumentos y barrios reconocibles. El usuario permite edificios secundarios genéricos para rendir mejor y pide trabajo autónomo.
 
-## INCONCLUSO - no afirmar
-- **Rendimiento**: metodo = estimacion wall-clock del bucle temporizado (mtime perfstart->perf /10, gl.finish; overhead medido 3.65ms). Numeros n=1/2 misma config: block4 merged 12.33/13.11/13.11ms vs baseline 4.92 (merged MAS LENTO a 204 parcelas); block3 merged 5.10 sin baseline nueva. Pares antiguos block3 (0.79 vs 1.67) eran otra config de GL, no comparables. Sospechos si se confirma: coste de fragmento de la fachada TSL en mas area de pared real, sombras de una malla grande de 2 grupos, sopa de vertices no indexada.
-- **Arranque del mapa completo**: NO verificado. En sandbox (software-GL) el boot de la app completa muere por limite de ~110s de wall-clock tras construir el mundo + iniciar streaming de teselas; sin banderas cae en 'No available adapters' (WebGPU). Ruta de captura propia de la app: index.html?capture&debug&at=x,z,heading,y,modo&shot. En el navegador en la nube (GPU real) la app desplegada SI arranca con ?capture=1&debug=1.
+El objetivo completo sigue pendiente:
 
-## Pendiente (orden sugerido)
-1. Verificar arranque del mapa completo (entorno con GPU o navegador en nube) ANTES de cualquier publicacion.
-2. Validez multipart + otras teselas (solo k3j0 probada).
-3. Perf: repetir pares misma-config n=3 en block3 y block4; aislar fragmento/vertice/sombra si merged sigue mas lento.
-4. Decision de publicar el fix de datos de huecos (reconstruir las 10 teselas restantes).
-5. Opcional: suavizar respuesta en sombra de la fachada TSL SOLO en la rama merged (puerta vertexTint), experimento acotado.
-6. Hitos de variacion en merged-zone (de uno en uno, inspeccion de pixeles): tejados a cuatro aguas sobre tapas, banda de locales en planta baja, paridad de medianeras.
+1. Eliminar bloqueos del streaming, separando importación, preparación, montaje, compilación y dibujo.
+2. Unificar materiales, balcones y cubiertas entre centro y teselas.
+3. Niveles lejanos con menos geometría/dibujos, conservando patios cercanos y monumentos.
+4. Completar los patios pendientes al disponer de fuentes y permisos, y revisar monumentos.
+5. Validar rutas a pie/aéreas, escritorio/móvil, y publicar cuando sea estable.
 
-## Reglas vigentes
-- Sin publicar en la web ni gasto externo sin autorizacion expresa.
-- Colores SIEMPRE etiquetados ilustrativos hasta tener fuente de datos real.
-- La baseline por defecto no se toca: todo el prototipo va detras de ?merged=1.
-- tools/data/madrid/ (67MB de fuentes OSM/i3s en crudo) NO se sube al repo.
-- Medir, no inferir: censo por malla (geometria x instancias), nombrar entorno y n en cada cifra.
+No declarar el objetivo completo por pasar tests o una ruta corta. No publicar todavía: faltan calidad visual, cobertura y validación. El usuario autoriza commits y push de trabajo; los cambios de esta sesión se suben a esta rama, sin hacer merge a las ramas publicadas.
+
+## Arranque y pruebas
+
+Es una web estática, sin package.json ni paso de build:
+
+```sh
+python3 -m http.server 8080
+node --test tests/*.test.cjs
+node tools/madrid/benchmark-preparation.mjs 77921de k3j0
+```
+
+Abre `http://localhost:8080`. Three.js y fuentes requieren Internet. Three.js sigue apuntando a `@dev`: revalida su comportamiento, no asumas que el CDN es inmutable.
+
+Estado final comprobado: **160/160 pruebas CJS pasan**, y `git diff --check` y `node --check tools/madrid/measure.mjs` pasan. En el sandbox, los subprocesos de Node pueden fallar por permisos; ejecutar con los permisos adecuados antes de confundirlo con un error de sintaxis.
+
+### Navegador con GPU
+
+El entorno local SÍ tiene GPU cuando el navegador se ejecuta fuera del sandbox: Intel Iris Xe (RPL-P), Mesa 26.0.8, ANGLE OpenGL. La ausencia de `/dev/dri` dentro del sandbox NO demuestra ausencia de GPU. Configuración usada (verificar rutas en otra máquina):
+
+```sh
+export PLAYWRIGHT_MODULE=/home/germanpadua/.npm/_npx/ad9a3fdbcad992c6/node_modules/playwright-core/index.mjs
+export CHROME_PATH=/home/germanpadua/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome
+HARDWARE_GPU=1 GL_PROFILE=1 node tools/madrid/measure.mjs --tiles k3j1,k4j1,k4j2 --stress
+HARDWARE_GPU=1 GL_PROFILE=1 node tools/madrid/measure.mjs --places sol,cibeles,alcala
+HARDWARE_GPU=1 GL_PROFILE=1 node tools/madrid/measure.mjs --places sol,cibeles,alcala --aerial
+HARDWARE_GPU=1 GEOMETRY_DETAIL=1 DETAIL_COMPARE=1 node tools/madrid/measure.mjs --tiles k4j1,k4j2 --aerial --zoom 2
+```
+
+`VIEWS_DIR=/tmp/madrid-review` captura escritorio y móvil táctil emulado. `SCREENSHOT=/tmp/madrid.png` guarda una captura. `VERBOSE=1` muestra consola. El JSON registra el dispositivo realmente usado. `GL_PROFILE=1` registra llamadas WebGL que bloquean CPU >2 ms; NO es un temporizador de ejecución GPU. Las capturas de móvil son emulación en la GPU del escritorio.
+
+`--places` teletransporta al peatón a destinos configurados y observa 3 s; NO recorre las calles entre ellos. Revisa también si las coordenadas/nombres heredados de destinos son adecuados: el destino `alcala` está junto al cuartel, no en la puerta misma.
+
+## Estado de implementación
+
+| Área | Incorporado | Límite pendiente |
+|---|---|---|
+| Backend | WebGL2 predeterminado; HUD muestra el backend | `?webgpu=1` experimental: errores de buffers observados |
+| Streaming | Reservas para importaciones pendientes y descarte tras abandonar zona | Importar/preparar no equivale a tener la zona visible |
+| CPU | Índice espacial de medianeras y límites de huellas precalculados | Mantener igualdad topológica y no bloquear al montar |
+| Worker | Huellas, medianeras y transformaciones exactas de tejados | Sin Worker existe la ruta síncrona anterior |
+| Shaders | Sondas pequeñas calentadas al arrancar y ocultas tras primer frame | No volver a compilar concurrentemente con MRT sin validar |
+| Madrid | Retirados 15.447 edificios ficticios de NYC y escaleras exteriores; centro y teselas comparten 4 fachadas Madrid | Cubiertas y masas del centro aún difieren de teselas; otros restos de NYC como taxi amarillo |
+| Maqueta | Cámara con giro/zoom; controles móviles revisados | El centro procedural domina muchas vistas y aún no tiene proxy geométrico |
+
+Se ensayó compileAsync por tesela durante el renderizado: redujo pausas pero produjo GL_INVALID_OPERATION por salidas MRT. Se retiró. No reintroducirlo basándose solo en latencia. La copia del experimento en `/tmp/madrid-precompile-experiment/` es temporal, no requisito para continuar.
+
+## Experimentos optativos: NO activados por defecto
+
+- `?detail=distance`: cambia solo materiales lejanos; conserva geometría. No mostró mejora consistente de FPS.
+- `?detail=geometry`: el worker fusiona las tiras de parcelas, elimina caras inferiores y paredes internas y transfiere buffers indexados. Una malla sustituye las cuatro fachadas de una tesela al alejarse. Mantiene tejados, híbridos con patios y monumentos. Añade memoria y todavía no optimiza el centro.
+- Ambos usan histéresis: lejos >1.000 m, volver a detalle <850 m. Los materiales son ilustrativos.
+- El prototipo anterior merged-zone sigue separado, en los harnesses como `block3-tilepath.html?merged=1`; no está activado en la app normal.
+
+### Último cambio que necesita revisión visual
+
+En k3j0 se detectaron **17 parcelas con fp+holes** cuyas medianeras activaban una caja AABB que tapaba el patio. `exposedPartyWallSides` evita ese split tanto cerca como lejos. Las 160 pruebas pasan tras corregirlo, incluida área de tapa, perímetro del patio y orientación de triángulos. **Los informes/capturas GPU de geometría lejana son anteriores a esta última guardia: repetir la revisión visual antes de darla por validada.**
+
+## Evidencia y siguientes acciones
+
+`docs/validation/*.json` conserva resultados; `MADRID-PROGRESS.md` contiene la cronología y límites. Los `/tmp/*.json` y PNG citados allí pueden desaparecer: no son necesarios para reproducir los comandos.
+
+- La preparación inicial llegó a bloquear ~15 s en CPU. Con worker, cubiertas preparadas y sondas de shaders, el montaje más costoso observado pasó a ~38 ms; último estrés predeterminado: intervalo máximo ~117 ms, p95 ~33,4 ms, render máximo ~30,5 ms. Muestras exploratorias, no garantía universal.
+- Proxy k3j0: 31.452 → 23.860 triángulos en la cohorte representada; ~2 MB adicionales. k4j2: 125.256 → 92.870; ~7,8 MB adicionales. Se conservan las mallas cercanas para volver sin reconstruir.
+- En cámara oriental, dos pares completo/lejos dieron 90/100/90/102 frames por ~2 s; en cámara del centro no hubo mejora consistente. No activar el proxy por defecto con esa sola muestra.
+
+Orden recomendado al retomar:
+
+1. Confirmar visualmente los 17 patios corregidos, incluido acercarse/alejarse, y comprobar que no aparecen edificios ausentes al cambiar LOD.
+2. Medir memoria, triángulos y draw calls reales con cámara sobre teselas; comparar varias muestras con caché y cámara controladas.
+3. Diseñar el proxy del centro (26.216 parcelas en 488 grupos). No enviar de golpe todo al worker ni asumir que basta optimizar las teselas periféricas.
+4. Unificar cubiertas y revisar siluetas de monumentos y restos de Nueva York; validar rutas continuas y horarios, además de teletransportes.
+5. Completar patios/datos y publicar solo tras superar la validación del conjunto.
+
+## Datos y publicación
+
+`tools/data/madrid/` NO está disponible en este checkout: se excluyeron fuentes pesadas (~67 MB) y hay permisos de redistribución pendientes. No afirmar que se pueden reconstruir todas las teselas ni subir esos datos sin resolverlo. Solo k3j0 se reconstruyó con huecos; faltan los huecos de otras 10 teselas. Los colores no provienen de IDEAM: son ilustrativos.
+
+No se ha hecho merge ni publicación de la web. Conserva la rama de trabajo y no uses force-push. El traspaso previo se conserva en el historial: `git show 1532896:CODEX-HANDOFF.md`.
