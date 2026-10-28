@@ -298,3 +298,13 @@ test('landmark styles match named monuments, not blanket tones', async () => {
   const colors = new Set(MADRID_LANDMARK_STYLES.map(([, s]) => s.color));
   assert.ok(colors.size >= 4, 'styles must not collapse into one blanket color');
 });
+
+test('every Madrid facade tier uses the pre-war masonry factory, never tier-indexed NYC glass', () => {
+  // Regression 407dabf: FACADE_DEFS[3+] are NYC curtain-wall factories that ignore the Madrid palette;
+  // tier-indexing turned tier-3 (salmón) parcels into dark glass towers. The tile renderer must always
+  // use FACADE_DEFS[0][0] (pre-war masonry) for every Madrid tier.
+  const { readFileSync } = require('node:fs');
+  const src = readFileSync(require('node:path').join(__dirname, '..', 'js', 'madrid-tile-world.js'), 'utf8');
+  assert.ok(src.includes('MADRID_FACADE_OPTS.map((opts) => FACADE_DEFS[0][0]'), 'tile renderer must bind every Madrid tier to FACADE_DEFS[0][0] (pre-war masonry)');
+  assert.ok(!/FACADE_DEFS\[i\s*%/.test(src), 'tier-indexed FACADE_DEFS selects NYC curtain-wall for tier >= 3');
+});
