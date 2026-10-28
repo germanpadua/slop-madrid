@@ -554,7 +554,108 @@ function buildTorreDeMadrid(mat, lm) {
   return g;
 }
 
+
+// Templo de Debod (Nubian temple, rebuilt in Parque del Cuartel de la Montaña, 1972).
+// Reference-grounded (Wikimedia Commons photos; madrid.es: complex ~70 m long, 270 m2):
+// sandstone hall + columned porch, two trapezoidal pylon gateways on the same axis,
+// stone podium over a reflecting pool. The OSM ring is the SITE (pool) outline -
+// the generic path wrongly extruded it ~24 m; this builder replaces that with the real composition.
+function buildTemploDeDebod(mat, lm) {
+  const g = new THREE.Group();
+  const { ringShape, slab } = ringTools(lm);
+  const stoneMat = new THREE.MeshStandardNodeMaterial({ color: 0xb59a72, roughness: 0.85, metalness: 0.02 });
+  const pylonMat = new THREE.MeshStandardNodeMaterial({ color: 0xa78a60, roughness: 0.9, metalness: 0.02 });
+  const podiumMat = new THREE.MeshStandardNodeMaterial({ color: 0xa9a193, roughness: 0.85, metalness: 0.02 });
+  const waterMat = new THREE.MeshStandardNodeMaterial({ color: 0x35484a, roughness: 0.25, metalness: 0.35 });
+  const darkMat = new THREE.MeshStandardNodeMaterial({ color: 0x2a241c, roughness: 1, metalness: 0 });
+
+  // Reflecting pool = the site ring, flat
+  const pool = slab(ringShape(1.0), 0, 0.14, waterMat);
+  pool.castShadow = false;
+  g.add(pool);
+
+  // Main axis = PCA of the ring points (the site ring is L-shaped; the two-farthest-
+  // points diagonal misplaces the composition). Podium = explicit rectangular island,
+  // as on the real site.
+  const pts = [];
+  for (let i = 0; i < lm.ring.length / 2; i++) pts.push([lm.ring[i * 2] - lm.cx, -(lm.ring[i * 2 + 1] - lm.cz)]);
+  const n = pts.length;
+  const mx = pts.reduce((a, p) => a + p[0], 0) / n, mz = pts.reduce((a, p) => a + p[1], 0) / n;
+  const sxx = pts.reduce((a, p) => a + (p[0] - mx) ** 2, 0);
+  const szz = pts.reduce((a, p) => a + (p[1] - mz) ** 2, 0);
+  const sxz = pts.reduce((a, p) => a + (p[0] - mx) * (p[1] - mz), 0);
+  const theta = 0.5 * Math.atan2(2 * sxz, sxx - szz);
+  const u = [Math.cos(theta), Math.sin(theta)];
+  const v = [-u[1], u[0]];
+  // Centre the composition on the long lobe: average of the two min-u and two max-u points
+  const byU = [...pts].sort((a, b) => (a[0] * u[0] + a[1] * u[1]) - (b[0] * u[0] + b[1] * u[1]));
+  const ends = [byU[0], byU[1], byU[n - 2], byU[n - 1]];
+  const mid = [ends.reduce((a, p) => a + p[0], 0) / 4, ends.reduce((a, p) => a + p[1], 0) / 4];
+  const L = 74; // real complex is ~70 m long (madrid.es)
+  const at = (t, w) => [mid[0] + u[0] * t + v[0] * w, mid[1] + u[1] * t + v[1] * w];
+  const angU = Math.atan2(u[0], u[1]); // yaw aligning +z to u
+  // Island podium
+  {
+    const [px, pz] = at(0, 0);
+    const pod = new THREE.Mesh(new THREE.BoxGeometry(18, 1.1, L + 4), podiumMat);
+    pod.position.set(px, 0.65, pz);
+    pod.rotation.y = angU;
+    pod.castShadow = true;
+    pod.receiveShadow = true;
+    g.add(pod);
+  }
+  const place = (mesh, t, w, y, yawExtra = 0) => {
+    const [x, z] = at(t, w);
+    mesh.position.set(x, y, z);
+    mesh.rotation.y = angU + yawExtra;
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    g.add(mesh);
+    return mesh;
+  };
+  const POD = 1.2;
+
+  // Main temple hall: long sandstone box along the axis (box z-length maps to u,
+  // NO extra yaw) + overhanging roof slab
+  const halfLen = L / 2;
+  const hallL = 26, hallW = 9.5, hallH = 7.5, tHall = 0.32 * halfLen;
+  place(new THREE.Mesh(new THREE.BoxGeometry(hallW, hallH, hallL), stoneMat), tHall, 0, POD + hallH / 2);
+  place(new THREE.Mesh(new THREE.BoxGeometry(hallW + 1.1, 0.7, hallL + 1.1), stoneMat), tHall, 0, POD + hallH + 0.35);
+  // Raised naos block at the far (+u) end
+  place(new THREE.Mesh(new THREE.BoxGeometry(8, 2.2, 8), stoneMat), tHall + hallL / 2 - 4.5, 0, POD + hallH + 1.8);
+  // Columned porch on the face toward the pylons (4 columns + architrave)
+  for (let c = 0; c < 4; c++) {
+    const w = -2.7 + c * 1.8;
+    place(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 4.6, 8), stoneMat), tHall - hallL / 2 - 1.3, w, POD + 2.3);
+  }
+  place(new THREE.Mesh(new THREE.BoxGeometry(7.6, 0.8, 1.4), stoneMat), tHall - hallL / 2 - 1.3, 0, POD + 4.9);
+  // Doorway slot (dark inset) on the porch face
+  place(new THREE.Mesh(new THREE.BoxGeometry(1.8, 4.4, 0.3), darkMat), tHall - hallL / 2 + 0.05, 0, POD + 2.2).castShadow = false;
+  // Long-side window slots (three per side, small)
+  for (const ws of [-1, 1]) for (let k = -1; k <= 1; k++) {
+    place(new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.6, 1.9), darkMat), tHall + k * 6.5, ws * (hallW / 2 + 0.03), POD + 4.4).castShadow = false;
+  }
+
+  // Two pylon gateways on the axis toward -u: battered 4-side frusta + cornice + door slot
+  const pylon = (t, baseHalf, topHalf, h) => {
+    const geo = new THREE.CylinderGeometry(topHalf * Math.SQRT2, baseHalf * Math.SQRT2, h, 4, 1);
+    place(new THREE.Mesh(geo, pylonMat), t, 0, POD + h / 2, Math.PI / 4);
+    // projecting cavetto cornice hint
+    place(new THREE.Mesh(new THREE.BoxGeometry(topHalf * 2 + 0.7, 0.55, topHalf * 2 + 0.7), pylonMat), t, 0, POD + h + 0.27);
+    // tall narrow doorway slot through the axis faces
+    for (const ds of [-1, 1]) {
+      const d = new THREE.Mesh(new THREE.BoxGeometry(0.3, h * 0.62, 1.5), darkMat);
+      d.castShadow = false;
+      place(d, t + ds * (baseHalf - 0.05), 0, POD + h * 0.31, Math.PI / 2);
+    }
+  };
+  pylon(-0.22 * halfLen, 3.1, 2.5, 8.6);
+  pylon(-0.58 * halfLen, 2.7, 2.2, 7.6);
+  return g;
+}
+
 const PROCEDURAL = {
+  'Templo de Debod': buildTemploDeDebod,
   // PARKED PROTOTYPES (visual validation open - kept out of the default render path):
   // 'Edificio España': buildEdificioEspana,   // window-grid detachment on crescent outer arc; massing not reference-validated
   // 'Torre de Madrid': buildTorreDeMadrid,    // blank facade swath + terraces read as floating fins (parent review 2026-10-29)
@@ -569,6 +670,10 @@ const PROCEDURAL = {
 // bbox was also misaligned by D/2 in x and sealed the arches.)
 const PUERTA_PIERS = [[-21.45, -18.8], [-14.8, -11.5], [-6.5, -3], [3, 6.5], [11.5, 14.8], [18.8, 21.45]];
 export function buildProceduralColliders(name, lm) {
+  if (name === 'Templo de Debod') {
+    // Walkable podium and pool; collide only with the built masses (approx bboxes on the site bbox corners).
+    return [{ minX: lm.cx - lm.w * 0.30, maxX: lm.cx + lm.w * 0.42, minZ: lm.cz - lm.d * 0.30, maxZ: lm.cz + lm.d * 0.30, maxY: 10 }];
+  }
   if (PROCEDURAL[name] && (name === 'Edificio España' || name === 'Torre de Madrid')) {
     // Solid towers: full footprint bbox, up to the real tagged height.
     return [{ minX: lm.cx - lm.w / 2, maxX: lm.cx + lm.w / 2, minZ: lm.cz - lm.d / 2, maxZ: lm.cz + lm.d / 2, maxY: lm.h || 100 }];
