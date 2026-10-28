@@ -102,3 +102,17 @@ Reversión de esta unidad: retirar preparer/worker/preparation y su inyección e
 Pendiente: reducir el pico restante de ~0,5 s de renderizado; verificar rutas geográficas y aéreas más largas con latencia de frame, añadir niveles lejanos y resolver la diferencia de cubiertas centro/teselas. No se ha publicado y el objetivo completo sigue sin darse por logrado.
 
 La prueba adicional de estrés (k3j1 → k4j1 → k4j2, radio de precarga 5 km) pasó sin teselas fallidas ni errores gráficos. Se observaron 382 frames durante 10.267 ms, p95 de intervalo 33,4 ms y máximo 533,3 ms. Para k4j2, montaje en el hilo principal ~160 ms y análisis en el worker ~2.432 ms, frente a ~15.391 ms de construcción síncrona en la muestra inicial. Estas fases y ejecuciones no equivalen a un benchmark de FPS controlado. También se añadió una regresión que termina la preparación después de un teletransporte y comprueba descarte y liberación de la reserva.
+
+## Calentamiento de programas de teselas
+
+La instrumentación opcional GL_PROFILE registró dos esperas de getProgramParameter de ~298 y ~68 ms durante el streaming. Son tiempos de bloqueo en el hilo principal asociados a consultar programas WebGL; no son una medición directa del tiempo de GPU.
+
+Se ensayó compilar cada tesela asíncronamente fuera de escena. El prototipo produjo GL_INVALID_OPERATION por salidas MRT incompatibles durante el renderizado concurrente y se retiró; no se incorpora al producto. La copia íntegra del experimento quedó en `/tmp/madrid-precompile-experiment/` antes de retirarlo.
+
+La solución incorporada crea representantes mínimos de las variantes de fachadas, cubiertas y medianeras de teselas durante el arranque. Participan en la precompilación y primer frame de calentamiento existentes. Después el grupo `MadridTileShaderWarmup` queda oculto: mantiene las referencias a cachés sin añadir dibujos en la exploración. No cambia la geometría de la ciudad, las colisiones ni las fuentes.
+
+En el mismo escenario de estrés n=1 por versión, el máximo dentro de renderizado pasó de ~502 a ~25 ms, y el máximo intervalo de frames de ~533 a ~200 ms. No se observaron llamadas instrumentadas de más de 2 ms en la ruta posterior. El arranque de la muestra con sondas fue ~10 s. Cachés y carga del equipo varían: no se declara una mejora universal ni un benchmark controlado de FPS.
+
+Se añadieron `--places sol,cibeles,alcala` y `--aerial`. Usan los botones reales de modo/cámara y los destinos configurados del producto, teletransportan al peatón y observan tres segundos por punto. No equivalen a recorrer físicamente las calles entre ellos. Ambos modos pasaron sin errores, con p95 global de ~33,4 ms y máximo de ~200 ms; máximo de renderizado ~42 ms a pie y ~28 ms en maqueta. Capturas de escritorio y táctil emulado inspeccionadas en `/tmp/madrid-warmup-walk/`. El verificador comprueba que las sondas ya están ocultas.
+
+156/156 pruebas CJS pasan. Evidencia en `docs/validation/2026-10-28-shader-warmup.json`. Reversión: retirar createCompileProbes y sus dos llamadas en main; la instrumentación y los recorridos de validación son independientes. Quedan por reducir las pausas de montaje, implementar niveles lejanos, unificar cubiertas, completar las fuentes de patios y validar un recorrido continuo y teléfono físico. Sin publicación: no se ha completado la calidad objetivo.

@@ -37,7 +37,10 @@ const args = process.argv.slice(2);
 const tileArg = args.indexOf('--tiles');
 const bootOnly = args.includes('--boot-only');
 const stress = args.includes('--stress');
-const walk = bootOnly ? [] : tileArg >= 0 ? args[tileArg + 1].split(',') : ['k3j1', 'k4j1', 'k4j2', 'k2j-1', 'k0j-1', 'k0j3', 'k2j4'];
+const placesArg = args.indexOf('--places');
+const places = placesArg >= 0 ? args[placesArg + 1].split(',') : [];
+const view = args.includes('--aerial') ? 'maqueta' : 'chase';
+const walk = bootOnly || places.length ? [] : tileArg >= 0 ? args[tileArg + 1].split(',') : ['k3j1', 'k4j1', 'k4j2', 'k2j-1', 'k0j-1', 'k0j3', 'k2j4'];
 
 let browser;
 try {
@@ -56,6 +59,24 @@ page.on('console', (m) => { logs.push(m.text()); if (process.env.VERBOSE) consol
 page.on('pageerror', (e) => { pageErrors.push(String(e)); console.error('[pageerror]', String(e)); });
 page.on('requestfailed', (r) => failed.push(`${r.url()} ${r.failure()?.errorText}`));
 
+if (process.env.GL_PROFILE) await page.addInitScript(() => {
+  globalThis.__glProfile = [];
+  const methods = ['compileShader', 'linkProgram', 'getProgramParameter', 'getShaderParameter', 'bufferData', 'drawElementsInstanced', 'drawElements'];
+  for (const name of methods) {
+    const original = WebGL2RenderingContext.prototype[name];
+    WebGL2RenderingContext.prototype[name] = function (...args) {
+      const start = performance.now();
+      try { return original.apply(this, args); }
+      finally {
+        const ms = performance.now() - start;
+        if (ms > 2) {
+          globalThis.__glProfile.push({ name, parameter: typeof args[1] === 'number' ? args[1] : null, at: performance.now(), ms });
+          if (globalThis.__glProfile.length > 512) globalThis.__glProfile.shift();
+        }
+      }
+    };
+  }
+});
 const t0 = Date.now();
 await page.goto(`http://127.0.0.1:${port}/?debug=1${process.env.WEBGL ? '&webgl=1' : ''}${process.env.WEBGPU ? '&webgpu=1' : ''}`, { waitUntil: 'load', timeout: 180000 });
 // SwiftShader compiles the ~500 pipelines of the Madrid materials slowly: the loading screen can take several minutes
@@ -63,7 +84,7 @@ await page.waitForFunction(() => window.__madrid && window.__madrid.renderer && 
 const bootMs = Date.now() - t0;
 const initLine = logs.find((l) => l.startsWith('[init]')) || '';
 
-const result = await page.evaluate(async ({ walk, bootOnly, stress }) => {
+const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view }) => {
   const { renderer, tileStreamer, tileWorld, controllerManager } = window.__madrid;
   const waitFor = async (fn, timeoutMs = 120000) => {
     const start = performance.now();
@@ -76,6 +97,27 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress }) => {
   const routeStart = performance.now();
   const before = tileStreamer ? tileStreamer.status() : null;
   const tileMs = [];
+  const placeSamples = [];
+  if (places.length) {
+    const { TELEPORT_LOCATIONS } = await import(new URL('./js/city-config.js', location.href).href);
+    document.querySelector('#mode-person').click();
+    for (const id of places) {
+      const target = TELEPORT_LOCATIONS[id];
+      if (!target) throw new Error(`Unknown place: ${id}`);
+      controllerManager.teleportActiveTo(target.x, target.z, target.heading);
+      document.querySelector(`#cam-${view}`).click();
+      const start = performance.now();
+      const firstFrame = window.__madrid.renderedFrames;
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      const samples = (window.__madrid.frameSamples || []).filter(s => s.at >= start);
+      const intervals = samples.map(s => s.intervalMs).sort((a,b) => a-b);
+      placeSamples.push({ id, view, frames: window.__madrid.renderedFrames - firstFrame,
+        elapsedMs: performance.now() - start,
+        p95IntervalMs: intervals[Math.max(0, Math.ceil(intervals.length * 0.95) - 1)] || 0,
+        maxIntervalMs: intervals.at(-1) || 0,
+        position: { x: controllerManager.getActiveEntity().position.x, z: controllerManager.getActiveEntity().position.z } });
+    }
+  }
   if (tileStreamer) {
     for (const id of walk) {
       const tile = tileStreamer.tiles.find((t) => t.id === id);
@@ -132,12 +174,15 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress }) => {
   const routeFrames = (window.__madrid.frameSamples || []).filter((s) => s.at >= routeStart);
   const intervals = routeFrames.map((s) => s.intervalMs).sort((a, b) => a - b);
   return {
+    glProfile: (globalThis.__glProfile || []).filter(s => s.at >= routeStart),
     frameLatency: { samples: intervals.length, routeMs: performance.now() - routeStart,
       maxIntervalMs: intervals.at(-1) || 0,
       p95IntervalMs: intervals[Math.max(0, Math.ceil(intervals.length * 0.95) - 1)] || 0,
       maxRenderMs: Math.max(0, ...routeFrames.map((s) => s.renderMs)) },
+    placeSamples,
     routeFrames: (window.__madrid.frameSamples || []).filter((s) => s.at >= routeStart),
     streaming: tileStreamer?.status(),
+    shaderWarmupHidden: sceneOf.getObjectByName('MadridTileShaderWarmup')?.visible === false,
     backend: renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2',
     tileStats,
     tiles: before,
@@ -157,7 +202,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress }) => {
     meshes: tileWorld ? tileWorld.meshCount() : 0,
     loaded: tileWorld ? tileWorld.ids() : []
   };
-}, { walk, bootOnly, stress });
+}, { walk, bootOnly, stress, places, view });
 
 let screenshotError = null;
 if (process.env.SCREENSHOT) {
@@ -192,7 +237,7 @@ if (process.env.VIEWS_DIR) {
 }
 const contextLost = logs.some((line) => /CONTEXT_LOST|Device Lost/i.test(line));
 const graphicsErrors = logs.filter((line) => /GPUValidationError|Shader Error|GL_INVALID|Error compiling/i.test(line));
-const passed = graphicsErrors.length === 0 && !contextLost && pageErrors.length === 0 && failed.length === 0 && result.frames > 0 && result.tileStats.every((tile) => !tile.unsharedFacades) && result.tileMs.every((tile) => tile.ok) && (result.after?.failures || 0) === 0 && !result.legacyBoroughs && result.fireEscapeInstances === 0;
+const passed = graphicsErrors.length === 0 && !contextLost && pageErrors.length === 0 && failed.length === 0 && result.frames > 0 && result.shaderWarmupHidden && result.placeSamples.every(p => p.frames > 0) && result.tileStats.every((tile) => !tile.unsharedFacades) && result.tileMs.every((tile) => tile.ok) && (result.after?.failures || 0) === 0 && !result.legacyBoroughs && result.fireEscapeInstances === 0;
 console.log(JSON.stringify({
   passed,
   gpu: gpuInfo.gpu,

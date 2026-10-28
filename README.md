@@ -40,3 +40,13 @@ Para comparar los algoritmos puros con la versión anterior, incluyendo igualdad
 ```sh
 node tools/madrid/benchmark-preparation.mjs 77921de k3j0
 ```
+
+Para medir puntos reconocibles a pie o desde la maqueta (cada punto se visita por teletransporte y se observa tres segundos):
+
+```sh
+HARDWARE_GPU=1 GL_PROFILE=1 PLAYWRIGHT_MODULE=/ruta/a/playwright/index.mjs CHROME_PATH=/ruta/a/chrome \
+  node tools/madrid/measure.mjs --places sol,cibeles,alcala
+# Añade --aerial para observar esos puntos desde la maqueta.
+```
+
+`GL_PROFILE=1` instrumenta llamadas WebGL que ocupan más de 2 ms en el hilo principal. Permite localizar esperas de programas y subidas de buffers; no mide por sí solo el tiempo de ejecución de la GPU. Las sondas de shaders se calientan durante el arranque y quedan ocultas después, conservando las cachés sin dibujarse en cada frame.

@@ -1,0 +1,151 @@
+{
+  "environment": "Intel Iris Xe (RPL-P), Mesa 26.0.8, ANGLE OpenGL, WebGL2, 1280x720",
+  "limits": "Exploratory n=1 per scenario; shader caches vary. WebGL call timers measure CPU blocking, not GPU execution. Places are configured teleport observations of 3 seconds each, not a continuous walking path. Mobile captures emulate touch on desktop GPU.",
+  "runs": [
+    {
+      "scenario": "before-warmup-stress",
+      "samples": 1,
+      "passed": true,
+      "bootMs": 9234,
+      "frameLatency": {
+        "samples": 375,
+        "routeMs": 10210.599999997765,
+        "maxIntervalMs": 533.3000000000011,
+        "p95IntervalMs": 33.400000000001455,
+        "maxRenderMs": 502.30000000074506
+      },
+      "slowWebGLCalls": [
+        {
+          "name": "getProgramParameter",
+          "at": 12084.199999999255,
+          "ms": 298.4000000022352
+        },
+        {
+          "name": "getProgramParameter",
+          "at": 12238.599999997765,
+          "ms": 68
+        }
+      ],
+      "places": []
+    },
+    {
+      "scenario": "warmup-stress",
+      "samples": 1,
+      "passed": true,
+      "bootMs": 10008,
+      "frameLatency": {
+        "samples": 402,
+        "routeMs": 10289.10000000149,
+        "maxIntervalMs": 200.00000000000182,
+        "p95IntervalMs": 33.400000000001455,
+        "maxRenderMs": 24.800000000745058
+      },
+      "slowWebGLCalls": [],
+      "places": []
+    },
+    {
+      "scenario": "configured-places-walk",
+      "samples": 1,
+      "passed": true,
+      "bootMs": 10229,
+      "frameLatency": {
+        "samples": 527,
+        "routeMs": 12065.900000002235,
+        "maxIntervalMs": 199.90000000000146,
+        "p95IntervalMs": 33.400000000001455,
+        "maxRenderMs": 42
+      },
+      "slowWebGLCalls": [],
+      "places": [
+        {
+          "id": "sol",
+          "view": "chase",
+          "frames": 121,
+          "elapsedMs": 3013.699999999255,
+          "p95IntervalMs": 49.899999999999636,
+          "maxIntervalMs": 83.29999999999927,
+          "position": {
+            "x": 0,
+            "z": 0
+          }
+        },
+        {
+          "id": "cibeles",
+          "view": "chase",
+          "frames": 153,
+          "elapsedMs": 3005,
+          "p95IntervalMs": 33.399999999999636,
+          "maxIntervalMs": 100,
+          "position": {
+            "x": 875,
+            "z": -265
+          }
+        },
+        {
+          "id": "alcala",
+          "view": "chase",
+          "frames": 124,
+          "elapsedMs": 3000.2000000029802,
+          "p95IntervalMs": 33.400000000001455,
+          "maxIntervalMs": 199.90000000000146,
+          "position": {
+            "x": 760,
+            "z": -389
+          }
+        }
+      ]
+    },
+    {
+      "scenario": "configured-places-aerial",
+      "samples": 1,
+      "passed": true,
+      "bootMs": 9816,
+      "frameLatency": {
+        "samples": 403,
+        "routeMs": 12068.699999999255,
+        "maxIntervalMs": 200,
+        "p95IntervalMs": 33.400000000001455,
+        "maxRenderMs": 28.099999997764826
+      },
+      "slowWebGLCalls": [],
+      "places": [
+        {
+          "id": "sol",
+          "view": "maqueta",
+          "frames": 93,
+          "elapsedMs": 3003.5,
+          "p95IntervalMs": 33.400000000001455,
+          "maxIntervalMs": 66.70000000000073,
+          "position": {
+            "x": 0,
+            "z": 0
+          }
+        },
+        {
+          "id": "cibeles",
+          "view": "maqueta",
+          "frames": 107,
+          "elapsedMs": 3000.300000000745,
+          "p95IntervalMs": 33.400000000001455,
+          "maxIntervalMs": 83.29999999999927,
+          "position": {
+            "x": 875,
+            "z": -265
+          }
+        },
+        {
+          "id": "alcala",
+          "view": "maqueta",
+          "frames": 100,
+          "elapsedMs": 3000.300000000745,
+          "p95IntervalMs": 33.400000000001455,
+          "maxIntervalMs": 183.29999999999927,
+          "position": {
+            "x": 760,
+            "z": -389
+          }
+        }
+      ]
+    }
+  ]
+}

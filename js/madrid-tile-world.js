@@ -592,8 +592,34 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     return true;
   }
 
+  // Keep one tiny representative of streamed shader variants alive after warm-up.
+  // They are hidden after the first frame, retaining renderer caches without
+  // mutating MRT state while the user explores or adding recurring draw calls.
+  function createCompileProbes() {
+    const group = new THREE.Group();
+    group.name = 'MadridTileShaderWarmup';
+    group.position.set(80000, -1000, 80000);
+    for (const material of facades) {
+      group.add(createFacadeBoxes(material, [{ x: 0, y: 1, z: 0, w: 1, h: 2, d: 1 }]));
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(HIP_GEO_TRIS.slice(), 3));
+    geo.computeVertexNormals();
+    const roof = new THREE.InstancedMesh(geo, hipRoofMat, 1);
+    roof.setMatrixAt(0, new THREE.Matrix4());
+    roof.setColorAt(0, HIP_PALETTE[0]);
+    group.add(roof);
+    group.add(new THREE.Mesh(new THREE.PlaneGeometry(1, 1), medianeraMat));
+    for (const material of hybridFacadeMats) group.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material));
+    for (const material of hybridWallMats) group.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), material));
+    group.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; } });
+    scene.add(group);
+    return group;
+  }
+
   return {
     addTile,
+    createCompileProbes,
     removeTile,
     has: (id) => groups.has(id),
     ids: () => [...groups.keys()],

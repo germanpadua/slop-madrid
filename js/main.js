@@ -175,6 +175,7 @@ async function initApp() {
   //     almendra are imported on demand around the camera and evicted past the memory budget (js/madrid-tiles.js).
   //     Pending tiles show the "out of map" floor, never empty city ground.
   const tileWorld = createTileWorld(scene, { colliders: allColliders, materials: cityMaterials });
+  const tileCompileProbes = tileWorld.createCompileProbes();
   let tileStreamer = null;
   const tilePreparer = createTilePreparer();
   window.addEventListener('pagehide', (event) => { if (!event.persisted) tilePreparer.dispose(); });
@@ -783,6 +784,7 @@ async function initApp() {
       });
       renderPipeline.render();
       for (const o of culled) o.frustumCulled = true;
+      tileCompileProbes.visible = false;
       markInit('warmup');
     }
     renderPipeline.render();
