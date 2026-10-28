@@ -1306,11 +1306,11 @@
  },
  "totals": {
   "tiles": 85,
-  "ready": 10,
-  "pending": 75,
+  "ready": 11,
+  "pending": 74,
   "failed": 0,
-  "readyBytes": 7309142,
-  "readyKm2": 16.95
+  "readyBytes": 7537876,
+  "readyKm2": 17.95
  },
  "tiles": [
   {
@@ -3533,11 +3533,11 @@
    "module": "js/geodata/tile-k2j-1.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": 496012,
-   "md5": "6009e202154e40a4b9c11685f2901bc5",
+   "bytes": 495213,
+   "md5": "333802cf725323e25dd95ab48401dfa7",
    "counts": {
     "blocks": 98,
-    "parcels": 3786,
+    "parcels": 3779,
     "parks": 41,
     "water": 1,
     "roads": 248,
@@ -3877,7 +3877,7 @@
    "i": 3,
    "j": -1,
    "label": "Tesela k3j-1",
-   "status": "pending",
+   "status": "ready",
    "core": [
     [
      1158.7,
@@ -3907,9 +3907,16 @@
    "module": "js/geodata/tile-k3j-1.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": null,
-   "md5": null,
-   "counts": null,
+   "bytes": 229533,
+   "md5": "0231ad0a93bef5408d1d8df0169178f6",
+   "counts": {
+    "blocks": 72,
+    "parcels": 1390,
+    "parks": 42,
+    "water": 2,
+    "roads": 261,
+    "landmarks": 3
+   },
    "error": null,
    "sources": [
     "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
