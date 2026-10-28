@@ -175,9 +175,14 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     }
 
     // 4. Buildings: one facade box per IDEAM parcel (real footprint extent, real ALTURA) inside its block slab.
+    //    Madrid medianeras: where an abutting parcel is shorter, the wall strip above its roof is a windowless
+    //    party wall (WALL_KINDS.lotLine), emitted as a second stacked tier - the pre-war material already starts
+    //    upper tiers with a parapet. Neighbors are found inside this tile's parcel set only; cross-tile edges
+    //    keep the street-front treatment (bounded approximation).
     const items = facades.map(() => []);
     const parcels = tile.parcels || [];
     const drawnHere = [];
+    const pabs = [];
     for (let index = 0; index < parcels.length; index++) {
       const parcel = parcels[index];
       const ring = toPts(parcel.ring || []);
@@ -189,14 +194,38 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       const bb = bboxOf(ring);
       const w = bb.x1 - bb.x0, d = bb.z1 - bb.z0;
       if (w < 2 || d < 2) continue;
-      const cx = (bb.x0 + bb.x1) / 2, cz = (bb.z0 + bb.z1) / 2;
-      const tier = Math.floor(hash(cx, cz, index) * facades.length) % facades.length;
-      items[tier].push({
-        x: cx, y: parcel.h / 2, z: cz, w, h: parcel.h, d,
-        tone: hash(cz, cx, 3),
-        faces: [WALL_KINDS.shop, WALL_KINDS.shop, WALL_KINDS.shop, WALL_KINDS.shop]
-      });
+      pabs.push({ x0: bb.x0, x1: bb.x1, z0: bb.z0, z1: bb.z1, w, d, h: parcel.h, index });
       tileColliders.push({ minX: bb.x0, maxX: bb.x1, minZ: bb.z0, maxZ: bb.z1, minY: 0, maxY: parcel.h });
+    }
+    const MED_TOL = 1.5, MED_OV = 0.3;
+    const medianeraHeights = (P) => {
+      const out = [0, 0, 0, 0]; // max abutting-neighbor height on -x, +x, -z, +z; 0 = free side
+      for (const Q of pabs) {
+        if (Q === P) continue;
+        const oz = Math.min(P.z1, Q.z1) - Math.max(P.z0, Q.z0);
+        const ox = Math.min(P.x1, Q.x1) - Math.max(P.x0, Q.x0);
+        if (Math.abs(Q.x1 - P.x0) < MED_TOL && oz > MED_OV * P.d) out[0] = Math.max(out[0], Q.h);
+        if (Math.abs(Q.x0 - P.x1) < MED_TOL && oz > MED_OV * P.d) out[1] = Math.max(out[1], Q.h);
+        if (Math.abs(Q.z1 - P.z0) < MED_TOL && ox > MED_OV * P.w) out[2] = Math.max(out[2], Q.h);
+        if (Math.abs(Q.z0 - P.z1) < MED_TOL && ox > MED_OV * P.w) out[3] = Math.max(out[3], Q.h);
+      }
+      return out;
+    };
+    for (const P of pabs) {
+      const cx = (P.x0 + P.x1) / 2, cz = (P.z0 + P.z1) / 2;
+      const tier = Math.floor(hash(cx, cz, P.index) * facades.length) % facades.length;
+      const tone = hash(cz, cx, 3);
+      const shop = WALL_KINDS.shop;
+      const nH = medianeraHeights(P);
+      const exposed = nH.map((n) => n >= 1 && P.h - n >= 2.5);
+      if (!exposed.some(Boolean)) {
+        items[tier].push({ x: cx, y: P.h / 2, z: cz, w: P.w, h: P.h, d: P.d, tone, faces: [shop, shop, shop, shop] });
+        continue;
+      }
+      const nMin = Math.min(...nH.filter((n, i) => exposed[i]));
+      items[tier].push({ x: cx, y: nMin / 2, z: cz, w: P.w, h: nMin, d: P.d, tone, faces: [shop, shop, shop, shop] });
+      const upFaces = nH.map((n, i) => (exposed[i] && n <= nMin + 0.5 ? WALL_KINDS.lotLine : shop));
+      items[tier].push({ x: cx, y: nMin + (P.h - nMin) / 2, z: cz, w: P.w, h: P.h - nMin, d: P.d, tone, faces: upFaces });
     }
     items.forEach((list, i) => {
       if (!list.length) return;
