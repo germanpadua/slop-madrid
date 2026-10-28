@@ -20,7 +20,7 @@ Rama de trabajo: `wip/madrid-experience`. No se ha publicado ni modificado `feat
 
 Una ejecución completa con Chromium 149 / SwiftShader, WebGL, 1280×720, n=1 retiró el cargador en 20,3 segundos, pero perdió el contexto gráfico. Ese resultado no valida estabilidad ni rendimiento. El verificador ahora lo marca explícitamente como fallo.
 
-Una segunda ejecución retiró el cargador, pero la captura agotó 30 segundos esperando las fuentes. No hay captura validada. Este entorno no expone `/dev/dri`; la comprobación visual y de GPU real sigue pendiente. El verificador libera ahora navegador y servidor también cuando falla.
+Una segunda ejecución retiró el cargador, pero la captura agotó 30 segundos esperando las fuentes. No hay captura validada. El sandbox no exponía `/dev/dri`; la comprobación posterior con permisos de navegador sí detectó y utilizó la GPU local (véase la siguiente iteración). El verificador libera ahora navegador y servidor también cuando falla.
 
 No se han regenerado las diez teselas sin patios: faltan las fuentes pesadas excluidas. Tampoco se ha activado merged-zone en la aplicación principal ni se ha afirmado una mejora de FPS.
 
@@ -35,3 +35,41 @@ No se han regenerado las diez teselas sin patios: faltan las fuentes pesadas exc
 ## Límite de reversión
 
 Esta unidad se revierte retirando la cámara maqueta (cameras.js y botón HTML), las reservas del streamer, la recuperación de arranque y los diagnósticos asociados, junto con sus pruebas y documentos. No cambia datos geográficos ni el prototipo merged-zone.
+
+## Iteración autónoma: GPU y arquitectura
+
+Se corrigió el diagnóstico de GPU: Chromium ejecutado fuera del sandbox utiliza **Intel Iris Xe (RPL-P), Mesa 26.0.8, ANGLE OpenGL**. La ausencia de `/dev/dri` dentro del sandbox no describía el equipo anfitrión.
+
+Cambios verificados:
+
+- El generador heredado de boroughs de Nueva York ya no se importa ni ejecuta: emitía 15.447 edificios ficticios. Madrid conserva el centro geográfico y las teselas.
+- Los edificios de Madrid no emiten escaleras exteriores de incendios ni depósitos de madera de Manhattan. Tampoco se construyen sus mallas vacías.
+- La precompilación ignora InstancedMesh con cero instancias.
+- Se corrigió el solapamiento de las señales de calle con los modos de navegación en pantallas estrechas.
+- El verificador registra la GPU y captura calle y maqueta en escritorio y maqueta a 390×844 con entrada táctil emulada. Comprueba ausencia de boroughs y escaleras, continuidad de renderizado y ausencia de solapamiento móvil.
+
+Resultado de confirmación (WebGL, 1280×720, GPU indicada, n=1): `passed=true`, arranque 23.749 ms, 100 fotogramas durante la muestra de unos 3 s (33,33 FPS), sin pérdida de contexto, sin errores de página ni peticiones fallidas; cero instancias de escaleras y sin grupo Boroughs. 153/153 pruebas CJS pasan. Es una comprobación funcional y una muestra exploratoria, no un benchmark comparativo ni una prueba en teléfono físico.
+
+Capturas locales inspeccionadas: `/tmp/madrid-confirmed/street-desktop.png`, `/tmp/madrid-confirmed/model-desktop.png`, `/tmp/madrid-confirmed/model-mobile.png`. Informe local: `/tmp/madrid-confirmed.json`.
+
+La maqueta todavía muestra diferencias de tratamiento entre el centro procedural y las teselas. La siguiente mejora visual debe unificar cubiertas y materiales sin perder patios. El arranque sigue siendo lento; no se considera resuelto el objetivo de rendimiento.
+
+Reversión de esta iteración: restaurar el import y llamada a buildBoroughs y su preload, retirar la exclusión de escaleras/depósitos de commit(), restaurar createFireEscapes y retirar el filtro de mallas vacías. Los ajustes móviles y del verificador son independientes.
+
+### Backend por defecto
+
+La prueba posterior de streaming con el backend WebGPU retiró el cargador en 32.918 ms y cargó k3j1, pero registró errores `GPUValidationError: Binding size … is zero`. La muestra de renderizado fue de solo 3 frames en unos 9,5 s durante la carga. No es un resultado válido de calidad. El antiguo criterio `passed` no incluía estos errores de consola; se corrigió para detectarlos y comprobar también el resultado de todas las teselas solicitadas.
+
+Se seleccionó WebGL2 como backend predeterminado, conservando `?webgpu=1` para experimentación explícita. El HUD muestra el backend realmente utilizado. No se ha eliminado el motor WebGPURenderer ni los materiales TSL: Three.js utiliza su backend WebGL2.
+
+Siguiente inconsistencia concreta detectada: el centro procedural crea sus materiales con opciones heredadas y no activa el parámetro `madrid` de la fachada que sí utilizan las teselas. Su corrección deberá comprobar ritmo de balcones, materiales compartidos y compilación; no forma parte de esta unidad validada.
+
+### Navegación y estrés de carga
+
+El backend predeterminado corregido pasó una prueba de streaming: WebGL2, sin errores gráficos, k3j1 cargada y 8 teselas residentes sin fallos. El verificador anterior elevaba silenciosamente el radio de precarga a 5 km y medía mientras compilaba las nuevas teselas: en ese escenario obtuvo 3 frames en unos 7 s. Es un bloqueo visible y no se considera rendimiento aceptable. Se ha separado esa fase artificial mediante `--stress`; la ruta normal conserva el radio de precarga de la aplicación. No se oculta ni se elimina la prueba de estrés.
+
+### Resultado final de ruta normal
+
+La ruta normal también pasó los controles funcionales (WebGL2, arranque 24.439 ms, tesela k3j1 cargada, sin errores gráficos), pero la muestra de 5 frames en unos 24 s revela que el bloqueo al compilar nuevas zonas también afecta al recorrido normal. Separar `--stress` no lo resuelve. Queda como problema prioritario: preparar o simplificar los materiales/geometrías de nuevas teselas antes de su primer dibujo, midiendo la latencia máxima de frame y el tiempo hasta estabilizarse. No se declara resuelto el rendimiento ni alcanzada la calidad de las referencias.
+
+Resumen reproducible de las muestras en `docs/validation/2026-10-28-gpu.json`. Las capturas móviles son emulación táctil sobre la GPU del escritorio, no una medida de teléfono físico.

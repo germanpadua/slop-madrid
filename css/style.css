@@ -1300,6 +1300,9 @@ body.is-boosting #hud-speed-meter {
   .time-btn.active .seg-label { display: none; }
   .time-btn.active { padding: 0 9px; gap: 0; }
   .radar { display: none; }
+  .hud-bottom-left { bottom: calc(max(var(--edge), env(safe-area-inset-bottom)) + 130px); max-width: calc(100% - 2 * var(--edge)); }
+  .location-signs { flex-wrap: wrap; }
+  .street-sign { max-width: 100%; }
   .hud-bottom-right { bottom: calc(var(--edge) + 64px); }
   .gauge { display: none; }
   .camera-switch { border-top: 0; }

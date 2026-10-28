@@ -5,7 +5,6 @@ import { createPostProcessing } from './post-processing.js';
 import { ClusteredLighting } from 'three/addons/lighting/ClusteredLighting.js';
 import { getLocationLabel, isTypingInField, ROADS, NYC_LANDMARKS, TELEPORT_LOCATIONS } from './city-config.js';
 import { buildCityGrid, cityMaterials } from './city-grid.js';
-import { buildBoroughs } from './boroughs.js';
 import { buildLandmarks } from './landmarks.js';
 import { buildCityBlocks } from './buildings.js';
 import { buildStreetDetails } from './street-details.js';
@@ -43,7 +42,8 @@ async function initApp() {
   }
 
   // 1. Initialize Three.js WebGPURenderer with 32-bit float reversedDepthBuffer.
-  // ?webgl forces the WebGL2 backend (lighter on devices/headless captures where WebGPU is heavy).
+  // WebGL2 is the validated default. ?webgpu opts into the experimental backend;
+  // ?webgl and capture always select WebGL2.
   const bootParams = new URLSearchParams(window.location.search);
   // ?capture keeps the drawing buffer readable for visual verification. three's WebGL2 backend hardcodes its
   // context attributes, so the canvas+context must be supplied with preserveDrawingBuffer set; capture implies
@@ -59,7 +59,7 @@ async function initApp() {
     antialias: true,
     powerPreference: 'high-performance',
     reversedDepthBuffer: true,
-    forceWebGL: bootParams.has('webgl') || captureFrame
+    forceWebGL: !bootParams.has('webgpu') || bootParams.has('webgl') || captureFrame
   });
   renderer.setPixelRatio(1.0);
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -78,6 +78,8 @@ async function initApp() {
 
   await renderer.init();
   markInit('renderer');
+  const backendLabel = document.getElementById('hud-backend');
+  if (backendLabel) backendLabel.textContent = renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2';
 
   // 2. Build Scene & Physical Atmospheric Sky / PMREM IBL / 4096x4096 Shadow Lighting
   const scene = new THREE.Scene();
@@ -91,13 +93,13 @@ async function initApp() {
   // 3. Build Madrid Geography, Landmarks, Blocks, Street Details & Traffic
   const cityGrid = buildCityGrid(scene);
   markInit('cityGrid');
-  const boroughs = buildBoroughs(scene, { sidewalks: cityGrid.sidewalks });
-  markInit('boroughs');
+  // Madrid's surrounding city comes from geographic tiles. The inherited NYC borough
+  // generator built 15,447 fictional buildings, bridges and horizon land even here.
   const { colliders: landmarkColliders } = buildLandmarks(scene);
   markInit('landmarks');
   const cityBlocks = buildCityBlocks(scene);
   markInit('blocks');
-  const allColliders = [...landmarkColliders, ...cityBlocks.colliders, ...boroughs.colliders, ...(cityGrid.colliders || [])];
+  const allColliders = [...landmarkColliders, ...cityBlocks.colliders, ...(cityGrid.colliders || [])];
 
   const streetDetails = buildStreetDetails(scene);
   markInit('streetDetails');
@@ -656,6 +658,7 @@ async function initApp() {
     const jobByMaterial = new Map();
     const pipelines = new Set();
     scene.traverseVisible((o) => {
+      if (o.isInstancedMesh && o.count === 0) return;
       if (o.frustumCulled) {
         culled.push(o);
         o.frustumCulled = false;
@@ -748,7 +751,6 @@ async function initApp() {
       savePlayerState();
       nextPlayerSave = now + 5000;
     }
-    if (boroughs.update) boroughs.update(elapsed); // Roosevelt Island Tramway cabins
     cityBlocks.update(cameraSystem.currentPos.x, cameraSystem.currentPos.z);
     if (tileStreamer) tileStreamer.update(cameraSystem.currentPos.x, cameraSystem.currentPos.z, now);
     if (cityBlocks.updateLights) cityBlocks.updateLights(cameraSystem.camera);

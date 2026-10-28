@@ -1,0 +1,107 @@
+[
+  {
+    "scenario": "street-and-mobile-validation",
+    "samples": 1,
+    "viewport": [
+      1280,
+      720
+    ],
+    "renderer": "ANGLE (Intel, Mesa Intel(R) Iris(R) Xe Graphics (RPL-P), OpenGL ES 3.2 Mesa 26.0.8-1ubuntu0.3)",
+    "backend": "WebGL2",
+    "functionalPass": true,
+    "bootMs": 23749,
+    "sampledFrames": 100,
+    "sampledLoopFps": 33.33000033329173,
+    "tileResults": [],
+    "contextLost": false,
+    "graphicsErrors": [],
+    "legacyBoroughs": false,
+    "fireEscapeInstances": 0,
+    "note": "Functional checks do not establish acceptable responsiveness; samples can include shader compilation during streaming."
+  },
+  {
+    "scenario": "experimental-webgpu-streaming",
+    "samples": 1,
+    "viewport": [
+      1280,
+      720
+    ],
+    "renderer": "ANGLE (Intel, Mesa Intel(R) Iris(R) Xe Graphics (RPL-P), OpenGL ES 3.2 Mesa 26.0.8-1ubuntu0.3)",
+    "backend": "WebGPU",
+    "functionalPass": false,
+    "bootMs": 32918,
+    "sampledFrames": 3,
+    "sampledLoopFps": 0.3142677561282213,
+    "tileResults": [
+      {
+        "id": "k3j1",
+        "ok": true,
+        "ms": 26
+      }
+    ],
+    "contextLost": false,
+    "graphicsErrors": [
+      "THREE.WebGPURenderer: Uncaptured WebGPU GPUValidationError: Binding size for [Buffer (unlabeled)] is zero.\n - While validating entries[1] against { binding: 1, visibility: ShaderStage::Vertex, buffer: {type: BufferBindingType::ReadOnlyStorage, minBindingSize: 0, hasDynamicOffset: 0} }.\n - While validating [BindGroupDescriptor \"\"bindGroup_object\"\"] against [BindGroupLayout (unlabeled)]\n - While calling [Device].CreateBindGroup([BindGroupDescriptor \"\"bindGroup_object\"\"]).\n",
+      "THREE.WebGPURenderer: Uncaptured WebGPU GPUValidationError: Binding size for [Buffer (unlabeled)] is zero.\n - While validating entries[1] against { binding: 1, visibility: ShaderStage::Vertex, buffer: {type: BufferBindingType::ReadOnlyStorage, minBindingSize: 0, hasDynamicOffset: 0} }.\n - While validating [BindGroupDescriptor \"\"bindGroup_object\"\"] against [BindGroupLayout (unlabeled)]\n - While calling [Device].CreateBindGroup([BindGroupDescriptor \"\"bindGroup_object\"\"]).\n",
+      "THREE.WebGPURenderer: Uncaptured WebGPU GPUValidationError: Binding size for [Buffer (unlabeled)] is zero.\n - While validating entries[9] against { binding: 9, visibility: ShaderStage::Vertex, buffer: {type: BufferBindingType::ReadOnlyStorage, minBindingSize: 0, hasDynamicOffset: 0} }.\n - While validating [BindGroupDescriptor \"\"bindGroup_object\"\"] against [BindGroupLayout (unlabeled)]\n - While calling [Device].CreateBindGroup([BindGroupDescriptor \"\"bindGroup_object\"\"]).\n",
+      "THREE.WebGPURenderer: Uncaptured WebGPU GPUValidationError: Binding size for [Buffer (unlabeled)] is zero.\n - While validating entries[9] against { binding: 9, visibility: ShaderStage::Vertex, buffer: {type: BufferBindingType::ReadOnlyStorage, minBindingSize: 0, hasDynamicOffset: 0} }.\n - While validating [BindGroupDescriptor \"\"bindGroup_object\"\"] against [BindGroupLayout (unlabeled)]\n - While calling [Device].CreateBindGroup([BindGroupDescriptor \"\"bindGroup_object\"\"]).\n",
+      "THREE.WebGPURenderer: Uncaptured WebGPU GPUValidationError: Binding size for [Buffer (unlabeled)] is zero.\n - While validating entries[9] against { binding: 9, visibility: ShaderStage::Vertex, buffer: {type: BufferBindingType::ReadOnlyStorage, minBindingSize: 0, hasDynamicOffset: 0} }.\n - While validating [BindGroupDescriptor \"\"bindGroup_object\"\"] against [BindGroupLayout (unlabeled)]\n - While calling [Device].CreateBindGroup([BindGroupDescriptor \"\"bindGroup_object\"\"]).\n",
+      "THREE.WebGPURenderer: Uncaptured WebGPU GPUValidationError: Binding size for [Buffer (unlabeled)] is zero.\n - While validating entries[9] against { binding: 9, visibility: ShaderStage::Vertex, buffer: {type: BufferBindingType::ReadOnlyStorage, minBindingSize: 0, hasDynamicOffset: 0} }.\n - While validating [BindGroupDescriptor \"\"bindGroup_object\"\"] against [BindGroupLayout (unlabeled)]\n - While calling [Device].CreateBindGroup([BindGroupDescriptor \"\"bindGroup_object\"\"]).\n"
+    ],
+    "legacyBoroughs": false,
+    "fireEscapeInstances": 0,
+    "note": "Functional checks do not establish acceptable responsiveness; samples can include shader compilation during streaming."
+  },
+  {
+    "scenario": "webgl-streaming-stress",
+    "samples": 1,
+    "viewport": [
+      1280,
+      720
+    ],
+    "renderer": "ANGLE (Intel, Mesa Intel(R) Iris(R) Xe Graphics (RPL-P), OpenGL ES 3.2 Mesa 26.0.8-1ubuntu0.3)",
+    "backend": "WebGL2",
+    "functionalPass": true,
+    "bootMs": 23599,
+    "sampledFrames": 3,
+    "sampledLoopFps": 0.4260879445517104,
+    "tileResults": [
+      {
+        "id": "k3j1",
+        "ok": true,
+        "ms": 13
+      }
+    ],
+    "contextLost": false,
+    "graphicsErrors": [],
+    "legacyBoroughs": false,
+    "fireEscapeInstances": 0,
+    "note": "Functional checks do not establish acceptable responsiveness; samples can include shader compilation during streaming."
+  },
+  {
+    "scenario": "webgl-streaming-normal",
+    "samples": 1,
+    "viewport": [
+      1280,
+      720
+    ],
+    "renderer": "ANGLE (Intel, Mesa Intel(R) Iris(R) Xe Graphics (RPL-P), OpenGL ES 3.2 Mesa 26.0.8-1ubuntu0.3)",
+    "backend": "WebGL2",
+    "functionalPass": true,
+    "bootMs": 24439,
+    "sampledFrames": 5,
+    "sampledLoopFps": 0.20854535444368766,
+    "tileResults": [
+      {
+        "id": "k3j1",
+        "ok": true,
+        "ms": 16
+      }
+    ],
+    "contextLost": false,
+    "graphicsErrors": [],
+    "legacyBoroughs": false,
+    "fireEscapeInstances": 0,
+    "note": "Functional checks do not establish acceptable responsiveness; samples can include shader compilation during streaming."
+  }
+]

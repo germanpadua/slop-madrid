@@ -10,7 +10,7 @@ Desde la raíz del repositorio:
 python3 -m http.server 8080
 ```
 
-Abre `http://localhost:8080`. Las dependencias Three.js y las fuentes se descargan de Internet. `?webgl=1` fuerza WebGL2; `?debug=1` expone los diagnósticos. La cámara **Maqueta de Madrid** está en el selector de cámaras: arrastra para girar y usa rueda o pellizco para acercarte. El mapa (`M`) permite cambiar de zona.
+Abre `http://localhost:8080`. Las dependencias Three.js y las fuentes se descargan de Internet. WebGL2 es el backend predeterminado validado; `?webgpu=1` activa el backend experimental y `?webgl=1` fuerza WebGL2; `?debug=1` expone los diagnósticos. La cámara **Maqueta de Madrid** está en el selector de cámaras: arrastra para girar y usa rueda o pellizco para acercarte. El mapa (`M`) permite cambiar de zona.
 
 ## Verificación
 
@@ -25,7 +25,7 @@ PLAYWRIGHT_MODULE=/ruta/a/playwright/index.mjs CHROME_PATH=/ruta/a/chrome WEBGL=
   node tools/madrid/measure.mjs --boot-only
 ```
 
-Opcionales: `VERBOSE=1` muestra la consola y `SCREENSHOT=/tmp/madrid.png` guarda una captura. Sin `--boot-only` el verificador prueba también streaming. Una pérdida de contexto gráfico o ausencia de fotogramas produce un resultado fallido. Los FPS de SwiftShader son diagnósticos de software y no una medida de GPU real.
+Opcionales: `HARDWARE_GPU=1` solicita ANGLE OpenGL con GPU local; el informe registra el dispositivo realmente usado. `VIEWS_DIR=/tmp/madrid-vistas` captura calle y maqueta en escritorio y maqueta con entrada táctil emulada. `VERBOSE=1` muestra la consola y `SCREENSHOT=/tmp/madrid.png` guarda una captura. Sin `--boot-only` el verificador prueba también streaming. `--stress` añade una fase de precarga de 5 km para detectar bloqueos al incorporar muchas teselas. Una pérdida de contexto, un error de validación gráfica, una tesela fallida o ausencia de fotogramas produce un resultado fallido. Los FPS de SwiftShader son diagnósticos de software y no una medida de GPU real.
 
 ## Datos y licencias
 

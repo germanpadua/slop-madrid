@@ -668,6 +668,9 @@ function buildCityBlocks(scene) {
    *      ground floor, the others get a residential entrance), freestanding, walls (see wallKinds) }
    */
   function commit(blk, b, o = {}) {
+    // Madrid masonry keeps its cornices and roofscape, without the exterior escape
+    // stairs and cedar tanks inherited from Manhattan's residential templates.
+    if (GEO.frame?.madrid) o = { ...o, fireEscapes: false, rearFireEscapes: false, wtP: 0 };
     const parts = b.parts;
     if (!parts.length) return;
     if (parts.some((p) => hitsBridgeCorridor(p.x0, p.x1, p.z0, p.z1))) {
@@ -2501,7 +2504,9 @@ function buildCityBlocks(scene) {
   group.add(hvacInst);
 
   // 4. Instanced fire escapes: real steps nearby, lightweight silhouettes in the distance.
-  const fireEscapeSystem = createFireEscapes(group);
+  const fireEscapeSystem = GEO.frame?.madrid
+    ? { begin() {}, add() {}, end() {} }
+    : createFireEscapes(group);
 
   // 5. Ground-floor retail canvas awnings & illuminated storefront fascia signs
   const awningMat = new THREE.MeshStandardNodeMaterial({ color: 0xffffff, roughness: 0.65 });

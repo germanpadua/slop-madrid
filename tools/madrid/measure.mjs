@@ -4,8 +4,8 @@
 // window.__madrid), reads the [init] phase timings, then walks the camera across the phase-3 tiles and reports the
 // per-tile import+build time, the resident geodata, and the renderer's frame cost.
 //
-// The WebGPU adapter in headless is SwiftShader (software raster): its FPS is not a GPU measurement and is only
-// reported as the render-loop rate; draw calls & triangles are the comparable numbers.
+// By default headless uses SwiftShader; HARDWARE_GPU=1 requests the local GPU.
+// Always inspect the reported renderer: software FPS is not a hardware measurement.
 //
 // usage: node tools/madrid/measure.mjs [--tiles k3j1,k4j1,...]
 import http from 'node:http';
@@ -36,14 +36,19 @@ const port = server.address().port;
 const args = process.argv.slice(2);
 const tileArg = args.indexOf('--tiles');
 const bootOnly = args.includes('--boot-only');
+const stress = args.includes('--stress');
 const walk = bootOnly ? [] : tileArg >= 0 ? args[tileArg + 1].split(',') : ['k3j1', 'k4j1', 'k4j2', 'k2j-1', 'k0j-1', 'k0j3', 'k2j4'];
 
-const browser = await chromium.launch({
-  executablePath: process.env.CHROME_PATH || undefined, // e.g. /usr/bin/google-chrome when no bundled chromium
-  args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=swiftshader', '--enable-webgpu-developer-features']
-});
+let browser;
 try {
+browser = await chromium.launch({
+  executablePath: process.env.CHROME_PATH || undefined, // e.g. /usr/bin/google-chrome when no bundled chromium
+  args: process.env.HARDWARE_GPU
+    ? ['--enable-unsafe-webgpu', '--ignore-gpu-blocklist', '--use-angle=gl']
+    : ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=swiftshader', '--enable-webgpu-developer-features']
+});
 const page = await browser.newPage({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 720 } });
+const gpuInfo = await (await browser.newBrowserCDPSession()).send('SystemInfo.getInfo');
 const logs = [];
 const pageErrors = [];
 const failed = [];
@@ -52,13 +57,13 @@ page.on('pageerror', (e) => { pageErrors.push(String(e)); console.error('[pageer
 page.on('requestfailed', (r) => failed.push(`${r.url()} ${r.failure()?.errorText}`));
 
 const t0 = Date.now();
-await page.goto(`http://127.0.0.1:${port}/?debug=1${process.env.WEBGL ? '&webgl=1' : ''}`, { waitUntil: 'load', timeout: 180000 });
+await page.goto(`http://127.0.0.1:${port}/?debug=1${process.env.WEBGL ? '&webgl=1' : ''}${process.env.WEBGPU ? '&webgpu=1' : ''}`, { waitUntil: 'load', timeout: 180000 });
 // SwiftShader compiles the ~500 pipelines of the Madrid materials slowly: the loading screen can take several minutes
 await page.waitForFunction(() => window.__madrid && window.__madrid.renderer && document.querySelector('#loading-overlay.hidden'), null, { timeout: 900000 });
 const bootMs = Date.now() - t0;
 const initLine = logs.find((l) => l.startsWith('[init]')) || '';
 
-const result = await page.evaluate(async ({ walk, bootOnly }) => {
+const result = await page.evaluate(async ({ walk, bootOnly, stress }) => {
   const { renderer, tileStreamer, tileWorld, controllerManager } = window.__madrid;
   const waitFor = async (fn, timeoutMs = 120000) => {
     const start = performance.now();
@@ -84,14 +89,14 @@ const result = await page.evaluate(async ({ walk, bootOnly }) => {
     }
   }
   // Force a 4-6 tile resident set around the Retiro cluster (the streaming policy still enforces the byte budget).
-  if (tileStreamer && !bootOnly) {
+  if (tileStreamer && !bootOnly && stress) {
     tileStreamer.budget.preloadRadius = 5000;
     controllerManager.teleportActiveTo(1800, 0, 0);
     tileStreamer.update(1800, 0, performance.now());
     await waitFor(() => tileStreamer.status().loaded.length >= 6, 120000);
   }
   const tileSet = tileStreamer ? tileStreamer.status() : null;
-  // Frame cost: renderer.info.render.frame counts the frames the app actually submitted.
+  // Count completed application renders; renderer-info field names vary across Three.js versions.
   const frames0 = window.__madrid.renderedFrames || 0;
   const start = performance.now();
   await new Promise((resolve) => setTimeout(resolve, 3000));
@@ -119,19 +124,26 @@ const result = await page.evaluate(async ({ walk, bootOnly }) => {
     return { id, meshes, instances, deckMinY, deckMaxY, colliders: g.userData.colliders?.length ?? 0, kinds: [...kinds] };
   });
   return {
+    backend: renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2',
     tileStats,
     tiles: before,
     after: tileSet,
     tileMs,
     fps: frames / secs,
     frames,
+    legacyBoroughs: Boolean(sceneOf.getObjectByName('Boroughs')),
+    fireEscapeInstances: (() => {
+      let count = 0;
+      sceneOf.traverse((o) => { if (/^FireEscapes/.test(o.name)) count += o.isInstancedMesh ? o.count : 1; });
+      return count;
+    })(),
     drawCalls: info.drawCalls ?? info.calls ?? null,
     triangles: info.triangles ?? null,
     residentBytes: tileWorld ? tileWorld.residentBytes() : 0,
     meshes: tileWorld ? tileWorld.meshCount() : 0,
     loaded: tileWorld ? tileWorld.ids() : []
   };
-}, { walk, bootOnly });
+}, { walk, bootOnly, stress });
 
 let screenshotError = null;
 if (process.env.SCREENSHOT) {
@@ -139,13 +151,42 @@ if (process.env.SCREENSHOT) {
   try { await page.screenshot({ path: process.env.SCREENSHOT, timeout: 30000 }); }
   catch (error) { screenshotError = error.message; }
 }
+if (process.env.VIEWS_DIR) {
+  fs.mkdirSync(process.env.VIEWS_DIR, { recursive: true });
+  process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY = '1';
+  await page.screenshot({ path: path.join(process.env.VIEWS_DIR, 'street-desktop.png') });
+  await page.locator('#cam-menu-btn').click();
+  await page.locator('#cam-maqueta').click();
+  await page.waitForFunction(() => window.__madrid.cameraSystem.currentPos.y > 500);
+  await page.screenshot({ path: path.join(process.env.VIEWS_DIR, 'model-desktop.png') });
+  await page.setViewportSize({ width: 390, height: 844 });
+  const touchSession = await page.context().newCDPSession(page);
+  await touchSession.send('Emulation.setTouchEmulationEnabled', { enabled: true });
+  await touchSession.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 195, y: 350 }] });
+  await touchSession.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await page.waitForFunction(() => document.body.classList.contains('touch-enabled'));
+
+  const frame = await page.evaluate(() => window.__madrid.renderedFrames);
+  await page.waitForFunction((frame) => window.__madrid.renderedFrames > frame + 2, frame);
+  await page.screenshot({ path: path.join(process.env.VIEWS_DIR, 'model-mobile.png') });
+  const overlap = await page.evaluate(() => {
+    const a = document.querySelector('.hud-bottom-left').getBoundingClientRect();
+    const b = document.querySelector('#mode-switch').getBoundingClientRect();
+    return a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+  });
+  if (overlap) throw new Error('Mobile location signs overlap the navigation modes');
+}
 const contextLost = logs.some((line) => /CONTEXT_LOST|Device Lost/i.test(line));
-const passed = !contextLost && pageErrors.length === 0 && failed.length === 0 && result.frames > 0;
+const graphicsErrors = logs.filter((line) => /GPUValidationError|Shader Error|GL_INVALID|Error compiling/i.test(line));
+const passed = graphicsErrors.length === 0 && !contextLost && pageErrors.length === 0 && failed.length === 0 && result.frames > 0 && result.tileMs.every((tile) => tile.ok) && (result.after?.failures || 0) === 0 && !result.legacyBoroughs && result.fireEscapeInstances === 0;
 console.log(JSON.stringify({
   passed,
+  gpu: gpuInfo.gpu,
   contextLost,
+  graphicsErrors,
   screenshotError,
   bootMs,
+  stress,
   init: initLine,
   ...result,
   pageErrors,
@@ -156,6 +197,6 @@ console.log(JSON.stringify({
 
 if (!passed || screenshotError) process.exitCode = 1;
 } finally {
-  await browser.close();
+  await browser?.close();
   server.close();
 }
