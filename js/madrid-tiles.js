@@ -251,5 +251,8 @@ export const MADRID_LANDMARK_STYLES = Object.freeze([
   Object.freeze([/\bmetr[oó]polis\b/i, Object.freeze({ color: 0xdfd7c2, roughness: 0.68 })]),
   Object.freeze([/\bteatro real\b/i, Object.freeze({ color: 0xe6dfd0, roughness: 0.7 })]),
   Object.freeze([/\bplaza mayor\b/i, Object.freeze({ color: 0xb0624a, roughness: 0.8 })]),
+  Object.freeze([/\bcasa de la panader[ií]a\b/i, Object.freeze({ color: 0xa8574a, roughness: 0.78 })]),
+  Object.freeze([/\btemplo de debod\b/i, Object.freeze({ color: 0xc9b18a, roughness: 0.8 })]),
+  Object.freeze([/\bbanco de espa[nñ]a\b/i, Object.freeze({ color: 0xe6dfcd, roughness: 0.7 })]),
   Object.freeze([/\b(catedral|iglesia|basilica|basílica|ermita)\b/i, Object.freeze({ color: 0xe3dcc8, roughness: 0.74 })])
 ]);
