@@ -258,12 +258,16 @@ export function decomposeRing(ring, { stripW = 6, minW = 2, minD = 2, holes = []
   for (const q of uv) { u0 = Math.min(u0, q[0]); u1 = Math.max(u1, q[0]); }
   const NU = 48, NV = 48;
   let diff = 0, tot = 0;
+  // The 48×48 deviation probe tests the same rectangles repeatedly. Project
+  // their bounds once, keeping the exact comparisons and original precision.
+  const uvRects = rects.map((r) => {
+    const c = r.corners.map(([x, z]) => [x * f.ux + z * f.uz, x * f.vx + z * f.vz]);
+    let a0 = 1e9, a1 = -1e9, b0 = 1e9, b1 = -1e9;
+    for (const q of c) { a0 = Math.min(a0, q[0]); a1 = Math.max(a1, q[0]); b0 = Math.min(b0, q[1]); b1 = Math.max(b1, q[1]); }
+    return [a0, a1, b0, b1];
+  });
   const inRect = (u, v) => {
-    for (const r of rects) {
-      // rect corners in uv form an axis-aligned box: recover via frame
-      const c = r.corners.map(([x, z]) => [x * f.ux + z * f.uz, x * f.vx + z * f.vz]);
-      let a0 = 1e9, a1 = -1e9, b0 = 1e9, b1 = -1e9;
-      for (const q of c) { a0 = Math.min(a0, q[0]); a1 = Math.max(a1, q[0]); b0 = Math.min(b0, q[1]); b1 = Math.max(b1, q[1]); }
+    for (const [a0, a1, b0, b1] of uvRects) {
       if (u >= a0 && u <= a1 && v >= b0 && v <= b1) return true;
     }
     return false;

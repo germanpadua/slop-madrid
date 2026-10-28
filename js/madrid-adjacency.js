@@ -41,6 +41,24 @@ function nearestParallelEdge(px, pz, ux, uz, q) {
   return best;
 }
 
+// Broad phase only: every parcel whose expanded bounds contain a sample is in
+// its cell. Insertion order preserves the original parcel order and tie behavior.
+function candidateLookup(parcels) {
+  const cellSize = 32;
+  const cells = new Map();
+  parcels.forEach((p, i) => {
+    for (let x = Math.floor((p.x0 - TOL_M) / cellSize); x <= Math.floor((p.x1 + TOL_M) / cellSize); x++) {
+      for (let z = Math.floor((p.z0 - TOL_M) / cellSize); z <= Math.floor((p.z1 + TOL_M) / cellSize); z++) {
+        const key = `${x},${z}`;
+        if (!cells.has(key)) cells.set(key, []);
+        cells.get(key).push(i);
+      }
+    }
+  });
+  const empty = [];
+  return (x, z) => cells.get(`${Math.floor(x / cellSize)},${Math.floor(z / cellSize)}`) || empty;
+}
+
 /**
  * @param parcels array of { ring: [x,z,...], h, x0, x1, z0, z1 }
  * @returns array of [nHnegX, nHposX, nHnegZ, nHposZ] per parcel (0 = no party wall on that side)
@@ -52,6 +70,7 @@ export function partyWallHeights(parcels) {
     for (let i = 0; i + 1 < r.length; i += 2) pts.push([r[i], r[i + 1]]);
     return pts;
   });
+  const candidates = candidateLookup(parcels);
   const result = [];
   for (let i = 0; i < parcels.length; i++) {
     const P = parcels[i], pts = rings[i];
@@ -69,7 +88,7 @@ export function partyWallHeights(parcels) {
       for (let sIdx = 0; sIdx < n; sIdx++) {
         const t = (sIdx + 0.5) / n;
         const px = ax + (bx - ax) * t, pz = az + (bz - az) * t;
-        for (let j = 0; j < parcels.length; j++) {
+        for (const j of candidates(px, pz)) {
           if (j === i) continue;
           const Q = parcels[j];
           if (px < Q.x0 - TOL_M || px > Q.x1 + TOL_M || pz < Q.z0 - TOL_M || pz > Q.z1 + TOL_M) continue;
@@ -105,6 +124,7 @@ export function partyWallRuns(parcels) {
     for (let i = 0; i + 1 < r.length; i += 2) pts.push([r[i], r[i + 1]]);
     return pts;
   });
+  const candidates = candidateLookup(parcels);
   const result = [];
   for (let i = 0; i < parcels.length; i++) {
     const P = parcels[i], pts = rings[i];
@@ -119,7 +139,7 @@ export function partyWallRuns(parcels) {
       for (let sIdx = 0; sIdx < n; sIdx++) {
         const t = (sIdx + 0.5) / n;
         const px = ax + (bx - ax) * t, pz = az + (bz - az) * t;
-        for (let j = 0; j < parcels.length; j++) {
+        for (const j of candidates(px, pz)) {
           if (j === i) continue;
           const Q = parcels[j];
           if (px < Q.x0 - TOL_M || px > Q.x1 + TOL_M || pz < Q.z0 - TOL_M || pz > Q.z1 + TOL_M) continue;

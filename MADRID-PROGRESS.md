@@ -73,3 +73,16 @@ El backend predeterminado corregido pasó una prueba de streaming: WebGL2, sin e
 La ruta normal también pasó los controles funcionales (WebGL2, arranque 24.439 ms, tesela k3j1 cargada, sin errores gráficos), pero la muestra de 5 frames en unos 24 s revela que el bloqueo al compilar nuevas zonas también afecta al recorrido normal. Separar `--stress` no lo resuelve. Queda como problema prioritario: preparar o simplificar los materiales/geometrías de nuevas teselas antes de su primer dibujo, midiendo la latencia máxima de frame y el tiempo hasta estabilizarse. No se declara resuelto el rendimiento ni alcanzada la calidad de las referencias.
 
 Resumen reproducible de las muestras en `docs/validation/2026-10-28-gpu.json`. Las capturas móviles son emulación táctil sobre la GPU del escritorio, no una medida de teléfono físico.
+
+## Optimización de preparación de teselas
+
+Se aisló el coste de importación, preparación y montaje de teselas; el modo debug conserva hasta 600 muestras de intervalo entre frames y tiempo dentro de renderizado. En una ruta exploratoria sobre Iris Xe, antes de optimizar, la construcción de k2j-1 tardó 9.453 ms y la de k4j2 15.391 ms; el mayor intervalo observado durante la ruta fue 4.683 ms. No se atribuye todo ese intervalo a GPU: el mayor tiempo dentro de renderizado fue 415 ms.
+
+Se precalculan una sola vez los límites proyectados de cada rectángulo para la prueba de desviación 48×48, y se usa una cuadrícula espacial para las búsquedas de medianeras. Se mantienen las comparaciones geométricas originales, su tolerancia y su orden. El benchmark reproducible contra 77921de comprueba igualdad exacta en las 1.160 parcelas de k3j0, con tres pares por algoritmo:
+
+```sh
+node tools/madrid/benchmark-preparation.mjs 77921de k3j0
+node --test tests/madrid-adjacency.test.cjs tests/madrid-footprint-holes.test.cjs
+```
+
+Resultados de CPU en `docs/validation/2026-10-28-preparation-cpu.json`. La prueba de regresión compara los resultados completos de medianeras con hashes generados por la búsqueda exhaustiva anterior. Reversión: madrid-footprint.js y madrid-adjacency.js; los cambios de cálculo no dependen del worker ni de los materiales.
