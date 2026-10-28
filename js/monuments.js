@@ -555,8 +555,9 @@ function buildTorreDeMadrid(mat, lm) {
 }
 
 const PROCEDURAL = {
-  'Edificio España': buildEdificioEspana,
-  'Torre de Madrid': buildTorreDeMadrid,
+  // PARKED PROTOTYPES (visual validation open - kept out of the default render path):
+  // 'Edificio España': buildEdificioEspana,   // window-grid detachment on crescent outer arc; massing not reference-validated
+  // 'Torre de Madrid': buildTorreDeMadrid,    // blank facade swath + terraces read as floating fins (parent review 2026-10-29)
 
   'Puerta de Alcalá': buildPuertaDeAlcala,
   'Palacio de Cibeles': buildPalacioDeCibeles,
@@ -568,7 +569,7 @@ const PROCEDURAL = {
 // bbox was also misaligned by D/2 in x and sealed the arches.)
 const PUERTA_PIERS = [[-21.45, -18.8], [-14.8, -11.5], [-6.5, -3], [3, 6.5], [11.5, 14.8], [18.8, 21.45]];
 export function buildProceduralColliders(name, lm) {
-  if (name === 'Edificio España' || name === 'Torre de Madrid') {
+  if (PROCEDURAL[name] && (name === 'Edificio España' || name === 'Torre de Madrid')) {
     // Solid towers: full footprint bbox, up to the real tagged height.
     return [{ minX: lm.cx - lm.w / 2, maxX: lm.cx + lm.w / 2, minZ: lm.cz - lm.d / 2, maxZ: lm.cz + lm.d / 2, maxY: lm.h || 100 }];
   }
