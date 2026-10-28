@@ -1306,11 +1306,11 @@
  },
  "totals": {
   "tiles": 85,
-  "ready": 11,
-  "pending": 74,
+  "ready": 12,
+  "pending": 73,
   "failed": 0,
-  "readyBytes": 7537876,
-  "readyKm2": 17.95
+  "readyBytes": 7908680,
+  "readyKm2": 18.95
  },
  "tiles": [
   {
@@ -4399,7 +4399,7 @@
    "i": 4,
    "j": 0,
    "label": "Tesela k4j0",
-   "status": "pending",
+   "status": "ready",
    "core": [
     [
      2158.7,
@@ -4429,9 +4429,16 @@
    "module": "js/geodata/tile-k4j0.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": null,
-   "md5": null,
-   "counts": null,
+   "bytes": 370804,
+   "md5": "e8c42f3e04df4aa1127d45673f2a0c24",
+   "counts": {
+    "blocks": 107,
+    "parcels": 2676,
+    "parks": 95,
+    "water": 0,
+    "roads": 322,
+    "landmarks": 7
+   },
    "error": null,
    "sources": [
     "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
