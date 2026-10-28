@@ -26,6 +26,7 @@ function buildLandmarks(scene) {
     // with a 24 m slab). Render them as flat warm-granite pavement instead; no collider, walkable.
     const OPEN_SPACE = /^(Plaza|Glorieta|Parque|Jardín|Jardines|Paseo|Campo|Cuesta)\b|^Puerta del Sol\b/i;
     const plazaMat = new THREE.MeshStandardNodeMaterial({ color: 0xbfb49f, roughness: 0.9, metalness: 0.02 });
+    const debodWater = new THREE.MeshStandardNodeMaterial({ color: 0x35484a, roughness: 0.35, metalness: 0.15 });
     const bodyMats = new Map();
     const matFor = (name) => {
       const hit = MADRID_LANDMARK_STYLES.find(([re]) => re.test(name));
@@ -40,13 +41,13 @@ function buildLandmarks(scene) {
       // box is Torre de Madrid (142 m)
       const H = Math.max(9, Math.min(lm.h || 0, 160) || (lm.w > 80 ? 24 : 14));
       const g = new THREE.Group();
-      if (OPEN_SPACE.test(name)) {
+      if (OPEN_SPACE.test(name) || name === 'Templo de Debod') { // Debod default: its ring is a pool, flat water until the temple prototype passes review
         const n = lm.ring.length / 2;
         const shape = new THREE.Shape();
         shape.moveTo(lm.ring[0] - lm.cx, -(lm.ring[1] - lm.cz));
         for (let i = 1; i < n; i++) shape.lineTo(lm.ring[i * 2] - lm.cx, -(lm.ring[i * 2 + 1] - lm.cz));
         shape.closePath();
-        const flat = new THREE.Mesh(new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2).translate(0, 0.12, 0), plazaMat);
+        const flat = new THREE.Mesh(new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2).translate(0, 0.12, 0), name === 'Templo de Debod' ? debodWater : plazaMat);
         flat.receiveShadow = true;
         g.add(flat);
         g.position.set(lm.cx, 0, lm.cz);

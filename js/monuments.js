@@ -562,21 +562,14 @@ function buildTorreDeMadrid(mat, lm) {
 // the generic path wrongly extruded it ~24 m; this builder replaces that with the real composition.
 function buildTemploDeDebod(mat, lm) {
   const g = new THREE.Group();
-  const { ringShape, slab } = ringTools(lm);
   const stoneMat = new THREE.MeshStandardNodeMaterial({ color: 0xb59a72, roughness: 0.85, metalness: 0.02 });
   const pylonMat = new THREE.MeshStandardNodeMaterial({ color: 0xa78a60, roughness: 0.9, metalness: 0.02 });
   const podiumMat = new THREE.MeshStandardNodeMaterial({ color: 0xa9a193, roughness: 0.85, metalness: 0.02 });
-  const waterMat = new THREE.MeshStandardNodeMaterial({ color: 0x35484a, roughness: 0.25, metalness: 0.35 });
+  const waterMat = new THREE.MeshStandardNodeMaterial({ color: 0x35484a, roughness: 0.35, metalness: 0.15 });
   const darkMat = new THREE.MeshStandardNodeMaterial({ color: 0x2a241c, roughness: 1, metalness: 0 });
 
-  // Reflecting pool = the site ring, flat
-  const pool = slab(ringShape(1.0), 0, 0.14, waterMat);
-  pool.castShadow = false;
-  g.add(pool);
-
-  // Main axis = PCA of the ring points (the site ring is L-shaped; the two-farthest-
-  // points diagonal misplaces the composition). Podium = explicit rectangular island,
-  // as on the real site.
+  // Main axis = PCA of the site ring points (the ring is L-shaped; the farthest-pair
+  // diagonal misplaces the composition).
   const pts = [];
   for (let i = 0; i < lm.ring.length / 2; i++) pts.push([lm.ring[i * 2] - lm.cx, -(lm.ring[i * 2 + 1] - lm.cz)]);
   const n = pts.length;
@@ -587,67 +580,79 @@ function buildTemploDeDebod(mat, lm) {
   const theta = 0.5 * Math.atan2(2 * sxz, sxx - szz);
   const u = [Math.cos(theta), Math.sin(theta)];
   const v = [-u[1], u[0]];
-  // Centre the composition on the long lobe: average of the two min-u and two max-u points
   const byU = [...pts].sort((a, b) => (a[0] * u[0] + a[1] * u[1]) - (b[0] * u[0] + b[1] * u[1]));
   const ends = [byU[0], byU[1], byU[n - 2], byU[n - 1]];
   const mid = [ends.reduce((a, p) => a + p[0], 0) / 4, ends.reduce((a, p) => a + p[1], 0) / 4];
   const L = 74; // real complex is ~70 m long (madrid.es)
   const at = (t, w) => [mid[0] + u[0] * t + v[0] * w, mid[1] + u[1] * t + v[1] * w];
   const angU = Math.atan2(u[0], u[1]); // yaw aligning +z to u
-  // Island podium
-  {
-    const [px, pz] = at(0, 0);
-    const pod = new THREE.Mesh(new THREE.BoxGeometry(18, 1.1, L + 4), podiumMat);
-    pod.position.set(px, 0.65, pz);
-    pod.rotation.y = angU;
-    pod.castShadow = true;
-    pod.receiveShadow = true;
-    g.add(pod);
-  }
-  const place = (mesh, t, w, y, yawExtra = 0) => {
+  g.userData.axisU = u; // harness: reference-aligned camera
+  const place = (mesh, t, w, y) => {
     const [x, z] = at(t, w);
     mesh.position.set(x, y, z);
-    mesh.rotation.y = angU + yawExtra;
+    mesh.rotation.y = angU; // box z-length maps to axis u, NO extra yaw
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     g.add(mesh);
     return mesh;
   };
   const POD = 1.2;
-
-  // Main temple hall: long sandstone box along the axis (box z-length maps to u,
-  // NO extra yaw) + overhanging roof slab
   const halfLen = L / 2;
+  const Lu = L + 8; // basin length along the axis
+
+  // Rectangular site apron + rectangular water basin as a 4-slab frame around the
+  // island podium (the L-shaped site ring triangulated into visible wedges).
+  place(new THREE.Mesh(new THREE.BoxGeometry(30, 0.1, Lu + 12), podiumMat), 0, 0, 0.05).castShadow = false;
+  for (const ws of [-1, 1]) {
+    const w1 = new THREE.Mesh(new THREE.BoxGeometry(2, 0.14, Lu), waterMat);
+    w1.castShadow = false; place(w1, 0, ws * 10, 0.17);
+    const w2 = new THREE.Mesh(new THREE.BoxGeometry(18, 0.14, 2), waterMat);
+    w2.castShadow = false; place(w2, ws * (Lu / 2 - 1), 0, 0.17);
+  }
+  // Island podium
+  place(new THREE.Mesh(new THREE.BoxGeometry(18, 1.1, L + 4), podiumMat), 0, 0, 0.65);
+
+  // Temple hall: long sandstone box + overhanging roof slab + raised naos
   const hallL = 26, hallW = 9.5, hallH = 7.5, tHall = 0.32 * halfLen;
   place(new THREE.Mesh(new THREE.BoxGeometry(hallW, hallH, hallL), stoneMat), tHall, 0, POD + hallH / 2);
-  place(new THREE.Mesh(new THREE.BoxGeometry(hallW + 1.1, 0.7, hallL + 1.1), stoneMat), tHall, 0, POD + hallH + 0.35);
-  // Raised naos block at the far (+u) end
+  place(new THREE.Mesh(new THREE.BoxGeometry(hallW + 1.1, 0.7, hallL + 3.6), stoneMat), tHall - 1.25, 0, POD + hallH + 0.35); // roof overhang covers the columned porch (canonical silhouette)
   place(new THREE.Mesh(new THREE.BoxGeometry(8, 2.2, 8), stoneMat), tHall + hallL / 2 - 4.5, 0, POD + hallH + 1.8);
-  // Columned porch on the face toward the pylons (4 columns + architrave)
+  // Columned porch on the face toward the pylons: shadowed recess behind 4 columns
+  // + architrave + step, so the portico reads from the front (reference composition).
+  const tFace = tHall - hallL / 2;
+  place(new THREE.Mesh(new THREE.BoxGeometry(7.4, 4.8, 0.25), darkMat), tFace + 0.06, 0, POD + 2.4).castShadow = false;
   for (let c = 0; c < 4; c++) {
-    const w = -2.7 + c * 1.8;
-    place(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 4.6, 8), stoneMat), tHall - hallL / 2 - 1.3, w, POD + 2.3);
+    place(new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.5, 4.6, 8), stoneMat), tFace - 1.3, -2.7 + c * 1.8, POD + 2.3);
   }
-  place(new THREE.Mesh(new THREE.BoxGeometry(7.6, 0.8, 1.4), stoneMat), tHall - hallL / 2 - 1.3, 0, POD + 4.9);
-  // Doorway slot (dark inset) on the porch face
-  place(new THREE.Mesh(new THREE.BoxGeometry(1.8, 4.4, 0.3), darkMat), tHall - hallL / 2 + 0.05, 0, POD + 2.2).castShadow = false;
+  place(new THREE.Mesh(new THREE.BoxGeometry(7.6, 0.8, 1.4), stoneMat), tFace - 1.3, 0, POD + 4.9);
+  place(new THREE.Mesh(new THREE.BoxGeometry(9, 0.35, 3.2), podiumMat), tFace - 1.2, 0, POD + 0.18);
+  // Doorway slot on the recessed front wall
+  place(new THREE.Mesh(new THREE.BoxGeometry(1.8, 4.4, 0.3), darkMat), tFace + 0.12, 0, POD + 2.2).castShadow = false;
   // Long-side window slots (three per side, small)
   for (const ws of [-1, 1]) for (let k = -1; k <= 1; k++) {
     place(new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.6, 1.9), darkMat), tHall + k * 6.5, ws * (hallW / 2 + 0.03), POD + 4.4).castShadow = false;
   }
 
-  // Two pylon gateways on the axis toward -u: battered 4-side frusta + cornice + door slot
+  // Pylon gateways: rectangular battered piers (true open portal between two jamb
+  // frusta) + rectangular lintel + cornice cap. BoxGeometry frusta keep flat faces
+  // and crisp edges; a 4-segment cylinder read as a tapered round tower.
+  const frustumBox = (botHalf, topHalf, h) => {
+    const geo = new THREE.BoxGeometry(botHalf * 2, h, botHalf * 2).toNonIndexed();
+    const p = geo.attributes.position, sc = topHalf / botHalf;
+    for (let i = 0; i < p.count; i++) if (p.getY(i) > 0) { p.setX(i, p.getX(i) * sc); p.setZ(i, p.getZ(i) * sc); }
+    geo.computeVertexNormals();
+    return geo;
+  };
   const pylon = (t, baseHalf, topHalf, h) => {
-    const geo = new THREE.CylinderGeometry(topHalf * Math.SQRT2, baseHalf * Math.SQRT2, h, 4, 1);
-    place(new THREE.Mesh(geo, pylonMat), t, 0, POD + h / 2, Math.PI / 4);
-    // projecting cavetto cornice hint
-    place(new THREE.Mesh(new THREE.BoxGeometry(topHalf * 2 + 0.7, 0.55, topHalf * 2 + 0.7), pylonMat), t, 0, POD + h + 0.27);
-    // tall narrow doorway slot through the axis faces
-    for (const ds of [-1, 1]) {
-      const d = new THREE.Mesh(new THREE.BoxGeometry(0.3, h * 0.62, 1.5), darkMat);
-      d.castShadow = false;
-      place(d, t + ds * (baseHalf - 0.05), 0, POD + h * 0.31, Math.PI / 2);
+    const gap = 2.3; // open portal width
+    const jw = (baseHalf * 2 - gap) / 2; // full jamb width at base
+    const jwTop = jw * (topHalf / baseHalf);
+    for (const js of [-1, 1]) {
+      place(new THREE.Mesh(frustumBox(jw / 2, jwTop / 2, h), pylonMat), t, js * (gap / 2 + jw / 2), POD + h / 2);
     }
+    // rectangular lintel spanning the portal + cornice cap
+    place(new THREE.Mesh(new THREE.BoxGeometry(topHalf * 2 + 0.2, 1.5, topHalf * 2 + 0.2), pylonMat), t, 0, POD + h - 0.75);
+    place(new THREE.Mesh(new THREE.BoxGeometry(topHalf * 2 + 0.8, 0.5, topHalf * 2 + 0.8), pylonMat), t, 0, POD + h + 0.25);
   };
   pylon(-0.22 * halfLen, 3.1, 2.5, 8.6);
   pylon(-0.58 * halfLen, 2.7, 2.2, 7.6);
@@ -655,10 +660,10 @@ function buildTemploDeDebod(mat, lm) {
 }
 
 const PROCEDURAL = {
-  'Templo de Debod': buildTemploDeDebod,
   // PARKED PROTOTYPES (visual validation open - kept out of the default render path):
   // 'Edificio España': buildEdificioEspana,   // window-grid detachment on crescent outer arc; massing not reference-validated
   // 'Torre de Madrid': buildTorreDeMadrid,    // blank facade swath + terraces read as floating fins (parent review 2026-10-29)
+  // 'Templo de Debod': buildTemploDeDebod,     // pylon/portal/basin geometry under correction (parent review 2026-10-29)
 
   'Puerta de Alcalá': buildPuertaDeAlcala,
   'Palacio de Cibeles': buildPalacioDeCibeles,
@@ -693,5 +698,17 @@ export function buildProceduralColliders(name, lm) {
 
 export function buildProceduralMonument(name, mat, lm) {
   const fn = PROCEDURAL[name];
+  return fn ? fn(mat, lm) : null;
+}
+
+// Harness-only access: parked prototypes stay renderable for pixel validation
+// WITHOUT entering the default render path (PROCEDURAL above is the live gate).
+const PROTOTYPES = {
+  'Edificio España': buildEdificioEspana,
+  'Torre de Madrid': buildTorreDeMadrid,
+  'Templo de Debod': buildTemploDeDebod,
+};
+export function buildMonumentForReview(name, mat, lm) {
+  const fn = PROCEDURAL[name] || PROTOTYPES[name];
   return fn ? fn(mat, lm) : null;
 }
