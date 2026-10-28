@@ -578,3 +578,12 @@ Harness caveat corrected: earlier palette judgment used a dimmer hand-rolled lig
 mirrors the game's golden preset (hemi 0x9abbe6/0xc88a62 @1.48, sun 0xffca92 @5.8, dir -0.44/0.58/-0.68) before
 pixel sign-off. FULL-MAP VISUAL VALIDATION STILL OUTSTANDING (harness = real modules on block #315 + one
 clearly-separated synthetic patio block, not the full map).
+
+## Bug de factoría en la ruta de teselas (2026-10-28, encontrado por el harness real)
+`madrid-tile-world.js` indexaba FACADE_DEFS por tier: las entradas 3+ son factorías NYC curtain-wall
+(cristal oscuro) que ignoran la paleta Madrid, así que toda parcela con tier 3 (salmón, ~25% del roll de 4
+tiers) renderizaba como torre de cristal oscura en la ciudad real. El harness de recreación nunca lo mostró
+porque construía materiales directamente con createPreWarBuildingMaterial; lo cazó block-tilepath.html (la
+ruta real). Ahora TODAS las tiers Madrid usan la factoría pre-war (mampostería). Medianeras Madrid aclaradas
+(revoco claro 0xb3a48c-0xcbbfa7 en vez del ladrillo común oscuro NYC, gated por uMadrid). Verificación de
+escena completa SIGUE PENDIENTE.

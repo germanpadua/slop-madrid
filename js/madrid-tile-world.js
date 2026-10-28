@@ -125,7 +125,10 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
   // Madrid almendra palettes (caliza / ladrillo visto / revoco encalado, balcones rhythm) - NOT the
   // Manhattan pre-war table. Same factories, Madrid options; faces keep the storefront ground floors (comercios
   // en bajos) until road-adjacency data picks entry vs shop per wall.
-  const facades = MADRID_FACADE_OPTS.map((opts, i) => FACADE_DEFS[i % FACADE_DEFS.length][0]({ ...opts, boxLocal: true, madrid: true }));
+  // Every Madrid tier is masonry revoco/ladrillo: always the pre-war factory. Indexing FACADE_DEFS by tier
+  // was a bug: entries 3+ are NYC curtain-wall (glass) factories that ignore the Madrid palette and turned
+  // tier-3 parcels into dark glass towers (caught by the real tile-path harness, block-tilepath.html).
+  const facades = MADRID_FACADE_OPTS.map((opts) => FACADE_DEFS[0][0]({ ...opts, boxLocal: true, madrid: true }));
   const mats = {
     road: materials?.road || createRoadSurfaceMaterial(),
     curb: materials?.curb || createCurbMaterial(),

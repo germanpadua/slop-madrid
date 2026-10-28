@@ -821,9 +821,14 @@ function createPreWarBuildingMaterial(opts = {}) {
     // Rear, court & lot-line walls are plain common brick (red-brown or buff by building); lot-line walls weather in
     // patches of grey parging (worked out on those walls only), some are parged all over
     const backBrick = mix(
-      mix(color(0x6c3d30), color(0x8a503e), fract(tone.mul(7.31))),
-      mix(color(0x9a8669), color(0xb09a7a), fract(tone.mul(5.17))),
-      step(0.58, tone)
+      mix(
+        mix(color(0x6c3d30), color(0x8a503e), fract(tone.mul(7.31))),
+        mix(color(0x9a8669), color(0xb09a7a), fract(tone.mul(5.17))),
+        step(0.58, tone)
+      ),
+      // Madrid medianeras: light revoco/parging tones ( Tiny-Madrid refs ), never NYC dark common brick
+      mix(color(0xb3a48c), color(0xcbbfa7), fract(tone.mul(5.17))),
+      uMadrid
     );
     const parged = float(0.0).toVar();
     If(blank.mul(back).greaterThan(0.5), () => {
