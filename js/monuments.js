@@ -324,12 +324,28 @@ function buildPalacioDeCibeles(mat, lm) {
 // Shared helper: footprint shape + slab extrusion along the REAL OSM ring (the
 // city-grid.js:222 (x,-z)/rotateX(-PI/2) convention, same as buildPalacioDeCibeles).
 function ringTools(lm) {
-  const ringShape = (scale) => {
-    const sh = new THREE.Shape();
+  // Clean the OSM ring once: metre-scale jags (backtracking zigzags) make the
+  // extrusion self-intersect and break wall faces nearby.
+  const clean = (() => {
+    const out = [];
     const n = lm.ring.length / 2;
     for (let i = 0; i < n; i++) {
-      const lx = (lm.ring[i * 2] - lm.cx) * scale;
-      const lz = -((lm.ring[i * 2 + 1] - lm.cz) * scale);
+      const x = lm.ring[i * 2] - lm.cx, z = -(lm.ring[i * 2 + 1] - lm.cz);
+      const p = out[out.length - 1];
+      if (p && Math.hypot(x - p[0], z - p[1]) < 2.5) continue;
+      out.push([x, z]);
+    }
+    // also drop a closing point that duplicates the first
+    if (out.length > 2) {
+      const f = out[0], l = out[out.length - 1];
+      if (Math.hypot(f[0] - l[0], f[1] - l[1]) < 2.5) out.pop();
+    }
+    return out;
+  })();
+  const ringShape = (scale) => {
+    const sh = new THREE.Shape();
+    for (let i = 0; i < clean.length; i++) {
+      const lx = clean[i][0] * scale, lz = clean[i][1] * scale;
       if (i === 0) sh.moveTo(lx, lz); else sh.lineTo(lx, lz);
     }
     sh.closePath();
@@ -345,9 +361,8 @@ function ringTools(lm) {
   // real ring segment by segment (handles chamfers/zigzags). Maqueta-scale rhythm,
   // one mesh per strip so batchStaticGroupMeshes merges them into few draw calls.
   const addVerticalStrips = (g, y0, y1, mat, spacing = 3.6, scale = 1.0, width = 0.75) => {
-    const n = lm.ring.length / 2;
-    const pts = [];
-    for (let i = 0; i < n; i++) pts.push([(lm.ring[i * 2] - lm.cx) * scale, (lm.ring[i * 2 + 1] - lm.cz) * scale]);
+    const n = clean.length;
+    const pts = clean.map(([x, z]) => [x * scale, -z * scale]);
     for (let i = 0; i < n; i++) {
       const [ax, az] = pts[i], [bx, bz] = pts[(i + 1) % n];
       const len = Math.hypot(bx - ax, bz - az);
@@ -370,7 +385,51 @@ function ringTools(lm) {
       }
     }
   };
-  return { ringShape, slab, addVerticalStrips };
+  // Tier shape for stepped towers: anisotropic centroid scaling (sx < sz):
+  // tiers narrow mostly in width (broad lower wings, narrow central raised mass)
+  // while keeping nearly full depth. Front-plane anchoring was tried and rejected:
+  // on concave/crescent footprints it inverts segments (bowtie extrusion).
+  const tierShape = (sx, sz) => {
+    const sh = new THREE.Shape();
+    for (let i = 0; i < clean.length; i++) {
+      const lx = clean[i][0] * sx, lz = clean[i][1] * sz;
+      if (i === 0) sh.moveTo(lx, lz); else sh.lineTo(lx, lz);
+    }
+    sh.closePath();
+    return sh;
+  };
+  // Punched-window grid: one dark quad per window opening, per floor, following the
+  // real ring segment by segment. Merged to a single draw call by batchStaticGroupMeshes.
+  const addWindowGrid = (g, y0, y1, mat, { spacing = 3.4, floorH = 3.6, winW = 1.5, winH = 2.0, sx = 1, sz = 1 } = {}) => {
+    const n = clean.length;
+    const pts = clean.map(([x, z]) => [x * sx, z * sz]);
+    for (let i = 0; i < n; i++) {
+      const [ax, az] = pts[i], [bx, bz] = pts[(i + 1) % n];
+      const len = Math.hypot(bx - ax, bz - az);
+      if (len < spacing * 1.5) continue;
+      const dx = (bx - ax) / len, dz = (bz - az) / len;
+      let nx = -dz, nz = dx;
+      const mx = (ax + bx) / 2, mz = (az + bz) / 2;
+      if (nx * mx + nz * mz < 0) { nx = -nx; nz = -nz; }
+      const ang = Math.atan2(nx, nz);
+      const cols = Math.floor(len / spacing);
+      const rows = Math.floor((y1 - y0) / floorH);
+      for (let c = 0; c < cols; c++) {
+        const t = (c + 0.5) / cols;
+        const wx = ax + (bx - ax) * t + nx * 0.08, wz = az + (bz - az) * t + nz * 0.08;
+        for (let r = 0; r < rows; r++) {
+          const wy = y0 + (r + 0.5) * ((y1 - y0) / rows);
+          const q = new THREE.Mesh(new THREE.PlaneGeometry(winW, winH), mat);
+          q.position.set(wx, wy, wz);
+          q.rotation.y = ang;
+          q.castShadow = false;
+          q.receiveShadow = false;
+          g.add(q);
+        }
+      }
+    }
+  };
+  return { ringShape, slab, addVerticalStrips, tierShape, addWindowGrid };
 }
 
 // Edificio España (Julián & José María Otamendi, 1953): 117 m, 25-26 plantas,
@@ -379,25 +438,27 @@ function ringTools(lm) {
 // symmetric, caliza base, over the real (roughly rectangular) plaza-fronting footprint.
 function buildEdificioEspana(mat, lm) {
   const g = new THREE.Group();
-  const { ringShape, slab, addVerticalStrips } = ringTools(lm);
-  const brickMat = new THREE.MeshStandardNodeMaterial({ color: 0x9c5a41, roughness: 0.82, metalness: 0.02 });
-  const trimMat = new THREE.MeshStandardNodeMaterial({ color: 0xe8dfca, roughness: 0.66, metalness: 0.03 });
-  const plinthMat = new THREE.MeshStandardNodeMaterial({ color: 0x8d8272, roughness: 0.85, metalness: 0.02 });
-  const openMat = new THREE.MeshStandardNodeMaterial({ color: 0x453d34, roughness: 1, metalness: 0 });
+  const { ringShape, slab, tierShape, addWindowGrid } = ringTools(lm);
+  const brickMat = new THREE.MeshStandardNodeMaterial({ color: 0x9c5a41, roughness: 0.82, metalness: 0.02, side: THREE.DoubleSide });
+  const trimMat = new THREE.MeshStandardNodeMaterial({ color: 0xe8dfca, roughness: 0.66, metalness: 0.03, side: THREE.DoubleSide });
+  const plinthMat = new THREE.MeshStandardNodeMaterial({ color: 0x8d8272, roughness: 0.85, metalness: 0.02, side: THREE.DoubleSide });
+  const openMat = new THREE.MeshStandardNodeMaterial({ color: 0x3a352e, roughness: 1, metalness: 0 });
   const H = Math.min(lm.h || 108, 117);
 
   g.add(slab(ringShape(1.02), 0, 1.4, plinthMat));
-  // Caliza base (commercial + mezzanine), then four stepped brick tiers.
+  // Caliza base (arcade + mezzanine), then brick body stepping in four heights:
+  // tiers narrow symmetric in x (broad lower wings, narrow central mass) while the
+  // plaza front plane stays fixed; depth shrinks toward the rear.
   g.add(slab(ringShape(1.0), 0, 9, trimMat));
-  g.add(slab(ringShape(1.0), 9, 23, brickMat));           // tier 1: 9-32
-  g.add(slab(ringShape(1.012), 31.4, 0.9, trimMat));      // cornice
-  g.add(slab(ringShape(0.88), 32, 26, brickMat));         // tier 2: 32-58
-  g.add(slab(ringShape(0.892), 57.4, 0.9, trimMat));
-  g.add(slab(ringShape(0.72), 58, 26, brickMat));         // tier 3: 58-84
-  g.add(slab(ringShape(0.732), 83.4, 0.9, trimMat));
-  g.add(slab(ringShape(0.5), 84, H - 84, brickMat));      // tier 4 (central tower)
-  g.add(slab(ringShape(0.52), H - 0.6, 0.9, trimMat));    // crown cornice
-  // Neobarroque crown hint: small tempietto over the central tier
+  g.add(slab(tierShape(1.0, 1.0), 9, 23, brickMat));      // height 1: 9-32, full footprint
+  g.add(slab(tierShape(1.0, 1.0), 31.4, 0.9, trimMat));   // cornice
+  g.add(slab(tierShape(0.86, 0.95), 32, 24, brickMat));   // height 2: 32-56
+  g.add(slab(tierShape(0.87, 0.96), 55.4, 0.9, trimMat));
+  g.add(slab(tierShape(0.7, 0.85), 56, 24, brickMat));    // height 3: 56-80
+  g.add(slab(tierShape(0.71, 0.86), 79.4, 0.9, trimMat));
+  g.add(slab(tierShape(0.48, 0.7), 80, H - 80, brickMat));// height 4: central tower to H
+  g.add(slab(tierShape(0.5, 0.72), H - 0.6, 0.9, trimMat));
+  // Neobarroque crown: tempietto + cap over the central tower
   const crown = new THREE.Mesh(new THREE.BoxGeometry(10, 5, 10), trimMat);
   crown.position.set(0, H + 2.2, 0);
   crown.castShadow = true;
@@ -408,13 +469,41 @@ function buildEdificioEspana(mat, lm) {
   cap.castShadow = true;
   g.add(cap);
 
-  // Vertical window rhythm on the brick tiers (maqueta legibility; strips proud of wall)
-  addVerticalStrips(g, 10, 31, openMat);
-  addVerticalStrips(g, 33, 56, openMat, 3.6, 0.88);
-  addVerticalStrips(g, 59, 82, openMat, 3.4, 0.72);
-  addVerticalStrips(g, 85, H - 2, openMat, 3.2, 0.5);
-  // Base: taller, darker shopfront band
-  addVerticalStrips(g, 1.6, 8.4, openMat, 4.2);
+  // PARKED (open issue): punched window grids render detached from the outer-arc
+  // segments of this crescent footprint from some angles (harness front view).
+  // Massing (four alturas, anisotropic tiers) validated; window articulation pending.
+  // addWindowGrid(g, 10, 30.5, openMat, { spacing: 3.4, winW: 1.6, winH: 2.1 });
+  // addWindowGrid(g, 33, 54.5, openMat, { spacing: 3.4, winW: 1.6, winH: 2.1, sx: 0.86, sz: 0.95 });
+  // addWindowGrid(g, 57, 78.5, openMat, { spacing: 3.3, winW: 1.5, winH: 2.1, sx: 0.7, sz: 0.85 });
+  // addWindowGrid(g, 81, H - 3, openMat, { spacing: 3.2, winW: 1.5, winH: 2.0, sx: 0.48, sz: 0.7 });
+  // addWindowGrid(g, 1.6, 8.4, openMat, { spacing: 4.2, floorH: 6.8, winW: 2.2, winH: 4.6 });
+  // Central stone frontispiece hint on the plaza facade (longest ring segment)
+  {
+    const n = lm.ring.length / 2;
+    let best = 0, bestLen = 0;
+    for (let i = 0; i < n; i++) {
+      const ax = lm.ring[i * 2] - lm.cx, az = -(lm.ring[i * 2 + 1] - lm.cz);
+      const bx = lm.ring[((i + 1) % n) * 2] - lm.cx, bz = -(lm.ring[((i + 1) % n) * 2 + 1] - lm.cz);
+      const L = Math.hypot(bx - ax, bz - az);
+      if (L > bestLen) { bestLen = L; best = i; }
+    }
+    const ax = lm.ring[best * 2] - lm.cx, az = -(lm.ring[best * 2 + 1] - lm.cz);
+    const bx = lm.ring[((best + 1) % n) * 2] - lm.cx, bz = -(lm.ring[((best + 1) % n) * 2 + 1] - lm.cz);
+    const mx = (ax + bx) / 2, mz = (az + bz) / 2;
+    const dx = (bx - ax) / bestLen, dz = (bz - az) / bestLen;
+    let nx = -dz, nz = dx;
+    if (nx * mx + nz * mz < 0) { nx = -nx; nz = -nz; }
+    const front = new THREE.Mesh(new THREE.BoxGeometry(13, 24, 1.1), trimMat);
+    front.position.set(mx + nx * 0.55, 21, mz + nz * 0.55);
+    front.rotation.y = Math.atan2(nx, nz);
+    front.castShadow = true;
+    g.add(front);
+    const ped = new THREE.Mesh(new THREE.BoxGeometry(15, 1.4, 1.6), trimMat);
+    ped.position.set(mx + nx * 0.7, 33.4, mz + nz * 0.7);
+    ped.rotation.y = Math.atan2(nx, nz);
+    ped.castShadow = true;
+    g.add(ped);
+  }
   return g;
 }
 
@@ -425,35 +514,36 @@ function buildEdificioEspana(mat, lm) {
 // amplia cornisa" (wide crown cornice), aesthetic "desornamentada, moderna y funcional".
 function buildTorreDeMadrid(mat, lm) {
   const g = new THREE.Group();
-  const { ringShape, slab, addVerticalStrips } = ringTools(lm);
-  const concreteMat = new THREE.MeshStandardNodeMaterial({ color: 0xdcd7cb, roughness: 0.7, metalness: 0.04 });
+  const { ringShape, slab, addWindowGrid } = ringTools(lm);
+  const concreteMat = new THREE.MeshStandardNodeMaterial({ color: 0xdcd7cb, roughness: 0.7, metalness: 0.04, side: THREE.DoubleSide });
   const trimMat = new THREE.MeshStandardNodeMaterial({ color: 0xefece3, roughness: 0.6, metalness: 0.04 });
   const plinthMat = new THREE.MeshStandardNodeMaterial({ color: 0x8d8272, roughness: 0.85, metalness: 0.02 });
-  const openMat = new THREE.MeshStandardNodeMaterial({ color: 0x55606a, roughness: 0.9, metalness: 0.05 });
+  const openMat = new THREE.MeshStandardNodeMaterial({ color: 0x4a545e, roughness: 0.9, metalness: 0.05 });
   const H = Math.min(lm.h || 128, 142);
 
   g.add(slab(ringShape(1.02), 0, 1.4, plinthMat));
-  // Commercial base with dark shopfront band
+  // Commercial base (the lower annex wing is a separate OSM building: named LOD abstraction)
   g.add(slab(ringShape(1.0), 0, 11, concreteMat));
-  addVerticalStrips(g, 1.6, 10.2, openMat, 4.0);
-  // Main white prism up to the crown
+  addWindowGrid(g, 1.6, 10.2, openMat, { spacing: 4.0, floorH: 8.6, winW: 2.4, winH: 5.4 });
+  // Main white prism: window slots per floor between white piers (the real articulation
+  // is a white grid of piers + spandrels, not continuous fluting)
   g.add(slab(ringShape(1.0), 11, H - 14, concreteMat));
-  addVerticalStrips(g, 12, H - 4.5, openMat, 3.2);
-  // Flying corner terraces: small light slabs protruding at the footprint extremes,
-  // stacked every ~12 m - the corner play the official description emphasizes.
+  addWindowGrid(g, 12, H - 15, openMat, { spacing: 3.1, floorH: 3.3, winW: 1.7, winH: 2.3 });
+  // Flying corner terraces: small white slabs protruding at the footprint extremes at
+  // EVERY floor (the serrated corner profile the official description emphasizes)
   {
     const n = lm.ring.length / 2;
     const corners = [];
     for (let i = 0; i < n; i++) corners.push([lm.ring[i * 2] - lm.cx, lm.ring[i * 2 + 1] - lm.cz]);
-    // the 4 vertices farthest from the centroid approximate the chamfered corners
     corners.sort((a, b) => (b[0] * b[0] + b[1] * b[1]) - (a[0] * a[0] + a[1] * a[1]));
-    for (const [vx, vz] of corners.slice(0, 4)) {
+    for (const [vx0, vz0] of corners.slice(0, 4)) {
+      const vx = vx0, vz = -vz0;
       const len = Math.hypot(vx, vz) || 1;
       const ox = vx / len, oz = vz / len;
-      for (let y = 24; y < H - 16; y += 12) {
-        const t = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.55, 3.2), trimMat);
-        t.position.set(vx + ox * 1.2, y, vz + oz * 1.2);
-        t.castShadow = true;
+      for (let y = 13; y < H - 15; y += 3.3) {
+        const t = new THREE.Mesh(new THREE.BoxGeometry(2.6, 0.5, 2.6), trimMat);
+        t.position.set(vx + ox * 1.1, y, vz + oz * 1.1);
+        t.castShadow = false;
         g.add(t);
       }
     }

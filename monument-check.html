@@ -16,6 +16,7 @@
 import * as THREE from 'three/webgpu';
 import { GEO } from './js/madrid-geodata.js';
 import { buildProceduralMonument } from './js/monuments.js';
+import { batchStaticGroupMeshes } from './js/city-grid.js';
 fetch('/__shot?name=boot', { method: 'POST', body: 'imports-ok' }).catch(() => {});
 window.onerror = (m) => { fetch('/__shot?name=err', { method: 'POST', body: String(m) }).catch(() => {}); };
 window.addEventListener('unhandledrejection', (e) => { fetch('/__shot?name=err', { method: 'POST', body: 'rej:' + String(e.reason && e.reason.message || e.reason) }).catch(() => {}); });
@@ -55,10 +56,14 @@ for (const name of NAMES) {
   scene.add(holder);
   let meshes = 0, tris = 0;
   holder.traverse((o) => { if (o.isMesh) { meshes++; const idx = o.geometry.index; tris += (idx ? idx.count : o.geometry.attributes.position.count) / 3; } });
+  const preMeshes = meshes, preTris = tris;
+  batchStaticGroupMeshes(holder);
+  let postMeshes = 0, postTris = 0;
+  holder.traverse((o) => { if (o.isMesh) { postMeshes++; const idx = o.geometry.index; postTris += (idx ? idx.count : o.geometry.attributes.position.count) / 3; } });
   const H = lm.h || 40;
   const R = Math.max(lm.w || 40, lm.d || 40);
   const tag = name.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
-  stats[name] = { meshes, tris: Math.round(tris), w: lm.w, d: lm.d, h: lm.h };
+  stats[name] = { preMeshes, preTris: Math.round(preTris), postMeshes, postTris: Math.round(postTris), drawCallsApprox: postMeshes, w: lm.w, d: lm.d, h: lm.h };
   // oblique from the sunlit side
   const D = Math.max(R * 1.25, H * 1.15);
   cam.position.set(D * 0.8, H * 0.8, -D); cam.lookAt(0, H * 0.38, 0);
@@ -69,6 +74,11 @@ for (const name of NAMES) {
   // close ground view (what the player sees a pie)
   cam.position.set(R * 0.85, 2.2, -R * 1.05); cam.lookAt(0, H * 0.32, 0);
   renderer.render(scene, cam); await postShot('mon-' + tag + '-street');
+  // diagnostic: front (from zfront side) + top
+  cam.position.set(0, H * 0.55, D * 1.3); cam.lookAt(0, H * 0.35, 0);
+  renderer.render(scene, cam); await postShot('mon-' + tag + '-front');
+  cam.position.set(0.1, D * 2.6, 0.1); cam.lookAt(0, 0, 0);
+  renderer.render(scene, cam); await postShot('mon-' + tag + '-top');
   scene.remove(holder);
 }
 await fetch('/__shot?name=stats', { method: 'POST', body: JSON.stringify(stats) });
