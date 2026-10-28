@@ -22,6 +22,25 @@ function distToSeg(px, pz, ax, az, bx, bz) {
   return Math.hypot(ex, ez);
 }
 
+// A shared boundary means coincident WALLS, not near corners: the sample's closest Q edge must be
+// (anti-)parallel to P's edge, otherwise a corner touch inflates the shared run by up to 2xTOL.
+function nearestParallelEdge(px, pz, ux, uz, q) {
+  let best = Infinity;
+  for (let k = 0; k < q.length; k++) {
+    const [cx, cz] = q[k], [dx, dz] = q[(k + 1) % q.length];
+    const ex = dx - cx, ez = dz - cz;
+    const L = Math.hypot(ex, ez);
+    if (L < 0.3) continue;
+    const dot = Math.abs((ux * ex + uz * ez) / L);
+    if (dot < 0.7) continue;
+    // Interior projection only: a sample past the edge's end is not a shared wall (kills corner inflation)
+    const t = ((px - cx) * ex + (pz - cz) * ez) / (L * L);
+    if (t < 0 || t > 1) continue;
+    best = Math.min(best, Math.hypot(ex * t - (px - cx), ez * t - (pz - cz)));
+  }
+  return best;
+}
+
 /**
  * @param parcels array of { ring: [x,z,...], h, x0, x1, z0, z1 }
  * @returns array of [nHnegX, nHposX, nHnegZ, nHposZ] per parcel (0 = no party wall on that side)
@@ -41,6 +60,7 @@ export function partyWallHeights(parcels) {
       const [ax, az] = pts[e], [bx, bz] = pts[(e + 1) % pts.length];
       const L = Math.hypot(bx - ax, bz - az);
       if (L < 0.3) continue;
+      const ux = (bx - ax) / L, uz = (bz - az) / L;
       const mx = (ax + bx) / 2, mz = (az + bz) / 2;
       // Nearest AABB side of this edge's midpoint decides which box face it feeds
       const dSides = [Math.abs(mx - P.x0), Math.abs(mx - P.x1), Math.abs(mz - P.z0), Math.abs(mz - P.z1)];
@@ -53,13 +73,7 @@ export function partyWallHeights(parcels) {
           if (j === i) continue;
           const Q = parcels[j];
           if (px < Q.x0 - TOL_M || px > Q.x1 + TOL_M || pz < Q.z0 - TOL_M || pz > Q.z1 + TOL_M) continue;
-          const q = rings[j];
-          let near = false;
-          for (let k = 0; k < q.length && !near; k++) {
-            const [cx, cz] = q[k], [dx2, dz2] = q[(k + 1) % q.length];
-            if (distToSeg(px, pz, cx, cz, dx2, dz2) <= TOL_M) near = true;
-          }
-          if (near) shared[side].set(j, (shared[side].get(j) || 0) + L / n);
+          if (nearestParallelEdge(px, pz, ux, uz, rings[j]) <= TOL_M) shared[side].set(j, (shared[side].get(j) || 0) + L / n);
         }
       }
     }
