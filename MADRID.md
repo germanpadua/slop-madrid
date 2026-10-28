@@ -101,6 +101,9 @@ servicio principal es:
 - Otras escenas descartadas: `Hosted/Escena_WSL1` (piloto 860×390 m en la sierra,
   ~40.53°N, unidades ft), `MODELO_3D_VECTORIAL`, BIM, nube de puntos (no hitos centro).
 
+**Estado 2026-10-28 (verificado en vivo)**: fetcher implementado (`tools/madrid/i3s.py <nombre> <lon0,lat0,lon1,lat1> <outdir>`): recorre el quadtree, descarga hojas por bbox y decodifica el buffer. Layout confirmado: cabecera `uint32 vertexCount, uint32 featureCount`, posiciones `f32 x3` **offsets relativos al centro mbs del nodo** (lon/lat en grados, z en metros), normales `f32 x3`, uv0 `f32 x2`, color `u8 x4`, ids de feature al final. Puerta de Alcalá: 5 hojas, 18,6 MB en bruto, vértices verificados dentro del bbox (-3.6866, 40.4188, 667 m). Pendiente: paquete runtime (GLB diezmado) + proyección a mundo + chequeo pixel.
+Corrección de diagnóstico: los monumentos del centro NO estaban "en teselas sin construir" — están en la semilla fase2 (`GEO.landmarks`, 42 sitios extruidos) con materiales por nombre desde d61392e; solo Puerta de Alcalá falta del conjunto (ver nota de gate x=1208 abajo) y la cubre esta vía i3s.
+
 Integración fase 1: fetcher `tools/madrid/i3s.py` (trae hojas por bbox de hito),
 conversión a un paquete de meshes con colisión aproximada; **el fork base funciona sin
 ellas** (fallback = huella Catastro/OSM + altura real).
