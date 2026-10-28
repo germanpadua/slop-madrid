@@ -4,3 +4,4 @@
 tools/data/madrid/*.json
 tools/data/madrid/tiles/
 tools/data/madrid/*.overpassql
+assets/mesh-monuments/

@@ -2,6 +2,7 @@ import * as THREE from 'three/webgpu';
 import { LANDMARK_SITES } from './city-config.js';
 import { MADRID_LANDMARK_STYLES } from './madrid-tiles.js';
 import { buildProceduralMonument, buildProceduralColliders } from './monuments.js';
+import { hasMeshMonument } from './monument-meshes.js';
 import { batchStaticGroupMeshes } from './city-grid.js';
 
 // js/landmarks.js
@@ -41,6 +42,11 @@ function buildLandmarks(scene) {
       // box is Torre de Madrid (142 m)
       const H = Math.max(9, Math.min(lm.h || 0, 160) || (lm.w > 80 ? 24 : 14));
       const g = new THREE.Group();
+      if (hasMeshMonument(name)) {
+        // Mesh-backed monument (gated ?meshmonuments=1): geometry loads async in monument-meshes.js; keep footprint collider
+        colliders.push({ minX: lm.cx - lm.w / 2, maxX: lm.cx + lm.w / 2, minZ: lm.cz - lm.d / 2, maxZ: lm.cz + lm.d / 2, maxY: H });
+        continue;
+      }
       if (OPEN_SPACE.test(name) || name === 'Templo de Debod') { // Debod default: its ring is a pool, flat water until the temple prototype passes review
         const n = lm.ring.length / 2;
         const shape = new THREE.Shape();

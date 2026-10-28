@@ -6,6 +6,7 @@ import { ClusteredLighting } from 'three/addons/lighting/ClusteredLighting.js';
 import { getLocationLabel, isTypingInField, ROADS, NYC_LANDMARKS, TELEPORT_LOCATIONS } from './city-config.js';
 import { buildCityGrid, cityMaterials } from './city-grid.js';
 import { buildLandmarks } from './landmarks.js';
+import { loadMeshMonuments } from './monument-meshes.js';
 import { buildCityBlocks } from './buildings.js';
 import { GEO } from './madrid-geodata.js';
 import { buildStreetDetails } from './street-details.js';
@@ -99,6 +100,7 @@ async function initApp() {
   // Madrid's surrounding city comes from geographic tiles. The inherited NYC borough
   // generator built 15,447 fictional buildings, bridges and horizon land even here.
   const { colliders: landmarkColliders } = buildLandmarks(scene);
+  loadMeshMonuments(scene);
   markInit('landmarks');
   const cityBlocks = buildCityBlocks(scene);
   markInit('blocks');
