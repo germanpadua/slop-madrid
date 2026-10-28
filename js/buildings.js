@@ -761,6 +761,7 @@ function buildCityBlocks(scene) {
             d: hd
           });
         }
+        }
       }
     } else if (roof !== 'none') {
       const tw = rectW(top);
