@@ -728,10 +728,9 @@ function buildCityBlocks(scene) {
       // do not exist on Madrid rooflines and are never emitted here.
       const tw = rectW(top);
       const td = rectD(top);
-      // Single-span footprints only: an AABB-spanning hip on a patio block reads as an industrial
-      // shed (visual review 2026-10-28). Large parcels keep flat roofs until footprint-aware
-      // perimeter roof rings land.
-      if (tw >= 6 && td >= 6 && Math.max(tw, td) <= 24 && chance(0.72)) {
+      // Large footprints (patio blocks) get a perimeter roof ring with a patio opening instead of a
+      // single span: an AABB-spanning hip there read as an industrial shed (visual review 2026-10-28).
+      if (tw >= 6 && td >= 6 && chance(0.72)) {
         blk.hipRoofs.push({
           x: (top.x0 + top.x1) * 0.5,
           y: top.y1,
@@ -741,7 +740,8 @@ function buildCityBlocks(scene) {
           h: Math.min(4.2, Math.max(2.0, Math.min(tw, td) * range(0.26, 0.34))),
           rot: td > tw ? Math.PI * 0.5 : 0,
           ci: (rand() * 5) | 0,
-          slate: chance(0.08)
+          slate: chance(0.08),
+          ring: Math.min(tw, td) > 24
         });
       } else {
         const hw = Math.min(tw - 1.2, range(2.4, 4.2));
@@ -2428,6 +2428,26 @@ function buildCityBlocks(scene) {
     0.5, 0, -0.5, 0.5, 0, 0.5, 0.25, 1, 0
   ]), 3));
   hipGeo.computeVertexNormals();
+  // Perimeter roof ring for patio blocks: outer slopes up to a ridge ring, inner slopes down to a
+  // patio opening (the parcel's own top face shows through as the patio floor). Unit span 1x1.
+  const ringGeo = new THREE.BufferGeometry();
+  {
+    const k1 = 0.16, k2 = 0.30, yi = 0.45;
+    const O = 0.5, R = 0.5 - k1, I = 0.5 - k2;
+    const A = [-O, 0, -O], B = [O, 0, -O], C = [O, 0, O], D = [-O, 0, O];
+    const RA = [-R, 1, -R], RB = [R, 1, -R], RC = [R, 1, R], RD = [-R, 1, R];
+    const IA = [-I, yi, -I], IB = [I, yi, -I], IC = [I, yi, I], ID = [-I, yi, I];
+    const tri = [];
+    const quad = (p, q, r, s) => { tri.push(...p, ...q, ...r, ...p, ...r, ...s); };
+    const o = [A, B, C, D], rg = [RA, RB, RC, RD], inr = [IA, IB, IC, ID];
+    for (let s = 0; s < 4; s++) {
+      const t = (s + 1) % 4;
+      quad(o[s], o[t], rg[t], rg[s]);
+      quad(rg[s], rg[t], inr[t], inr[s]);
+    }
+    ringGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(tri), 3));
+  }
+  ringGeo.computeVertexNormals();
   const hipMat = new THREE.MeshStandardNodeMaterial({ roughness: 0.9, metalness: 0.0, side: THREE.DoubleSide });
   hipMat.colorNode = Fn(() => {
     // subtle horizontal tile-course shading up the slope
@@ -2447,6 +2467,11 @@ function buildCityBlocks(scene) {
   hipInst.frustumCulled = false;
   for (let i = 0; i < MAX_HIP_ROOFS; i++) hipInst.setColorAt(i, hipPalette[0]);
   group.add(hipInst);
+  const ringInst = new THREE.InstancedMesh(ringGeo, hipMat, MAX_HIP_ROOFS);
+  ringInst.castShadow = ringInst.receiveShadow = true;
+  ringInst.frustumCulled = false;
+  for (let i = 0; i < MAX_HIP_ROOFS; i++) ringInst.setColorAt(i, hipPalette[0]);
+  group.add(ringInst);
 
   // 3. Rooftop mechanical penthouses & HVAC chillers with top exhaust fans & side louvers
   const hvacMat = new THREE.MeshStandardNodeMaterial({ roughness: 0.52, metalness: 0.45 });
@@ -2598,6 +2623,7 @@ function buildCityBlocks(scene) {
     let wtCount = 0;
     let hvacCount = 0;
     let hipCount = 0;
+    let ringCount = 0;
     fireEscapeSystem.begin();
     let awningCount = 0;
     let shedCount = 0;
@@ -2648,15 +2674,21 @@ function buildCityBlocks(scene) {
       }
 
       // 3b. Madrid terracotta hip roofs (per-instance rotation: block turn + ridge along the long axis)
-      for (let i = 0; i < blk.hipRoofs.length && hipCount < MAX_HIP_ROOFS; i++) {
+      for (let i = 0; i < blk.hipRoofs.length && hipCount + ringCount < MAX_HIP_ROOFS * 2; i++) {
         const r = blk.hipRoofs[i];
         dummy.rotation.set(0, (blk.ry || 0) + r.rot, 0);
         dummy.position.set(r.x, r.y, r.z);
         dummy.scale.set((r.rot ? r.d : r.w) + 0.6, r.h, (r.rot ? r.w : r.d) + 0.6);
         dummy.updateMatrix();
-        hipInst.setMatrixAt(hipCount, dummy.matrix);
-        hipInst.setColorAt(hipCount, r.slate ? hipSlate : hipPalette[r.ci % hipPalette.length]);
-        hipCount++;
+        if (r.ring) {
+          ringInst.setMatrixAt(ringCount, dummy.matrix);
+          ringInst.setColorAt(ringCount, r.slate ? hipSlate : hipPalette[r.ci % hipPalette.length]);
+          ringCount++;
+        } else {
+          hipInst.setMatrixAt(hipCount, dummy.matrix);
+          hipInst.setColorAt(hipCount, r.slate ? hipSlate : hipPalette[r.ci % hipPalette.length]);
+          hipCount++;
+        }
       }
       dummy.rotation.set(0, blk.ry || 0, 0);
 
@@ -2712,6 +2744,9 @@ function buildCityBlocks(scene) {
     hipInst.count = hipCount;
     flagRange(hipInst.instanceMatrix, hipCount);
     if (hipInst.instanceColor) flagRange(hipInst.instanceColor, hipCount);
+    ringInst.count = ringCount;
+    flagRange(ringInst.instanceMatrix, ringCount);
+    if (ringInst.instanceColor) flagRange(ringInst.instanceColor, ringCount);
 
     fireEscapeSystem.end();
 
