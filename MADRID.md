@@ -88,6 +88,7 @@ servicio principal es:
 
 - `https://tiles-eu1.arcgis.com/UrtTdLP2PYSxwtI6/arcgis/rest/services/MODELADO_3D_MADRID/SceneServer/layers/0`
 - `store.profile = meshpyramids` (i3s 1.10), quadtree `nodes/root` → children → hojas
+  (a pesar del nombre "realista", es LOD2 extruido de cubiertas — NO malla fotogramétrica; veredicto más abajo)
   `nodes/<id>/geometries/0` (gzip, PerAttributeArray: position Float32 WGS84 lon/lat/z,
   normal, uv0, color UInt8) + `features/0` (id, position, mbb, layer="Building") +
   `shared` (materials vertexColors) + `attributes/0`. Acceso **anónimo**, sin key.
@@ -103,6 +104,8 @@ servicio principal es:
 
 **Estado 2026-10-28 (verificado en vivo)**: fetcher implementado (`tools/madrid/i3s.py <nombre> <lon0,lat0,lon1,lat1> <outdir>`): recorre el quadtree, descarga hojas por bbox y decodifica el buffer. Layout confirmado: cabecera `uint32 vertexCount, uint32 featureCount`, posiciones `f32 x3` **offsets relativos al centro mbs del nodo** (lon/lat en grados, z en metros), normales `f32 x3`, uv0 `f32 x2`, color `u8 x4`, ids de feature al final. Puerta de Alcalá: 5 hojas, 18,6 MB en bruto, vértices verificados dentro del bbox (-3.6866, 40.4188, 667 m). Pendiente: paquete runtime (GLB diezmado) + proyección a mundo + chequeo pixel.
 **Veredicto de fidelidad 2026-10-28 (verificado)**: el modelo municipal es **LOD2 extruido de cubiertas de EDIFICIOS** — los MONUMENTOS en plaza abierta NO están: 0 vértices en ±35-47 m del centro de la Puerta de Alcalá (-3.68878, 40.42003) en las 5 hojas que cubren su bbox. Sirve como capa opcional de cubiertas del tejido general, NO para hitos reconocibles. Licencia verificada: CC BY 4.0 (https://datos.madrid.es/dataset/300722-0-ancho-viario-mapas, campo "Licencia"; condiciones https://datos.madrid.es/pages/condiciones-generales-ayuntamiento-de-madrid) — reutilización y redistribución permitidas CON ATRIBUCIÓN (© Ayuntamiento de Madrid) si algún día se publica malla derivada. Conclusión: monumentos reconocibles = modelado procedural propio (estilizado, coherente con el juego); i3s queda como mejora opcional de cubiertas.
+
+Evidencia de vinculación licencia↔malla (por si algún día se publica malla derivada): la página de dataset cuya URL lleva el slug histórico `300722-0-ancho-viario-mapas` tiene por **título real** "Modelo tridimensional de edificaciones de la cartografía base municipal" (responsable: Dirección General de Planificación Estratégica, publicado 22-nov-2024), y su pestaña Descargas enlaza el Geoportal, cuyos recursos I3S/SLPK apuntan a `.../I3S_SLPK/MODELADO_3D_MADRID.zip` — el mismo modelo que sirve el SceneServer. La licencia CC BY 4.0 de esa ficha es por tanto la del modelo; queda anotada la cadena slug→título→zip por la falta de licencia en el propio servicio ArcGIS. Veredicto acotado a ESTE servicio municipal: no cierra preguntas de fidelidad/licencia de otras fuentes i3s.
 Corrección de diagnóstico: los monumentos del centro NO estaban "en teselas sin construir" — están en la semilla fase2 (`GEO.landmarks`, 42 sitios extruidos) con materiales por nombre desde d61392e; solo Puerta de Alcalá falta del conjunto (ver nota de gate x=1208 abajo) y la cubre esta vía i3s.
 
 Integración fase 1: fetcher `tools/madrid/i3s.py` (trae hojas por bbox de hito),
