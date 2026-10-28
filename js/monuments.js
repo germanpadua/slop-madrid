@@ -101,6 +101,34 @@ function buildPuertaDeAlcala(mat) {
     g.add(band);
   }
 
+  // Roofline read (reference-grounded): balustrade strips over the side sections,
+  // corner urns on the y=19 crown, and a low-poly sculptural cluster crowning the
+  // central attic - the top silhouette that makes it read as La Puerta, not a wall.
+  for (const seg of [[-21.45, -7], [7, 21.45]]) {
+    for (const bz of [-0.125, D + 0.125]) {
+      const bal = new THREE.Mesh(new THREE.BoxGeometry(seg[1] - seg[0], 0.8, 0.25), detailMat);
+      bal.position.set((seg[0] + seg[1]) / 2, 19.4 + 0.4, bz);
+      g.add(bal);
+    }
+  }
+  const urnGeo = new THREE.CylinderGeometry(0.28, 0.38, 1.1, 8);
+  for (const ux of [-20.5, 20.5]) {
+    for (const uz of [0.4, D - 0.4]) {
+      const urn = new THREE.Mesh(urnGeo, detailMat);
+      urn.position.set(ux, 19.9 + 0.55, uz);
+      urn.castShadow = true;
+      g.add(urn);
+    }
+  }
+  const clusterMat = detailMat;
+  const cluster = [[0, 1.5, 1.5, 1.3, 0], [-1.5, 1.0, 1.0, 0.9, -1.1], [1.5, 1.0, 1.0, 0.9, 1.1]];
+  for (const [cx, cw, ch, cd, cz] of cluster) {
+    const piece = new THREE.Mesh(new THREE.BoxGeometry(cw, ch * 1.6, cd), clusterMat);
+    piece.position.set(cx, H + (ch * 1.6) / 2, D / 2 + cz);
+    piece.castShadow = true;
+    g.add(piece);
+  }
+
   // Granite plinth (zócalo berroqueño), slightly wider than the body
   const plinthMat = new THREE.MeshStandardNodeMaterial({ color: 0x8d8272, roughness: 0.85, metalness: 0.02 });
   const plinth = new THREE.Mesh(new THREE.BoxGeometry(W + 2, 1.2, D + 2), plinthMat);
