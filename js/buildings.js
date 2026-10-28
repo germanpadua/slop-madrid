@@ -41,6 +41,7 @@ import {
   WALL_KINDS
 } from './tsl-materials.js';
 import { GEO } from './madrid-geodata.js';
+import { roofDecision } from './madrid-roofs.js';
 import { fdrViaduct, pavedPlazaRects, parkTreeSites, sidewalkBlocks } from './city-grid.js';
 
 // js/buildings.js
@@ -728,22 +729,24 @@ function buildCityBlocks(scene) {
       // do not exist on Madrid rooflines and are never emitted here.
       const tw = rectW(top);
       const td = rectD(top);
-      // Large footprints (patio blocks) get a perimeter roof ring with a patio opening instead of a
-      // single span: an AABB-spanning hip there read as an industrial shed (visual review 2026-10-28).
-      if (tw >= 6 && td >= 6 && chance(0.72)) {
-        blk.hipRoofs.push({
-          x: (top.x0 + top.x1) * 0.5,
-          y: top.y1,
-          z: (top.z0 + top.z1) * 0.5,
-          w: tw,
-          d: td,
-          h: Math.min(4.2, Math.max(2.0, Math.min(tw, td) * range(0.26, 0.34))),
-          rot: td > tw ? Math.PI * 0.5 : 0,
-          ci: (rand() * 5) | 0,
-          slate: chance(0.08),
-          ring: Math.min(tw, td) > 24 && top.y1 <= 22
-        });
-      } else {
+      // Rules shared with the tile renderer via js/madrid-roofs.js (documented there); the procedural
+      // city has no cadastral neighbour list, so the ring clash test sees no neighbours here.
+      {
+        const d = roofDecision({ x0: top.x0, x1: top.x1, z0: top.z0, z1: top.z1, w: tw, d: td, h: top.y1 });
+        if (d) {
+          blk.hipRoofs.push({
+            x: (top.x0 + top.x1) * 0.5,
+            y: top.y1,
+            z: (top.z0 + top.z1) * 0.5,
+            w: tw,
+            d: td,
+            h: d.h,
+            rot: d.rot,
+            ci: d.ci,
+            slate: d.slate,
+            ring: d.kind === 'ring'
+          });
+        } else {
         const hw = Math.min(tw - 1.2, range(2.4, 4.2));
         const hd = Math.min(td - 1.2, range(2.4, 4.2));
         if (hw >= 1.8 && hd >= 1.8) {

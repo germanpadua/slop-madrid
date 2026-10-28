@@ -21,6 +21,7 @@ import {
 } from './tsl-materials.js';
 import { FACADE_DEFS } from './buildings.js';
 import { partyWallHeights } from './madrid-adjacency.js';
+import { roofDecision } from './madrid-roofs.js';
 import { MADRID_FACADE_OPTS, MADRID_LANDMARK_STYLES } from './madrid-tiles.js';
 
 // Tejados: shared terracotta material + palette (Tiny-Madrid illustrated references, user-chosen).
@@ -263,39 +264,17 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       group.add(mesh);
     });
 
-    // 4b. Tejados: instanced terracotta hip roofs on single-span parcels, perimeter rings with a patio
-    //    opening on patio blocks (min span > 24m; an AABB-spanning hip there read as an industrial shed,
-    //    visual review 2026-10-28). ~28% of parcels keep flat roofing (mix, not blanket conversion).
-    //    Collision containment: a ring falls back to flat when another parcel of this tile pokes through
-    //    its inner-slope band; neighbors in other tiles are not seen (bounded approximation, as medianeras).
+    // 4b. Tejados: decisions shared with the procedural city via js/madrid-roofs.js (rules documented
+    //    there); the clash test sees same-tile parcels only (bounded approximation, as medianeras).
     {
       const hips = [];
       const rings = [];
       for (let pi = 0; pi < pabs.length; pi++) {
         const P = pabs[pi];
-        if (P.h < 9 || P.w < 6 || P.d < 6) continue;
-        const cx = (P.x0 + P.x1) / 2, cz = (P.z0 + P.z1) / 2;
-        if (hash(cx, cz, 11) > 0.72) continue;
-        const r = {
-          x: cx, y: P.h, z: cz,
-          h: Math.min(4.2, Math.max(2.0, Math.min(P.w, P.d) * (0.26 + hash(cx, cz, 12) * 0.08))),
-          rot: P.d > P.w ? Math.PI / 2 : 0,
-          ci: Math.floor(hash(cx, cz, 13) * 5),
-          slate: hash(cx, cz, 14) < 0.08
-        };
-        if (Math.min(P.w, P.d) > 24 && P.h <= 22) { // patio blocks: wide AND low; towers stay single-mass
-          const bX0 = P.x0 + P.w * 0.16, bX1 = P.x1 - P.w * 0.16;
-          const bZ0 = P.z0 + P.d * 0.16, bZ1 = P.z1 - P.d * 0.16;
-          const oX0 = P.x0 + P.w * 0.30, oX1 = P.x1 - P.w * 0.30;
-          const oZ0 = P.z0 + P.d * 0.30, oZ1 = P.z1 - P.d * 0.30;
-          const clash = pabs.some((Q, qi) => qi !== pi && Q.h > P.h * 0.45 &&
-            Q.x1 > bX0 && Q.x0 < bX1 && Q.z1 > bZ0 && Q.z0 < bZ1 &&
-            !(Q.x0 >= oX0 && Q.x1 <= oX1 && Q.z0 >= oZ0 && Q.z1 <= oZ1));
-          if (clash) continue;
-          rings.push({ ...r, sw: P.w, sd: P.d });
-        } else {
-          hips.push({ ...r, sw: P.w, sd: P.d });
-        }
+        const d = roofDecision(P, pabs);
+        if (!d) continue;
+        const r = { ...d, x: (P.x0 + P.x1) / 2, y: P.h, z: (P.z0 + P.z1) / 2, sw: P.w, sd: P.d };
+        (d.kind === 'ring' ? rings : hips).push(r);
       }
       const dummy = new THREE.Object3D();
       const fill = (geo, list, name) => {
