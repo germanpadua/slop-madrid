@@ -53,7 +53,7 @@ browser = await chromium.launch({
     ? ['--enable-unsafe-webgpu', '--ignore-gpu-blocklist', '--use-angle=gl']
     : ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=swiftshader', '--enable-webgpu-developer-features']
 });
-const page = await browser.newPage({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 720 } });
+const page = await browser.newPage({ ignoreHTTPSErrors: true, viewport: { width: +(process.env.VW||1280), height: +(process.env.VH||720) } });
 const gpuInfo = await (await browser.newBrowserCDPSession()).send('SystemInfo.getInfo');
 const logs = [];
 const pageErrors = [];
@@ -280,7 +280,7 @@ if (process.env.DETAIL_COMPARE) detailComparison = await page.evaluate(async () 
 let screenshotError = null;
 if (process.env.SCREENSHOT) {
   process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY = '1';
-  try { await page.screenshot({ animations: 'disabled', path: process.env.SCREENSHOT, timeout: 30000 }); }
+  try { await page.screenshot({ animations: 'disabled', path: process.env.SCREENSHOT, timeout: +(process.env.SHOT_TIMEOUT||30000) }); }
   catch (error) { screenshotError = error.message; }
 }
 if (process.env.VIEWS_DIR) {
