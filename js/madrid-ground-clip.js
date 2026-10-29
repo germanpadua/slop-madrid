@@ -8,6 +8,10 @@
 //   rings: [{ring: [{x,z}, ...], bb: [x0,z0,x1,z1]}, ...] ground rings that paint (dirt or lawn), any order.
 //   opts.inWater(x, z): optional predicate - pieces whose midpoint lies in water are skipped (bridge decks own them).
 //   opts.minLen: minimum piece length (default 2).
+//   opts.obstacles: [{a, b, wHalf}] wider corridors that OWN crossings (road ribbons vs footpaths): pieces are
+//     SPLIT at the stadium boundary (radius wHalf + opts.selfHalf) of every obstacle and only the sub-pieces
+//     whose midpoint falls inside the band are dropped - a crossing cuts the overlap, never the whole piece.
+//   opts.selfHalf: half-width of the clipped way itself (default 0), widens obstacle bands.
 // Returns { pieces: [{a:{x,z}, b:{x,z}}], joints: [{x,z}] }:
 //   pieces are the in-ring stretches, each segment SPLIT at every boundary crossing (never midpoint-only, so a
 //   segment whose ends are inside a non-convex ring but whose middle is outside yields two pieces); a stretch
@@ -39,8 +43,58 @@ const segT = (a, b, c, d) => {
   return t > 1e-9 && t < 1 - 1e-9 && u >= -1e-9 && u <= 1 + 1e-9 ? t : null;
 };
 
+
+// pointInWaterBoxes: true when (x,z) lies in a water box. Contract: boxes carry OBJECT bbs ({x0,z0,x1,z1},
+// the shape world.js bboxOf returns). The bbox is a cheap gate; the ring decides. (Regression guard: a prior
+// version read array indices on these objects and the predicate silently never fired.)
+export const pointInWaterBoxes = (boxes, x, z) => boxes.some((wb) => x >= wb.bb.x0 && x <= wb.bb.x1 && z >= wb.bb.z0 && z <= wb.bb.z1 && pointInRing(wb.ring, x, z));
+
+export const segPointDist = (p, a, b) => {
+  const dx = b.x - a.x, dz = b.z - a.z;
+  const l2 = dx * dx + dz * dz;
+  const t = l2 > 1e-12 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.z - a.z) * dz) / l2)) : 0;
+  return Math.hypot(p.x - (a.x + dx * t), p.z - (a.z + dz * t));
+};
+
+// t values in (0,1) where segment ab crosses the stadium boundary of radius r around segment cd
+// (two offset lines on the segment interior + two radius-r circles on the endpoints).
+const stadiumCuts = (a, b, c, d, r) => {
+  const ts = [];
+  const ux = d.x - c.x, uz = d.z - c.z;
+  const len = Math.hypot(ux, uz);
+  if (len > 1e-12) {
+    const nx = -uz / len, nz = ux / len;
+    const da = (a.x - c.x) * nx + (a.z - c.z) * nz;
+    const db = (b.x - c.x) * nx + (b.z - c.z) * nz;
+    for (const s of [r, -r]) {
+      const den = da - db;
+      if (Math.abs(den) < 1e-12) continue;
+      const t = (da - s) / den;
+      if (t <= 1e-9 || t >= 1 - 1e-9) continue;
+      const px = a.x + (b.x - a.x) * t, pz = a.z + (b.z - a.z) * t;
+      const u = ((px - c.x) * ux + (pz - c.z) * uz) / (len * len);
+      if (u >= -1e-9 && u <= 1 + 1e-9) ts.push(t);
+    }
+  }
+  for (const p of [c, d]) {
+    const ex = a.x - p.x, ez = a.z - p.z;
+    const vx = b.x - a.x, vz = b.z - a.z;
+    const A = vx * vx + vz * vz;
+    if (A < 1e-12) continue;
+    const B = 2 * (ex * vx + ez * vz);
+    const C = ex * ex + ez * ez - r * r;
+    const disc = B * B - 4 * A * C;
+    if (disc <= 1e-12) continue;
+    for (const sgn of [-1, 1]) {
+      const t = (-B + sgn * Math.sqrt(disc)) / (2 * A);
+      if (t > 1e-9 && t < 1 - 1e-9) ts.push(t);
+    }
+  }
+  return ts.sort((p, q) => p - q);
+};
+
 export function clipRoadToRings(pts, rings, opts = {}) {
-  const { inWater = null, minLen = 2 } = opts;
+  const { inWater = null, minLen = 2, obstacles = null, selfHalf = 0 } = opts;
   const pieces = [], joints = [];
   if (!pts || pts.length < 2) return { pieces, joints };
   let rx0 = Infinity, rz0 = Infinity, rx1 = -Infinity, rz1 = -Infinity;
@@ -59,6 +113,7 @@ export function clipRoadToRings(pts, rings, opts = {}) {
         const t = segT(a, b, R[k], R[j]);
         if (t !== null) ts.push(t);
       }
+      if (obstacles) for (const o of obstacles) ts.push(...stadiumCuts(a, b, o.a, o.b, o.wHalf + selfHalf));
       ts.sort((p, q) => p - q);
       const cuts = [0, ...ts, 1];
       for (let s = 0; s + 1 < cuts.length; s++) {
@@ -70,6 +125,7 @@ export function clipRoadToRings(pts, rings, opts = {}) {
         if (!pointInRing(R, mx, mz)) continue;
         if (Math.hypot(p1.x - p0.x, p1.z - p0.z) < minLen) continue;
         if (inWater && inWater(mx, mz)) continue;
+        if (obstacles && obstacles.some((o) => segPointDist({ x: mx, z: mz }, o.a, o.b) < o.wHalf + selfHalf - 1e-9)) continue;
         if (prevRings.some((o) => pointInRing(o.ring, mx, mz))) continue;
         kept.push({ a: p0, b: p1, startV: t0 <= 1e-9 ? i - 1 : -1, endV: t1 >= 1 - 1e-9 ? i : -1 });
       }

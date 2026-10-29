@@ -164,7 +164,7 @@ for (const e of els) {
   const kept = pts.filter(([x, z]) => x >= wx0 - 20 && x <= wx1 + 20 && z >= wz0 - 20 && z <= wz1 + 20);
   if (kept.length < 2) continue;
   const dir = t.oneway === 'yes' ? 1 : t.oneway === '-1' ? -1 : 0;
-  roadLines.push({ name: t.name || '', w: roadW(t), dir, lanes: parseInt(t.lanes || '0', 10) || 0, hw: /^(motorway|trunk)/.test(t.highway) ? 1 : 0, pts: rdp(kept, 0.6) });
+  roadLines.push({ name: t.name || '', w: roadW(t), dir, lanes: parseInt(t.lanes || '0', 10) || 0, hw: /^(motorway|trunk)/.test(t.highway) ? 1 : 0, surf: t.surface || '', pts: rdp(kept, 0.6) });
 }
 // Same ownership rule for roads (they carry the bridge decks over the water): keep the ones that enter the core.
 roadLines.splice(0, roadLines.length, ...roadLines.filter((r) => r.pts.some(([x, z]) => inCore(x, z))));
@@ -872,7 +872,7 @@ const GEO = {
   barrios: barrios.map((b) => ({ name: b.name, ring: flat(b.ring), cx: r1(b.cx), cz: r1(b.cz) })),
   broadway: flat([[wx0 + (wx1 - wx0) / 2, wz0], [wx0 + (wx1 - wx0) / 2, wz1]]), // neutral spine; Madrid config replaces getBroadwayX
   plazas: [],
-  roads: roadLines.map((r) => [r.name, r1(r.w), r.dir, r.lanes, r.hw, flat(r.pts)]),
+  roads: roadLines.map((r) => [r.name, r1(r.w), r.dir, r.lanes, r.hw, flat(r.pts), r.surf || '']),
   roadGraph: { nodes: outNodes, links: outLinks, names },
   blocks: blocks.map((b) => [flat(b.ring), b.rects, 0, '', 0, 0]),
   parcels: blocks.map((b) => b.parcels.map((p) => ({ ring: flat(p.ring), h: p.h, ...(p.holes ? { holes: p.holes.map(flat) } : {}) }))),
@@ -1051,7 +1051,7 @@ if (IS_TILE) {
     parcels: parcels.filter((p) => inCore(p.cx, p.cz)).map((p) => ({ ring: flat(p.ring), h: p.h, ...(p.holes ? { holes: p.holes.map(flat) } : {}) })),
     parks: parksClipped.map((p) => ({ name: p.name, cat: p.cat, acres: p.acres, rings: p.rings.map(flat) })),
     water: waterClipped.map(flat),
-    roads: roadLines.map((r) => [r.name, r1(r.w), r.dir, r.lanes, r.hw, flat(r.pts)]),
+    roads: roadLines.map((r) => [r.name, r1(r.w), r.dir, r.lanes, r.hw, flat(r.pts), r.surf || '']),
     paths: pathLines.map((r) => [r.name, r.cls, r.surf, r1(r.w), flat(r.pts)]),
     lots: cpLots.map((l) => ({ r: l.ring.flatMap(([x, z]) => [r1(x), r1(z)]), ...(l.holes.length ? { h: l.holes.map((h) => h.flatMap(([x, z]) => [r1(x), r1(z)])) } : {}) })),
     rails: railLines.map((r) => r.pts.flatMap(([x, z]) => [r1(x), r1(z)])),

@@ -10,7 +10,7 @@ import * as THREE from 'three/webgpu';
 import { Fn, abs, color, fract, max, mix, positionGeometry, positionWorld, smoothstep } from 'three/tsl';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createExtrudedPolygonMesh, createFlatPolygonMesh, offsetPolygonInward } from './city-grid.js';
-import { clipRoadToRings, ringsContained } from './madrid-ground-clip.js';
+import { clipRoadToRings, pointInWaterBoxes, ringsContained, segPointDist } from './madrid-ground-clip.js';
 import {
   WALL_KINDS,
   createCurbMaterial,
@@ -379,11 +379,15 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     //     The deck stays the road surface outside parks: nothing changes there.
     const ribbonSegs = []; // kept ribbon stretches (shared with 2d: path ribbons yield to these)
     const groundRings = allParkRings.filter((r) => r.paintsDirt || r.paintsLawn);
-    const inWater = (x, z) => waterBoxes.some((wb) => x >= wb.bb.x0 && x <= wb.bb.x1 && z >= wb.bb.z0 && z <= wb.bb.z1 && pointInRingPts(wb.ring, x, z));
+    const inWater = (x, z) => pointInWaterBoxes(waterBoxes, x, z); // object-bb contract covered by ground-clip tests
     {
-      let ribbonMat = null;
-      const ribbonGeos = [];
-      const pushQuad = (a, b, wHalf) => {
+      const RIBBON_TONES = { asphalt: null, paved: 0x9d968a, earth: 0xc2ad7c }; // paved/earth need a surface tag
+      const PAVED_ROAD = new Set(['paving_stones', 'concrete', 'concrete:plates', 'sett', 'pebblestone', 'unhewn_cobblestone']);
+      const UNPAVED_ROAD = new Set(['compacted', 'dirt', 'ground', 'sand', 'fine_gravel', 'gravel', 'unpaved', 'earth']);
+      const ribbonTone = (surf) => (PAVED_ROAD.has(surf) ? 'paved' : UNPAVED_ROAD.has(surf) ? 'earth' : 'asphalt'); // no tag -> asphalt by CLASS, unverified default
+      const ribbonMats = {};
+      const ribbonGeos = { asphalt: [], paved: [], earth: [] };
+      const pushQuad = (a, b, wHalf, tone) => {
         const dx = b.x - a.x, dz = b.z - a.z;
         const len = Math.hypot(dx, dz);
         if (len < 2) return;
@@ -393,36 +397,42 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
           { x: b.x - nx, z: b.z - nz }, { x: a.x - nx, z: a.z - nz }
         ];
         if (shoelace(quad) < 0) quad = quad.reverse();
-        ribbonGeos.push(createFlatPolygonMesh(quad, 0.13, ribbonMat, true).geometry);
+        ribbonGeos[tone].push(createFlatPolygonMesh(quad, 0.13, null, true).geometry);
       };
-      const pushCap = (p, wHalf) => {
+      const pushCap = (p, wHalf, tone) => {
         const oct = [];
         for (let k = 0; k < 8; k++) {
           const ang = (Math.PI * 2 * k) / 8;
           oct.push({ x: p.x + Math.cos(ang) * wHalf * 1.05, z: p.z + Math.sin(ang) * wHalf * 1.05 });
         }
         if (shoelace(oct) < 0) oct.reverse();
-        ribbonGeos.push(createFlatPolygonMesh(oct, 0.13, ribbonMat, true).geometry);
+        ribbonGeos[tone].push(createFlatPolygonMesh(oct, 0.13, null, true).geometry);
       };
       for (const road of tile.roads || []) {
         const pts = toPts(road[5] || []);
         if (pts.length < 2) continue;
         const wHalf = (road[1] || 6) / 2;
+        const tone = ribbonTone(road[6] || '');
         const { pieces, joints } = clipRoadToRings(pts, groundRings, { inWater });
         if (!pieces.length) continue;
-        if (!ribbonMat) {
-          ribbonMat = mats.road.clone();
-          ribbonMat.polygonOffset = true; ribbonMat.polygonOffsetFactor = -1; ribbonMat.polygonOffsetUnits = -3;
-        }
-        for (const p of pieces) { pushQuad(p.a, p.b, wHalf); ribbonSegs.push({ a: p.a, b: p.b, wHalf }); }
-        for (const j of joints) pushCap(j, wHalf);
+        for (const p of pieces) { pushQuad(p.a, p.b, wHalf, tone); ribbonSegs.push({ a: p.a, b: p.b, wHalf }); }
+        for (const j of joints) pushCap(j, wHalf, tone);
       }
-      if (ribbonGeos.length) {
-        const merged = mergeGeometries(ribbonGeos, false);
-        for (const g of ribbonGeos) g.dispose();
-        const mesh = new THREE.Mesh(merged, ribbonMat);
+      for (const [tone, geos] of Object.entries(ribbonGeos)) {
+        if (!geos.length) continue;
+        let mat = ribbonMats[tone];
+        if (!mat) {
+          mat = tone === 'asphalt'
+            ? mats.road.clone()
+            : new THREE.MeshStandardNodeMaterial({ color: RIBBON_TONES[tone], roughness: 1, metalness: 0 });
+          mat.polygonOffset = true; mat.polygonOffsetFactor = -1; mat.polygonOffsetUnits = -3;
+          ribbonMats[tone] = mat;
+        }
+        const merged = mergeGeometries(geos, false);
+        for (const g of geos) g.dispose();
+        const mesh = new THREE.Mesh(merged, mat);
         mesh.receiveShadow = true;
-        mesh.name = 'TileRoadRibbons';
+        mesh.name = tone === 'asphalt' ? 'TileRoadRibbons' : `TileRoadRibbons${tone[0].toUpperCase()}${tone.slice(1)}`;
         group.add(mesh);
       }
     }
@@ -433,12 +443,6 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     //     floor (source gap preserved: no assumed dirt, no assumed asphalt). Road ribbons win crossings.
     {
       const PAVED = new Set(['asphalt', 'paved', 'paving_stones', 'concrete', 'concrete:plates', 'sett', 'pebblestone', 'unhewn_cobblestone', 'metal', 'wood']);
-      const segDist = (p, s) => {
-        const dx = s.b.x - s.a.x, dz = s.b.z - s.a.z;
-        const l2 = dx * dx + dz * dz;
-        const t = l2 > 0 ? Math.max(0, Math.min(1, ((p.x - s.a.x) * dx + (p.z - s.a.z) * dz) / l2)) : 0;
-        return Math.hypot(p.x - (s.a.x + dx * t), p.z - (s.a.z + dz * t));
-      };
       const pathGeos = { paved: [], earth: [] };
       const pushPathQuad = (arr, a, b, wHalf) => {
         const dx = b.x - a.x, dz = b.z - a.z;
@@ -458,15 +462,11 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
         const pts = toPts(way[4] || []);
         if (pts.length < 2) continue;
         const wHalf = (way[3] || 2) / 2;
-        const { pieces, joints } = clipRoadToRings(pts, groundRings, { inWater });
+        const { pieces, joints } = clipRoadToRings(pts, groundRings, { inWater, obstacles: ribbonSegs, selfHalf: wHalf }); // road ribbons own crossings: pieces SPLIT at the band, only the overlap cut
         const bucket = PAVED.has(surf) ? pathGeos.paved : pathGeos.earth;
-        for (const p2 of pieces) {
-          const mx = (p2.a.x + p2.b.x) / 2, mz = (p2.a.z + p2.b.z) / 2;
-          if (ribbonSegs.some((s) => segDist({ x: mx, z: mz }, s) < s.wHalf + wHalf * 0.5)) continue; // road ribbon owns the crossing
-          pushPathQuad(bucket, p2.a, p2.b, wHalf);
-        }
+        for (const p2 of pieces) pushPathQuad(bucket, p2.a, p2.b, wHalf);
         for (const j of joints) {
-          if (ribbonSegs.some((s) => segDist(j, s) < s.wHalf + wHalf * 0.5)) continue;
+          if (ribbonSegs.some((s) => segPointDist(j, s.a, s.b) < s.wHalf + wHalf)) continue; // turn cap inside a ribbon band
           const oct = [];
           for (let k = 0; k < 8; k++) {
             const ang = (Math.PI * 2 * k) / 8;

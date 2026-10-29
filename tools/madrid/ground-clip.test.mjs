@@ -1,7 +1,7 @@
 // tools/madrid/ground-clip.test.mjs — regression tests for TileRoadRibbons geometry (js/madrid-ground-clip.js).
 // Covers the combinations screenshots cannot: proper crossing, boundary graze, water-covered, nested/overlapping
 // rings, joined turns, and the non-convex midpoint trap. Run: node tools/madrid/ground-clip.test.mjs
-import { clipRoadToRings, pointInRing, ringBBox, ringsContained, ringsCross } from '../../js/madrid-ground-clip.js';
+import { clipRoadToRings, pointInRing, pointInWaterBoxes, ringBBox, ringsContained, ringsCross, segPointDist } from '../../js/madrid-ground-clip.js';
 
 let failed = 0;
 const ok = (cond, name) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${name}`); if (!cond) failed++; };
@@ -86,5 +86,46 @@ const len = (p) => Math.hypot(p.b.x - p.a.x, p.b.z - p.a.z);
   ok(ringsContained(outer.ring, outer.bb, [bigger]).length === 0, 'contained: swallowing ring rejected by bbox gate');
 }
 
+
+
+// 10. obstacles: perpendicular road band crossing splits the piece, only the in-band sub-piece drops (no gaps)
+{
+  const R = ring(sq(0, 0, 400));
+  const road = { a: { x: -30, z: 0 }, b: { x: 30, z: 0 }, wHalf: 5 };
+  const { pieces } = clipRoadToRings([{ x: 0, z: -100 }, { x: 0, z: 100 }], [R], { obstacles: [road], selfHalf: 1, minLen: 0.5 });
+  ok(pieces.length === 2, 'obstacle: crossing splits into two kept ends');
+  const ends = pieces.flatMap((p) => [p.a.z, p.b.z]).sort((x, y) => x - y);
+  ok(pieces.length === 2 && Math.abs(ends[0] + 100) < 1e-6 && Math.abs(ends[1] + 6) < 1e-3 && Math.abs(ends[2] - 6) < 1e-3 && Math.abs(ends[3] - 100) < 1e-6,
+    'obstacle: cut exactly at the band boundary (wHalf+selfHalf=6), no whole-piece gap');
+}
+// 11. obstacles: path running along inside the band is dropped entirely; outside the band untouched
+{
+  const R = ring(sq(0, 0, 400));
+  const road = { a: { x: -50, z: 0 }, b: { x: 50, z: 0 }, wHalf: 5 };
+  const inside = clipRoadToRings([{ x: -40, z: 2 }, { x: 40, z: 2 }], [R], { obstacles: [road], selfHalf: 1, minLen: 0.5 });
+  ok(inside.pieces.length === 0, 'obstacle: parallel inside band dropped');
+  const outside = clipRoadToRings([{ x: -40, z: 20 }, { x: 40, z: 20 }], [R], { obstacles: [road], selfHalf: 1, minLen: 0.5 });
+  ok(outside.pieces.length === 1, 'obstacle: parallel outside band kept');
+}
+// 12. obstacles: endpoint (cap) region - path crossing near the obstacle endpoint still cuts at the circle
+{
+  const R = ring(sq(0, 0, 400));
+  const road = { a: { x: 0, z: 0 }, b: { x: 30, z: 0 }, wHalf: 5 };
+  const { pieces } = clipRoadToRings([{ x: -2, z: -50 }, { x: -2, z: 50 }], [R], { obstacles: [road], selfHalf: 1, minLen: 0.5 });
+  ok(pieces.length === 2, 'obstacle: crossing near endpoint splits via the cap circle');
+  const gap = pieces.length === 2 ? pieces[0].b.z : 0;
+  ok(pieces.length === 2 && Math.abs(Math.hypot(-2 - 0, gap - 0) - 6) < 1e-3, 'obstacle: cap cut at radius wHalf+selfHalf');
+}
+// 13. pointInWaterBoxes fixtures (guard for the object-bb predicate that silently never fired)
+{
+  const box = (ringPts) => ({ ring: ringPts, bb: { x0: Math.min(...ringPts.map((p) => p.x)), z0: Math.min(...ringPts.map((p) => p.z)), x1: Math.max(...ringPts.map((p) => p.x)), z1: Math.max(...ringPts.map((p) => p.z)) } });
+  const lshape = [{ x: 0, z: 0 }, { x: 40, z: 0 }, { x: 40, z: 40 }, { x: 20, z: 40 }, { x: 20, z: 20 }, { x: 0, z: 20 }]; // notch at x<20,z>20
+  const boxes = [box(lshape)];
+  ok(pointInWaterBoxes(boxes, 30, 30) === true, 'water: inside ring -> true (positive fixture)');
+  ok(pointInWaterBoxes(boxes, 10, 30) === false, 'water: inside bbox but in the notch -> false (negative fixture)');
+  ok(pointInWaterBoxes(boxes, 100, 100) === false, 'water: outside bbox -> false');
+  ok(pointInWaterBoxes([], 10, 10) === false, 'water: no boxes -> false');
+  ok(segPointDist({ x: 0, z: 5 }, { x: -10, z: 0 }, { x: 10, z: 0 }) === 5, 'segPointDist: perpendicular distance');
+}
 
 process.exit(failed ? 1 : 0);
