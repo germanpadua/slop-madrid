@@ -104,6 +104,10 @@ function createWalkSignalMaterial(clock) {
   return mat;
 }
 
+// Hard-coded NYC-only props (Con Edison steam stacks, MTA subway entrances, hot-dog carts, USPS mailboxes) were authored at
+// Manhattan landmarks and carried onto the Madrid seed streets; they do not exist in Madrid. Dropped unless ?nycprops=1 (A/B).
+const DROP_NYC_PROPS = !(typeof location !== 'undefined' && /[?&]nycprops=1/.test(location.search));
+
 function buildStreetDetails(scene) {
   const group = new THREE.Group();
   group.name = 'ManhattanStreetDetails';
@@ -542,7 +546,7 @@ function buildStreetDetails(scene) {
   // 3. CON EDISON ORANGE/WHITE STRIPED STEAM STACKS, NYCDOT SAWHORSE BARRICADES
   //    & BILLOWING WIND-DRIFTED VOLUMETRIC STEAM CLOUD TRAILS (REFERENCE PHOTO!)
   // =========================================================================
-  const steamLocations = [
+  const steamLocations = DROP_NYC_PROPS ? [] : [
     { x: 6.4,   z: 96,   windX: -1.0, windZ: -0.18 }, // 5th Ave & 37th St (Buffer zone clear of green bike lane!)
     { x: -7.5,  z: 148,  windX: 0.95, windZ: -0.22 }, // 5th Ave near 34th St (Empire State Building)
     { x: 6.4,   z: 48,   windX: -1.0, windZ: 0.15  }, // 5th Ave & 40th St (NYPL / Bryant Park)
@@ -684,7 +688,7 @@ function buildStreetDetails(scene) {
   steamInstancedSprites.count = totalSteamSprites;
   steamInstancedSprites.frustumCulled = false;
   steamInstancedSprites.renderOrder = 2;
-  group.add(steamInstancedSprites);
+  if (totalSteamSprites > 0) group.add(steamInstancedSprites);
 
   // =========================================================================
   // 4. MTA SUBWAY ENTRANCES WITH GLOWING GREEN GLOBE LAMPS
@@ -696,7 +700,7 @@ function buildStreetDetails(scene) {
   });
   const subwayGlobeMat = new THREE.MeshBasicNodeMaterial({ color: 0x55ff88 });
 
-  const subwayLocations = [
+  const subwayLocations = DROP_NYC_PROPS ? [] : [
     [-16.5, 162],  // 34th St - Herald Sq / 5th Ave
     [16.5, 162],
     [-16.5, 16],   // 42nd St - Bryant Park / 5th Ave
@@ -769,7 +773,7 @@ function buildStreetDetails(scene) {
     roughness: 0.6
   });
 
-  const cartLocations = [
+  const cartLocations = DROP_NYC_PROPS ? [] : [
     [-17, 152],   // Empire State corner
     [-17, 25],    // NYPL / Bryant Park
     [-127, 25],   // 6th Ave & 42nd
@@ -815,7 +819,7 @@ function buildStreetDetails(scene) {
       const mb = [ave.x + ave.width * 0.5 + 1.2, zMid - 22];
       if (isOnSidewalk(h1[0], h1[1], 0.45)) hydrantPositions.push(h1);
       if (isOnSidewalk(h2[0], h2[1], 0.45)) hydrantPositions.push(h2);
-      if (isOnSidewalk(mb[0], mb[1], 0.45)) mailboxPositions.push(mb);
+      if (!DROP_NYC_PROPS && isOnSidewalk(mb[0], mb[1], 0.45)) mailboxPositions.push(mb);
     }
   }
 
@@ -840,7 +844,7 @@ function buildStreetDetails(scene) {
     mailboxInst.setMatrixAt(i, dummy.matrix);
   });
   mailboxInst.instanceMatrix.needsUpdate = true;
-  group.add(mailboxInst);
+  if (mailboxPositions.length > 0) group.add(mailboxInst);
 
   // =========================================================================
   // 7. LUSH TREES: PARKS & PLAZAS, CENTRAL PARK WOODLANDS, AVENUE & CROSS-STREET TREES
