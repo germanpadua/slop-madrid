@@ -87,9 +87,10 @@ await page.waitForFunction(() => window.__madrid && window.__madrid.renderer && 
 const bootMs = Date.now() - t0;
 const initLine = logs.find((l) => l.startsWith('[init]')) || '';
 
+const cullPlaces = (process.env.CULL_PLACES || '').split(',').filter(Boolean);
 const hideRoots = (process.env.HIDE_ROOTS || '').split(',').filter(Boolean);
 const clipRect = process.env.CLIP_RECT ? Object.fromEntries(process.env.CLIP_RECT.split(',').map((v, i) => [['x0','x1','z0','z1'][i], +v])) : null;
-const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view, aerialZoom, hideRoots, clipRect }) => {
+const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view, aerialZoom, hideRoots, clipRect, cullPlaces }) => {
   const { renderer, tileStreamer, tileWorld, controllerManager } = window.__madrid;
   const waitFor = async (fn, timeoutMs = 120000) => {
     const start = performance.now();
@@ -223,10 +224,43 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
       }
     });
   }
+  let cullEstimate = null;
   const detailBreakdown = [];
   const sd = sceneOf.getObjectByName('ManhattanStreetDetails');
   if (sd) sd.traverse((o) => { if (!o.isMesh) return; const gm = o.geometry; const per = gm?.index ? gm.index.count / 3 : (gm?.attributes?.position?.count || 0) / 3; detailBreakdown.push({ name: o.name || o.parent?.name || '', inst: o.isInstancedMesh ? o.count : 1, trisEach: Math.round(per), tris: Math.round(per * (o.isInstancedMesh ? o.count : 1)), vis: o.visible, culled: o.frustumCulled }); });
   detailBreakdown.sort((a, b) => b.tris - a.tris);
+  if (cullPlaces.length) {
+    // ESTIMATE, no frames rendered: apply the app's own distance culling (updateSceneCulling) for a camera position, then count
+    // triangles of meshes that are visible (ancestors included), on the camera layer and inside the view frustum.
+    const { updateSceneCulling } = await import(new URL('./js/scene-culling.js', location.href).href);
+    const { TELEPORT_LOCATIONS } = await import(new URL('./js/city-config.js', location.href).href);
+    const T = window.__madrid.cameraSystem.camera.constructor; const tmpl = window.__madrid.cameraSystem.camera;
+    const Frustum = tmpl.position.constructor && (await import('three')).Frustum, M4 = (await import('three')).Matrix4, V3 = (await import('three')).Vector3, Sph = (await import('three')).Sphere;
+    cullEstimate = [];
+    for (const id of cullPlaces) {
+      const loc = id === 'aerial' ? { x: 0, z: 600 } : TELEPORT_LOCATIONS[id]; if (!loc) continue;
+      const heightM = id === 'aerial' ? 1400 : 1.7; const per = [];
+      for (let k = 0; k < 8; k++) {
+        const cam = new T(tmpl.fov, tmpl.aspect, tmpl.near, tmpl.far); cam.position.set(loc.x, heightM, loc.z);
+        const ang = k * Math.PI / 4; cam.lookAt(loc.x + Math.sin(ang) * 100, id === 'aerial' ? 0 : 6, loc.z + Math.cos(ang) * 100 * (id === 'aerial' ? 0.3 : 1)); cam.updateMatrixWorld(); cam.updateProjectionMatrix();
+        updateSceneCulling(cam.position);
+        const fr = new Frustum().setFromProjectionMatrix(new M4().multiplyMatrices(cam.projectionMatrix, cam.matrixWorldInverse));
+        const by = {}; const sdBy = {}; const sdInst = {}; let total = 0, calls = 0;
+        const walk = (o, root, vis) => {
+          if (!o.visible || !vis) return; const r = root || o.name || o.type;
+          if (o.isMesh && o.layers.test(cam.layers)) {
+            let ok = true;
+            if (o.frustumCulled) { const gm = o.geometry; if (!gm.boundingSphere) gm.computeBoundingSphere(); const sp = (o.boundingSphere || gm.boundingSphere).clone().applyMatrix4(o.matrixWorld); ok = fr.intersectsSphere(sp); }
+            if (ok) { const gm = o.geometry; const each = (gm.index ? gm.index.count : gm.attributes.position.count) / 3; const n = each * (o.isInstancedMesh ? o.count : 1); total += n; calls++; by[r] = (by[r] || 0) + n; if (r === 'ManhattanStreetDetails') { const kk = (o.name || o.material?.name || 'anon') + '|' + Math.round(each) + 'tri/inst'; sdBy[kk] = (sdBy[kk] || 0) + n; sdInst[kk] = (sdInst[kk] || 0) + (o.isInstancedMesh ? o.count : 1); } }
+          }
+          for (const c of o.children) walk(c, root || (o.parent === sceneOf ? o.name : null), true);
+        };
+        for (const c of sceneOf.children) walk(c, c.name || c.type, true);
+        per.push({ heading: k, total: Math.round(total), calls, sd: Object.entries(sdBy).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([a, b]) => [a, Math.round(b), sdInst[a]]), by: Object.fromEntries(Object.entries(by).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([a, b]) => [a, Math.round(b)])) });
+      }
+      cullEstimate.push({ id, pos: [loc.x, heightM, loc.z], min: Math.min(...per.map((p) => p.total)), max: Math.max(...per.map((p) => p.total)), mean: Math.round(per.reduce((a, p) => a + p.total, 0) / per.length), per });
+    }
+  }
   const routeFrames = (window.__madrid.frameSamples || []).filter((s) => s.at >= routeStart);
   const intervals = routeFrames.map((s) => s.intervalMs).sort((a, b) => a - b);
   return {
@@ -241,7 +275,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
     distanceDetail: window.__madrid.distanceDetail?.status(),
     shaderWarmupHidden: sceneOf.getObjectByName('MadridTileShaderWarmup')?.visible === false,
     backend: renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2',
-    tileStats, sceneTris, clipStats, detailBreakdown: detailBreakdown.slice(0, 40),
+    tileStats, sceneTris, clipStats, detailBreakdown: detailBreakdown.slice(0, 40), cullEstimate,
     tiles: before,
     after: tileSet,
     tileMs,
@@ -259,7 +293,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
     meshes: tileWorld ? tileWorld.meshCount() : 0,
     loaded: tileWorld ? tileWorld.ids() : []
   };
-}, { walk, bootOnly, stress, places, view, aerialZoom, hideRoots, clipRect });
+}, { walk, bootOnly, stress, places, view, aerialZoom, hideRoots, clipRect, cullPlaces });
 
 let detailComparison = null;
 if (process.env.DETAIL_COMPARE) detailComparison = await page.evaluate(async () => {
