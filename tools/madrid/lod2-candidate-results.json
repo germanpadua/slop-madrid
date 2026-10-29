@@ -1,0 +1,23 @@
+{
+ "rect": "x1540..1760,z-1670..-1560 tile k3j3",
+ "lod2_full": [
+  4564,
+  9214,
+  82650,
+  41979
+ ],
+ "cluster1m": [
+  2840,
+  5029,
+  47214,
+  24416
+ ],
+ "cluster2m": [
+  2107,
+  3838,
+  35670,
+  18519
+ ],
+ "fields": "verts,tris,rawB(int16 xyz + uint16 idx),gzB",
+ "note": "Experiment 2026-10-29, inconclusive (not a rejection of the municipal LOD2 source): single patch, one ground datum for all buildings, vertex-clustering only, gz bytes recomputed offline (tris differ slightly from in-page 5020/3820 due to rounding). Open: per-feature vertical datum, root placement, official viewer comparison, facade-level geometry unverified. lod2-region-extract.mjs needs /tmp/i3s-test leaves from tools/madrid/i3s.py and writes /tmp/i3s-rect.json + /tmp/our-rect.json; lod2-candidate.mjs renders A/B/C frames via tile-mapcheck.html canvas readback (needs .cand/lod2-rect.json)."
+}

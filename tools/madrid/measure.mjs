@@ -122,6 +122,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
         elapsedMs: performance.now() - start,
         p95IntervalMs: intervals[Math.max(0, Math.ceil(intervals.length * 0.95) - 1)] || 0,
         maxIntervalMs: intervals.at(-1) || 0,
+        renderTriangles: renderer.info?.render?.triangles ?? null, renderCalls: renderer.info?.render?.drawCalls ?? renderer.info?.render?.calls ?? null,
         position: { x: controllerManager.getActiveEntity().position.x, z: controllerManager.getActiveEntity().position.z } });
     }
   }
@@ -222,6 +223,10 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
       }
     });
   }
+  const detailBreakdown = [];
+  const sd = sceneOf.getObjectByName('ManhattanStreetDetails');
+  if (sd) sd.traverse((o) => { if (!o.isMesh) return; const gm = o.geometry; const per = gm?.index ? gm.index.count / 3 : (gm?.attributes?.position?.count || 0) / 3; detailBreakdown.push({ name: o.name || o.parent?.name || '', inst: o.isInstancedMesh ? o.count : 1, trisEach: Math.round(per), tris: Math.round(per * (o.isInstancedMesh ? o.count : 1)), vis: o.visible, culled: o.frustumCulled }); });
+  detailBreakdown.sort((a, b) => b.tris - a.tris);
   const routeFrames = (window.__madrid.frameSamples || []).filter((s) => s.at >= routeStart);
   const intervals = routeFrames.map((s) => s.intervalMs).sort((a, b) => a - b);
   return {
@@ -236,7 +241,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
     distanceDetail: window.__madrid.distanceDetail?.status(),
     shaderWarmupHidden: sceneOf.getObjectByName('MadridTileShaderWarmup')?.visible === false,
     backend: renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2',
-    tileStats, sceneTris, clipStats,
+    tileStats, sceneTris, clipStats, detailBreakdown: detailBreakdown.slice(0, 40),
     tiles: before,
     after: tileSet,
     tileMs,
