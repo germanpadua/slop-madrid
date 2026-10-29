@@ -193,6 +193,9 @@ for (const e of els) {
   if (e.type !== 'way' || !e.geometry) continue;
   const t = e.tags || {};
   if (t.railway !== 'rail') continue;
+  // Underground track (tunnel=yes/...): not rendered as surface rail. Without this filter the
+  // Atocha-Chamartin tunnel and underpasses drew fake surface track (k3j-1: 27 ways).
+  if (t.tunnel && t.tunnel !== 'no') continue;
   const pts = e.geometry.filter((p) => p).map((p) => toWorld(p.lon, p.lat));
   const kept = pts.filter(([x, z]) => x >= wx0 - 20 && x <= wx1 + 20 && z >= wz0 - 20 && z <= wz1 + 20);
   if (kept.length < 2) continue;
