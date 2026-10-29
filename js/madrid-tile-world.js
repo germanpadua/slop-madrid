@@ -10,6 +10,7 @@ import * as THREE from 'three/webgpu';
 import { Fn, abs, color, fract, max, mix, positionGeometry, positionWorld, smoothstep } from 'three/tsl';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createExtrudedPolygonMesh, createFlatPolygonMesh, offsetPolygonInward } from './city-grid.js';
+import { clipRoadToRings } from './madrid-ground-clip.js';
 import {
   WALL_KINDS,
   createCurbMaterial,
@@ -365,14 +366,6 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       let ribbonMat = null;
       const ribbonGeos = [];
       const inWater = (x, z) => waterBoxes.some((wb) => x >= wb.bb[0] && x <= wb.bb[2] && z >= wb.bb[1] && z <= wb.bb[3] && pointInRingPts(wb.ring, x, z));
-      const segT = (a, b, c, d) => {
-        const rx = b.x - a.x, rz = b.z - a.z, sx = d.x - c.x, sz = d.z - c.z;
-        const den = rx * sz - rz * sx;
-        if (Math.abs(den) < 1e-12) return null;
-        const t = ((c.x - a.x) * sz - (c.z - a.z) * sx) / den;
-        const u = ((c.x - a.x) * rz - (c.z - a.z) * rx) / den;
-        return t > 1e-9 && t < 1 - 1e-9 && u >= -1e-9 && u <= 1 + 1e-9 ? t : null;
-      };
       const pushQuad = (a, b, wHalf) => {
         const dx = b.x - a.x, dz = b.z - a.z;
         const len = Math.hypot(dx, dz);
@@ -398,54 +391,14 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
         const pts = toPts(road[5] || []);
         if (pts.length < 2) continue;
         const wHalf = (road[1] || 6) / 2;
-        let rx0 = Infinity, rz0 = Infinity, rx1 = -Infinity, rz1 = -Infinity;
-        for (const p of pts) { rx0 = Math.min(rx0, p.x); rz0 = Math.min(rz0, p.z); rx1 = Math.max(rx1, p.x); rz1 = Math.max(rz1, p.z); }
-        const prevRings = [];
-        for (const g of groundRings) {
-          if (g.bb[2] < rx0 || g.bb[0] > rx1 || g.bb[3] < rz0 || g.bb[1] > rz1) continue;
-          if (!ribbonMat) {
-            ribbonMat = mats.road.clone();
-            ribbonMat.polygonOffset = true; ribbonMat.polygonOffsetFactor = -1; ribbonMat.polygonOffsetUnits = -3;
-          }
-          const R = g.ring;
-          const kept = [];
-          for (let i = 1; i < pts.length; i++) {
-            const a = pts[i - 1], b = pts[i];
-            if (Math.max(a.x, b.x) < g.bb[0] || Math.min(a.x, b.x) > g.bb[2] || Math.max(a.z, b.z) < g.bb[1] || Math.min(a.z, b.z) > g.bb[3]) continue;
-            const ts = [];
-            for (let j = 0, k = R.length - 1; j < R.length; k = j++) {
-              const t = segT(a, b, R[k], R[j]);
-              if (t !== null) ts.push(t);
-            }
-            ts.sort((p, q) => p - q);
-            const cuts = [0, ...ts, 1];
-            for (let s = 0; s + 1 < cuts.length; s++) {
-              const t0 = cuts[s], t1 = cuts[s + 1];
-              if (t1 - t0 < 1e-6) continue;
-              const p0 = { x: a.x + (b.x - a.x) * t0, z: a.z + (b.z - a.z) * t0 };
-              const p1 = { x: a.x + (b.x - a.x) * t1, z: a.z + (b.z - a.z) * t1 };
-              const mx = (p0.x + p1.x) / 2, mz = (p0.z + p1.z) / 2;
-              if (!pointInRingPts(R, mx, mz)) continue;
-              if (inWater(mx, mz)) continue;
-              if (prevRings.some((o) => pointInRingPts(o.ring, mx, mz))) continue;
-              kept.push({ a: p0, b: p1, endV: t1 >= 1 - 1e-9 ? i : -1 });
-            }
-          }
-          if (kept.length) {
-            for (let i = 0; i < kept.length; i++) pushQuad(kept[i].a, kept[i].b, wHalf);
-            // caps: a vertex where two kept pieces meet (one ends, another starts) gets an octagon joint
-            const verts = new Map();
-            for (const p of kept) {
-              for (const [key, pt] of [['a', p.a], ['b', p.b]]) {
-                let vi = -1;
-                for (let v = 0; v < pts.length; v++) if (Math.abs(pts[v].x - pt.x) < 1e-6 && Math.abs(pts[v].z - pt.z) < 1e-6) { vi = v; break; }
-                if (vi >= 0) verts.set(vi, (verts.get(vi) || 0) + 1);
-              }
-            }
-            for (const [vi, n] of verts) if (n >= 2) pushCap(pts[vi], wHalf);
-          }
-          prevRings.push(g);
+        const { pieces, joints } = clipRoadToRings(pts, groundRings, { inWater });
+        if (!pieces.length) continue;
+        if (!ribbonMat) {
+          ribbonMat = mats.road.clone();
+          ribbonMat.polygonOffset = true; ribbonMat.polygonOffsetFactor = -1; ribbonMat.polygonOffsetUnits = -3;
         }
+        for (const p of pieces) pushQuad(p.a, p.b, wHalf);
+        for (const j of joints) pushCap(j, wHalf);
       }
       if (ribbonGeos.length) {
         const merged = mergeGeometries(ribbonGeos, false);

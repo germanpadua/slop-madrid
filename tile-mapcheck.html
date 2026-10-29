@@ -16,6 +16,7 @@
 // Golden-preset lighting synced to js/lighting.js (as block-tilepath.html). No tiles
 // streaming/traffic/postFX: bounded per-tile captures that fit sandbox run limits.
 import * as THREE from 'three/webgpu';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { createTileWorld } from './js/madrid-tile-world.js';
 import { createTilePreparer } from './js/madrid-tile-preparer.js';
 window.__mc = { ready: false, errors: [] };
@@ -35,6 +36,12 @@ await renderer.init();
 document.body.appendChild(renderer.domElement);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xebd1b5);
+// ?env=1: approximation of the app's sky IBL (RoomEnvironment via PMREM) so water/reflective materials can be
+// judged more truthfully - it is NOT proof of the app's real IBL/postFX look.
+if (location.search.includes('env=1')) {
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+}
 scene.add(new THREE.HemisphereLight(0x9abbe6, 0xc88a62, 1.48));
 const sun = new THREE.DirectionalLight(0xffca92, 5.8);
 sun.position.set(-44, 58, -68);
