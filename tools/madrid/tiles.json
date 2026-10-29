@@ -1309,7 +1309,7 @@
   "ready": 14,
   "pending": 71,
   "failed": 0,
-  "readyBytes": 9012778,
+  "readyBytes": 9062833,
   "readyKm2": 20.8
  },
  "tiles": [
@@ -4495,11 +4495,11 @@
    "module": "js/geodata/tile-k4j1.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": 399280,
-   "md5": "55108357e85a9c30becc0421643c2649",
+   "bytes": 395712,
+   "md5": "8beafd9ac0a2bb662adc6d508149481e",
    "counts": {
     "blocks": 81,
-    "parcels": 2828,
+    "parcels": 2794,
     "parks": 66,
     "water": 5,
     "roads": 301,
@@ -4547,11 +4547,11 @@
    "module": "js/geodata/tile-k4j2.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": 685265,
-   "md5": "c585d35383b4a619122a7fee99cf5f7d",
+   "bytes": 738888,
+   "md5": "7d64a54b85ec10af2c3ea182db9f7ed2",
    "counts": {
     "blocks": 81,
-    "parcels": 4779,
+    "parcels": 4663,
     "parks": 61,
     "water": 0,
     "roads": 271,
