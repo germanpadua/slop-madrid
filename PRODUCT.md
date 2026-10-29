@@ -8,6 +8,8 @@ El usuario prioriza una ciudad razonablemente fiel con monumentos y barrios reco
 
 La fidelidad se concentra en trazado urbano, manzanas, patios, alturas y siluetas de monumentos. Las paletas procedurales son ilustrativas. La geometría fusionada sigue siendo experimental; no se activa globalmente sin validación visual y de rendimiento.
 
+Prioridad confirmada el 29 de octubre: edificios, monumentos y calles fieles por encima de la cantidad de vehículos y peatones. La simulación es ambientación secundaria; no aumentar poblaciones como criterio de calidad. Su cantidad puede reducirse para favorecer la fidelidad y la fluidez.
+
 ## Restricciones
 
 No publicar cambios ni subir datos fuente con permisos de redistribución pendientes. El ámbito disponible es el del manifiesto de teselas; no se presenta como cobertura completa del municipio.
