@@ -92,3 +92,13 @@ Checklist C0: http://localhost:8080/?debug=1, maqueta desde Sol: copas en plazas
 Siguiente acción: ensamblar grafo residente por IDs OSM y permisos de circulación, conectar al motor conservando población y validando bordes/retirada. El propietario autoriza GPU local, WebGPU y Blender para comprobaciones. Prueba WebGPU separada en curso; WebGL2 sigue predeterminado hasta tener evidencia de estabilidad. Blender no aparece en PATH; no bloquea estas verificaciones de navegador.
 
 WebGPU comprobado en GPU local: backend real WebGPU, arranque 32623 ms, sin pérdida de dispositivo, pero passed=false por GPUValidationError de binding de buffers de tamaño cero. Informe webgpu.json en evidencia C0/B0. WebGL2 permanece predeterminado. Siguiente diagnóstico: meshes instanciados vacíos enviados a compile/render, sin ocultar errores ni declarar paridad de backend.
+
+## E2 — pools vacíos y adaptador WebGPU (corrección hecha, WebGPU hardware sin verificar)
+
+Diagnóstico de escena localizó dos InstancedMesh de capacidad cero bajo ManhattanCityGrid. El centro usa aceras poligonales, por lo que rectSlabs es vacío; ahora no se crean/montan esos pools rectangulares. No se silencian validaciones. Harness amplía el gate: emptyInstanceStorage debe estar vacío.
+
+WebGL2 sobre Intel Iris Xe (ANGLE/Mesa 26.0.8, confirmado por glRenderer) pasa con emptyInstanceStorage=[], cero errores gráficos y arranque de muestra 17247 ms. WebGPU ya no emite GPUValidationError, pero el harness sigue fallando por cero frames en su ventana corta. Observación más larga obtiene solo 4 frames, con pausas de 22,7 s y 11 s. La consulta directa revela adaptador Google SwiftShader isFallbackAdapter=true con ANGLE GL; solicitando ANGLE Vulkan no obtiene adaptador. Por tanto, las pruebas WebGPU anteriores eran software, NO mediciones de la GPU física. Enumerar dispositivos en SystemInfo no identifica el adaptador WebGPU elegido. El harness registra ahora GPUDevice.adapterInfo cuando existe. No cambiar backend predeterminado ni inferir rendimiento WebGPU de la Iris a partir de estos datos.
+
+Evidencia en docs/validation/2026-10-29-empty-storage/: escena anterior, ambas mediciones, consulta de adaptadores y secuencia de frames. Rollback E2: guard de rectSlabs en city-grid y gate/telemetría del harness. Suite total actual 170/170 (incluye seis pruebas nuevas del ensamblador residente en preparación).
+
+Checklist E2: http://localhost:8080/?debug=1 sigue mostrando las mismas aceras. http://localhost:8080/?debug=1&webgpu=1 permite probar el backend en el navegador físico del propietario; verificar adaptador real y fluidez antes de recomendarlo. No se declara compartible por esta corrección.

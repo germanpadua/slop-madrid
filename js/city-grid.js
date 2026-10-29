@@ -1701,27 +1701,31 @@ function buildCityGrid(scene) {
   mergeInto(hedgeGeos, medianHedgeMat, true);
 
   const rectSlabs = blockSidewalks.filter((s) => !s.cover);
-  const swInstanced = new THREE.InstancedMesh(unitBox, sidewalkMat, rectSlabs.length);
-  const curbInstanced = new THREE.InstancedMesh(unitBox, curbMat, rectSlabs.length);
-  swInstanced.receiveShadow = true;
-  curbInstanced.receiveShadow = true;
-  curbInstanced.castShadow = true;
+  // Madrid uses polygon sidewalks here. Do not mount zero-capacity rectangular
+  // pools: WebGPU rejects their zero-byte instance storage bindings.
+  if (rectSlabs.length) {
+    const swInstanced = new THREE.InstancedMesh(unitBox, sidewalkMat, rectSlabs.length);
+    const curbInstanced = new THREE.InstancedMesh(unitBox, curbMat, rectSlabs.length);
+    swInstanced.receiveShadow = true;
+    curbInstanced.receiveShadow = true;
+    curbInstanced.castShadow = true;
 
-  rectSlabs.forEach((blk, i) => {
-    dummy.rotation.set(0, 0, 0);
-    dummy.position.set(blk.cx, 0.125, blk.cz);
-    dummy.scale.set(blk.w - 0.5, 0.19, blk.d - 0.5);
-    dummy.updateMatrix();
-    swInstanced.setMatrixAt(i, dummy.matrix);
+    rectSlabs.forEach((blk, i) => {
+      dummy.rotation.set(0, 0, 0);
+      dummy.position.set(blk.cx, 0.125, blk.cz);
+      dummy.scale.set(blk.w - 0.5, 0.19, blk.d - 0.5);
+      dummy.updateMatrix();
+      swInstanced.setMatrixAt(i, dummy.matrix);
 
-    dummy.position.set(blk.cx, 0.095, blk.cz);
-    dummy.scale.set(blk.w, 0.17, blk.d);
-    dummy.updateMatrix();
-    curbInstanced.setMatrixAt(i, dummy.matrix);
-  });
-  swInstanced.instanceMatrix.needsUpdate = true;
-  curbInstanced.instanceMatrix.needsUpdate = true;
-  group.add(swInstanced, curbInstanced);
+      dummy.position.set(blk.cx, 0.095, blk.cz);
+      dummy.scale.set(blk.w, 0.17, blk.d);
+      dummy.updateMatrix();
+      curbInstanced.setMatrixAt(i, dummy.matrix);
+    });
+    swInstanced.instanceMatrix.needsUpdate = true;
+    curbInstanced.instanceMatrix.needsUpdate = true;
+    group.add(swInstanced, curbInstanced);
+  }
 
   // 6. Times Square Pedestrian Plazas, Duffy Square TKTS Red Steps, Herald Square & Flatiron Plaza
   //    Curb-height light-grey granite paver plazas in Broadway's roadbed with granite benches & planters, plus the

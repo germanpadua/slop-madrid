@@ -58,3 +58,7 @@ Cubiertas del centro desacopladas del detalle cercano: desaparece el círculo de
 Extracto directo [Geofabrik Madrid](https://download.geofabrik.de/europe/spain/madrid.html), checksum verificado, reemplaza las consultas Overpass fallidas. Se añaden 10831 árboles reales a la cobertura ready y se recuperan nodos originales de vías/señales con permisos y niveles; no se infieren intersecciones geométricas. Las copas son símbolos low-poly documentados, posiciones procedentes de OSM. Tráfico y semáforos sobre estos datos siguen pendientes.
 
 Total módulos ready más bloques 12089352 B, presupuesto sin elevar. Suite 164/164 y ciclo de retirada/recarga k3j0 verificado en navegador (147 árboles tras volver). Evidencia y reproducción en PARIDAD-PLAN.md y docs/validation/2026-10-29-streets/. C0 reduce el vacío vegetal, pero todavía está lejos del dosel/terreno derivados de GUGiK de TinyWarsaw.
+
+### E2 — precisión de la prueba de GPU
+
+Corregidos dos pools de aceras de capacidad cero que producían bindings inválidos. WebGL2 real usa Intel Iris Xe y pasa; WebGPU deja de emitir validaciones pero en este Chromium selecciona SwiftShader por software y sigue muy lento. La enumeración de GPU del sistema no bastaba para identificar su adaptador: no usar las cifras WebGPU anteriores como rendimiento de hardware. Evidencia directa de adaptadores y frames en docs/validation/2026-10-29-empty-storage/. Mantener WebGL2 y validar WebGPU físico por separado.

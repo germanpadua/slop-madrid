@@ -1,0 +1,952 @@
+{
+  "passed": true,
+  "gpu": {
+    "devices": [
+      {
+        "vendorId": 32902,
+        "deviceId": 42912,
+        "vendorString": "",
+        "deviceString": "",
+        "driverVendor": "Mesa",
+        "driverVersion": "26.0.8"
+      },
+      {
+        "vendorId": 4318,
+        "deviceId": 10272,
+        "vendorString": "",
+        "deviceString": "",
+        "driverVendor": "Mesa",
+        "driverVersion": "26.0.8"
+      }
+    ],
+    "auxAttributes": {
+      "amdSwitchable": false,
+      "canSupportThreadedTextureMailbox": false,
+      "directRenderingVersion": "",
+      "displayType": "ANGLE_OPENGL",
+      "glExtensions": "GL_AMD_performance_monitor GL_ANGLE_blob_cache GL_ANGLE_client_arrays GL_ANGLE_clip_cull_distance GL_ANGLE_compressed_texture_etc GL_ANGLE_depth_texture GL_ANGLE_framebuffer_blit GL_ANGLE_framebuffer_multisample GL_ANGLE_get_serialized_context_string GL_ANGLE_get_tex_level_parameter GL_ANGLE_instanced_arrays GL_ANGLE_memory_size GL_ANGLE_program_binary_readiness_query GL_ANGLE_program_cache_control GL_ANGLE_renderability_validation GL_ANGLE_request_extension GL_ANGLE_robust_client_memory GL_ANGLE_shader_pixel_local_storage GL_ANGLE_shader_pixel_local_storage_coherent GL_ANGLE_stencil_texturing GL_ANGLE_texture_compression_dxt3 GL_ANGLE_texture_compression_dxt5 GL_ANGLE_texture_multisample GL_ANGLE_translated_shader_source GL_ARM_rgba8 GL_CHROMIUM_bind_generates_resource GL_CHROMIUM_bind_uniform_location GL_CHROMIUM_copy_texture GL_CHROMIUM_lose_context GL_EXT_blend_func_extended GL_EXT_blend_minmax GL_EXT_clear_texture GL_EXT_clip_control GL_EXT_clip_cull_distance GL_EXT_color_buffer_float GL_EXT_color_buffer_half_float GL_EXT_compressed_ETC1_RGB8_sub_texture GL_EXT_conservative_depth GL_EXT_debug_label GL_EXT_debug_marker GL_EXT_depth_clamp GL_EXT_discard_framebuffer GL_EXT_disjoint_timer_query GL_EXT_draw_buffers GL_EXT_draw_buffers_indexed GL_EXT_float_blend GL_EXT_frag_depth GL_EXT_instanced_arrays GL_EXT_map_buffer_range GL_EXT_memory_object GL_EXT_memory_object_fd GL_EXT_occlusion_query_boolean GL_EXT_polygon_offset_clamp GL_EXT_read_format_bgra GL_EXT_render_snorm GL_EXT_robustness GL_EXT_sRGB GL_EXT_sRGB_write_control GL_EXT_semaphore GL_EXT_semaphore_fd GL_EXT_shader_framebuffer_fetch GL_EXT_shader_framebuffer_fetch_non_coherent GL_EXT_shadow_samplers GL_EXT_texture_border_clamp GL_EXT_texture_compression_bptc GL_EXT_texture_compression_dxt1 GL_EXT_texture_compression_rgtc GL_EXT_texture_compression_s3tc_srgb GL_EXT_texture_filter_anisotropic GL_EXT_texture_format_BGRA8888 GL_EXT_texture_mirror_clamp_to_edge GL_EXT_texture_norm16 GL_EXT_texture_rg GL_EXT_texture_sRGB_R8 GL_EXT_texture_sRGB_decode GL_EXT_texture_shadow_lod GL_EXT_texture_storage GL_EXT_texture_type_2_10_10_10_REV GL_EXT_unpack_subimage GL_KHR_blend_equation_advanced GL_KHR_blend_equation_advanced_coherent GL_KHR_debug GL_KHR_parallel_shader_compile GL_KHR_robustness GL_KHR_texture_compression_astc_ldr GL_KHR_texture_compression_astc_sliced_3d GL_MESA_framebuffer_flip_y GL_NV_fence GL_NV_framebuffer_blit GL_NV_pack_subimage GL_NV_pixel_buffer_object GL_NV_read_depth GL_NV_read_stencil GL_NV_shader_noperspective_interpolation GL_OES_EGL_image GL_OES_EGL_image_external GL_OES_EGL_image_external_essl3 GL_OES_EGL_sync GL_OES_compressed_ETC1_RGB8_texture GL_OES_depth24 GL_OES_draw_buffers_indexed GL_OES_element_index_uint GL_OES_fbo_render_mipmap GL_OES_get_program_binary GL_OES_mapbuffer GL_OES_packed_depth_stencil GL_OES_required_internalformat GL_OES_rgb8_rgba8 GL_OES_sample_variables GL_OES_shader_multisample_interpolation GL_OES_standard_derivatives GL_OES_surfaceless_context GL_OES_texture_3D GL_OES_texture_border_clamp GL_OES_texture_float GL_OES_texture_float_linear GL_OES_texture_half_float GL_OES_texture_half_float_linear GL_OES_texture_npot GL_OES_texture_stencil8 GL_OES_texture_storage_multisample_2d_array GL_OES_vertex_array_object ",
+      "glImplementationParts": "(gl=egl-angle,angle=opengl)",
+      "glRenderer": "ANGLE (Intel, Mesa Intel(R) Iris(R) Xe Graphics (RPL-P), OpenGL ES 3.2 Mesa 26.0.8-1ubuntu0.3)",
+      "glResetNotificationStrategy": 33362,
+      "glVendor": "Google Inc. (Intel)",
+      "glVersion": "OpenGL ES 3.0 (ANGLE 2.1.28646 git hash: a6bc9eff8444)",
+      "glWsExtensions": "EGL_EXT_create_context_robustness EGL_KHR_create_context EGL_KHR_image_base EGL_KHR_gl_colorspace EGL_KHR_gl_texture_2D_image EGL_KHR_gl_texture_cubemap_image EGL_KHR_gl_texture_3D_image EGL_KHR_gl_renderbuffer_image EGL_KHR_get_all_proc_addresses EGL_KHR_fence_sync EGL_KHR_wait_sync EGL_ANGLE_create_context_webgl_compatibility EGL_CHROMIUM_create_context_bind_generates_resource EGL_KHR_swap_buffers_with_damage EGL_EXT_pixel_format_float EGL_KHR_surfaceless_context EGL_ANGLE_display_texture_share_group EGL_ANGLE_display_semaphore_share_group EGL_ANGLE_create_context_client_arrays EGL_ANGLE_program_cache_control EGL_ANGLE_robust_resource_initialization EGL_ANGLE_create_context_extensions_enabled EGL_ANDROID_blob_cache EGL_ANDROID_recordable EGL_ANDROID_native_fence_sync EGL_ANGLE_create_context_backwards_compatible EGL_KHR_no_config_context EGL_KHR_create_context_no_error EGL_EXT_image_dma_buf_import EGL_EXT_image_dma_buf_import_modifiers EGL_KHR_reusable_sync EGL_ANGLE_external_context_and_surface EGL_EXT_buffer_age EGL_ANGLE_context_virtualization EGL_ANGLE_memory_usage_report EGL_ANGLE_create_context_passthrough_shaders ",
+      "glWsVendor": "Google Inc. (Intel)",
+      "glWsVersion": "1.5 (ANGLE 2.1.28646 git hash: a6bc9eff8444)",
+      "hardwareSupportsVulkan": false,
+      "inProcessGpu": false,
+      "initializationTime": 0.350117,
+      "isAsan": false,
+      "isClangCoverage": false,
+      "jpegDecodeAcceleratorSupported": false,
+      "maxMsaaSamples": "16",
+      "optimus": true,
+      "passthroughCmdDecoder": true,
+      "pixelShaderVersion": "3.00",
+      "processCrashCount": 0,
+      "sandboxed": false,
+      "skiaBackendType": "GaneshGL",
+      "subpixelFontRendering": true,
+      "targetCpuBits": 64,
+      "vertexShaderVersion": "3.00",
+      "visibilityCallbackCallCount": 0
+    },
+    "featureStatus": {
+      "2d_canvas": "enabled",
+      "direct_rendering_display_compositor": "disabled_off_ok",
+      "gpu_compositing": "enabled",
+      "multiple_raster_threads": "enabled_on",
+      "opengl": "enabled_on",
+      "rasterization": "enabled",
+      "raw_draw": "disabled_off_ok",
+      "skia_graphite": "disabled_off",
+      "trees_in_viz": "disabled_off",
+      "video_decode": "enabled",
+      "video_encode": "disabled_software",
+      "vulkan": "disabled_off",
+      "webgl": "enabled",
+      "webgpu": "enabled",
+      "webgpu_on_vk_via_gl_interop": "enabled",
+      "webnn": "disabled_off"
+    },
+    "driverBugWorkarounds": [
+      "enable_webgl_timer_query_extensions",
+      "exit_on_context_lost",
+      "msaa_is_slow",
+      "rely_on_implicit_sync_for_swap_buffers",
+      "disabled_extension_GL_KHR_blend_equation_advanced",
+      "disabled_extension_GL_KHR_blend_equation_advanced_coherent"
+    ],
+    "videoDecoding": [],
+    "videoEncoding": []
+  },
+  "contextLost": false,
+  "graphicsErrors": [],
+  "screenshotError": null,
+  "detailComparison": null,
+  "bootMs": 17247,
+  "stress": false,
+  "init": "[init] renderer 236ms, lighting 330ms, cityGrid 717ms, landmarks 28ms, blocks 442ms, streetDetails 437ms, traffic 306ms, roadPaint 49ms, tiles 80ms, controllers 2ms, culling 140ms, ui 22ms, postFX 535ms, compile 8478ms, warmup 4630ms, firstFrame 0ms, gpu 0ms",
+  "emptyInstanceStorage": [],
+  "streetLifecycle": null,
+  "sourcedStreetFeatures": [
+    {
+      "id": "fase2",
+      "trees": 6706,
+      "signals": 568,
+      "ways": 7124
+    },
+    {
+      "id": "k1j-1",
+      "trees": 368,
+      "signals": 30,
+      "ways": 952
+    },
+    {
+      "id": "k0j-1",
+      "trees": 256,
+      "signals": 38,
+      "ways": 748
+    },
+    {
+      "id": "k2j-1",
+      "trees": 633,
+      "signals": 78,
+      "ways": 808
+    },
+    {
+      "id": "k3j1",
+      "trees": 170,
+      "signals": 14,
+      "ways": 557
+    },
+    {
+      "id": "k3j0",
+      "trees": 147,
+      "signals": 39,
+      "ways": 474
+    }
+  ],
+  "glTotalsSinceNavigation": {
+    "bufferData": {
+      "calls": 5724,
+      "cpuMs": 32.099999979138374,
+      "maxCpuMs": 4.700000002980232
+    },
+    "compileShader": {
+      "calls": 193,
+      "cpuMs": 0.30000001192092896,
+      "maxCpuMs": 0.10000000894069672
+    },
+    "linkProgram": {
+      "calls": 106,
+      "cpuMs": 2.4000000059604645,
+      "maxCpuMs": 0.7000000029802322
+    },
+    "getProgramParameter": {
+      "calls": 262,
+      "cpuMs": 3342.399999946356,
+      "maxCpuMs": 974.3999999910593
+    },
+    "drawElements": {
+      "calls": 12809,
+      "cpuMs": 10.700000122189522,
+      "maxCpuMs": 0.10000000894069672
+    },
+    "drawElementsInstanced": {
+      "calls": 53241,
+      "cpuMs": 33.600000098347664,
+      "maxCpuMs": 0.20000000298023224
+    }
+  },
+  "geometryStorage": {
+    "attributeBytes": 74252314,
+    "geometries": 4819,
+    "uniqueArrays": 10401
+  },
+  "glProfile": [],
+  "frameLatency": {
+    "samples": 101,
+    "routeMs": 3021.8999999910593,
+    "maxIntervalMs": 133.40000000000146,
+    "p95IntervalMs": 50,
+    "maxRenderMs": 41.79999999701977
+  },
+  "placeSamples": [],
+  "routeFrames": [
+    {
+      "at": 17407.79999999702,
+      "intervalMs": 133.40000000000146,
+      "renderMs": 22.5
+    },
+    {
+      "at": 17455.69999998808,
+      "intervalMs": 66.70000000000073,
+      "renderMs": 18.69999998807907
+    },
+    {
+      "at": 17481.39999999106,
+      "intervalMs": 16.599999999998545,
+      "renderMs": 21.399999991059303
+    },
+    {
+      "at": 17504.89999999106,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 21
+    },
+    {
+      "at": 17526.09999999404,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 16
+    },
+    {
+      "at": 17546.59999999404,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 15.699999988079071
+    },
+    {
+      "at": 17578.59999999404,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 16.200000002980232
+    },
+    {
+      "at": 17605.79999999702,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 16
+    },
+    {
+      "at": 17633.59999999404,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 16.5
+    },
+    {
+      "at": 17661.5,
+      "intervalMs": 16.599999999998545,
+      "renderMs": 16.30000001192093
+    },
+    {
+      "at": 17688.89999999106,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 15.700000002980232
+    },
+    {
+      "at": 17719.59999999404,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 17.599999994039536
+    },
+    {
+      "at": 17755.39999999106,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 23.700000002980232
+    },
+    {
+      "at": 17775.39999999106,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 16.299999997019768
+    },
+    {
+      "at": 17799.09999999404,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 14.299999997019768
+    },
+    {
+      "at": 17833.79999999702,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 16.100000008940697
+    },
+    {
+      "at": 17872.19999998808,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 14.399999991059303
+    },
+    {
+      "at": 17893.89999999106,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 16.700000002980232
+    },
+    {
+      "at": 17922.5,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 15.5
+    },
+    {
+      "at": 17953.19999998808,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 15.799999997019768
+    },
+    {
+      "at": 17983.39999999106,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 14.5
+    },
+    {
+      "at": 18017.19999998808,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 15.299999997019768
+    },
+    {
+      "at": 18047.79999999702,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 14.299999997019768
+    },
+    {
+      "at": 18077.89999999106,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 14.099999994039536
+    },
+    {
+      "at": 18105.79999999702,
+      "intervalMs": 16.80000000000291,
+      "renderMs": 13.900000005960464
+    },
+    {
+      "at": 18135.79999999702,
+      "intervalMs": 33.19999999999709,
+      "renderMs": 14.700000002980232
+    },
+    {
+      "at": 18162.89999999106,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 14.5
+    },
+    {
+      "at": 18189.59999999404,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 13.299999997019768
+    },
+    {
+      "at": 18231.79999999702,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 24.299999997019768
+    },
+    {
+      "at": 18283.89999999106,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 41.79999999701977
+    },
+    {
+      "at": 18307.09999999404,
+      "intervalMs": 50,
+      "renderMs": 19.5
+    },
+    {
+      "at": 18347.19999998808,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 37.599999994039536
+    },
+    {
+      "at": 18385.79999999702,
+      "intervalMs": 50,
+      "renderMs": 35.20000000298023
+    },
+    {
+      "at": 18402.59999999404,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 14.200000002980232
+    },
+    {
+      "at": 18417.59999999404,
+      "intervalMs": 16.600000000002183,
+      "renderMs": 13.5
+    },
+    {
+      "at": 18435.59999999404,
+      "intervalMs": 16.799999999999272,
+      "renderMs": 14.200000002980232
+    },
+    {
+      "at": 18465.89999999106,
+      "intervalMs": 33.20000000000073,
+      "renderMs": 14.599999994039536
+    },
+    {
+      "at": 18498,
+      "intervalMs": 33.39999999999782,
+      "renderMs": 15
+    },
+    {
+      "at": 18526.29999999702,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 14.700000002980232
+    },
+    {
+      "at": 18554.59999999404,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 14.299999997019768
+    },
+    {
+      "at": 18583,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 15
+    },
+    {
+      "at": 18611,
+      "intervalMs": 33.20000000000073,
+      "renderMs": 13.800000011920929
+    },
+    {
+      "at": 18644.29999999702,
+      "intervalMs": 33.39999999999782,
+      "renderMs": 14.400000005960464
+    },
+    {
+      "at": 18669.59999999404,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 13.299999997019768
+    },
+    {
+      "at": 18698.89999999106,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 14.599999994039536
+    },
+    {
+      "at": 18730.59999999404,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 14.900000005960464
+    },
+    {
+      "at": 18755.59999999404,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 14.599999994039536
+    },
+    {
+      "at": 18784.19999998808,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 14.599999994039536
+    },
+    {
+      "at": 18841.19999998808,
+      "intervalMs": 16.5,
+      "renderMs": 14.699999988079071
+    },
+    {
+      "at": 18857,
+      "intervalMs": 50.09999999999855,
+      "renderMs": 14.400000005960464
+    },
+    {
+      "at": 18875.29999999702,
+      "intervalMs": 16.600000000002183,
+      "renderMs": 13.400000005960464
+    },
+    {
+      "at": 18890.39999999106,
+      "intervalMs": 16.69999999999709,
+      "renderMs": 13.799999997019768
+    },
+    {
+      "at": 18917.79999999702,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 16.100000008940697
+    },
+    {
+      "at": 18957.09999999404,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 24.299999997019768
+    },
+    {
+      "at": 18978.39999999106,
+      "intervalMs": 16.600000000002183,
+      "renderMs": 19.099999994039536
+    },
+    {
+      "at": 19010.09999999404,
+      "intervalMs": 33.39999999999782,
+      "renderMs": 25.5
+    },
+    {
+      "at": 19043.09999999404,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 29.599999994039536
+    },
+    {
+      "at": 19068.79999999702,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 23.200000002980232
+    },
+    {
+      "at": 19088,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 17.30000001192093
+    },
+    {
+      "at": 19126.39999999106,
+      "intervalMs": 33.30000000000291,
+      "renderMs": 29.099999994039536
+    },
+    {
+      "at": 19159.59999999404,
+      "intervalMs": 33.39999999999782,
+      "renderMs": 28.5
+    },
+    {
+      "at": 19181.79999999702,
+      "intervalMs": 16.600000000002183,
+      "renderMs": 19.900000005960464
+    },
+    {
+      "at": 19203,
+      "intervalMs": 33.39999999999782,
+      "renderMs": 17.200000002980232
+    },
+    {
+      "at": 19239.89999999106,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 24.200000002980232
+    },
+    {
+      "at": 19259.29999999702,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 17.299999997019768
+    },
+    {
+      "at": 19292.29999999702,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 22.400000005960464
+    },
+    {
+      "at": 19317.09999999404,
+      "intervalMs": 33.30000000000291,
+      "renderMs": 19.900000005960464
+    },
+    {
+      "at": 19352.09999999404,
+      "intervalMs": 16.69999999999709,
+      "renderMs": 27.099999994039536
+    },
+    {
+      "at": 19384.79999999702,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 30
+    },
+    {
+      "at": 19419.09999999404,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 29.900000005960464
+    },
+    {
+      "at": 19443.5,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 21.80000001192093
+    },
+    {
+      "at": 19462.29999999702,
+      "intervalMs": 16.600000000002183,
+      "renderMs": 16.799999997019768
+    },
+    {
+      "at": 19493,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 21.700000002980232
+    },
+    {
+      "at": 19520.5,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 20.80000001192093
+    },
+    {
+      "at": 19568.29999999702,
+      "intervalMs": 16.69999999999709,
+      "renderMs": 41.29999999701977
+    },
+    {
+      "at": 19611.29999999702,
+      "intervalMs": 50,
+      "renderMs": 39.70000000298023
+    },
+    {
+      "at": 19642.89999999106,
+      "intervalMs": 33.30000000000291,
+      "renderMs": 29
+    },
+    {
+      "at": 19671.19999998808,
+      "intervalMs": 33.39999999999782,
+      "renderMs": 25.899999991059303
+    },
+    {
+      "at": 19702.29999999702,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 23
+    },
+    {
+      "at": 19718.79999999702,
+      "intervalMs": 33.30000000000291,
+      "renderMs": 14.900000005960464
+    },
+    {
+      "at": 19733,
+      "intervalMs": 16.69999999999709,
+      "renderMs": 12.900000005960464
+    },
+    {
+      "at": 19757.5,
+      "intervalMs": 16.600000000002183,
+      "renderMs": 13.900000005960464
+    },
+    {
+      "at": 19791.19999998808,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 20.899999991059303
+    },
+    {
+      "at": 19833.09999999404,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 32.099999994039536
+    },
+    {
+      "at": 19861.79999999702,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 25.900000005960464
+    },
+    {
+      "at": 19901.89999999106,
+      "intervalMs": 33.39999999999782,
+      "renderMs": 31.200000002980232
+    },
+    {
+      "at": 19928.29999999702,
+      "intervalMs": 33.30000000000291,
+      "renderMs": 22.600000008940697
+    },
+    {
+      "at": 19957.59999999404,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 21.200000002980232
+    },
+    {
+      "at": 19981.29999999702,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 14.200000002980232
+    },
+    {
+      "at": 20015.69999998808,
+      "intervalMs": 16.799999999999272,
+      "renderMs": 20.399999991059303
+    },
+    {
+      "at": 20054.79999999702,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 27.799999997019768
+    },
+    {
+      "at": 20105.09999999404,
+      "intervalMs": 50,
+      "renderMs": 35.5
+    },
+    {
+      "at": 20137.29999999702,
+      "intervalMs": 33.30000000000291,
+      "renderMs": 29
+    },
+    {
+      "at": 20161.5,
+      "intervalMs": 33.39999999999782,
+      "renderMs": 22
+    },
+    {
+      "at": 20182.39999999106,
+      "intervalMs": 33.20000000000073,
+      "renderMs": 17.599999994039536
+    },
+    {
+      "at": 20221.69999998808,
+      "intervalMs": 16.799999999999272,
+      "renderMs": 28
+    },
+    {
+      "at": 20254.5,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 26.900000005960464
+    },
+    {
+      "at": 20299,
+      "intervalMs": 50,
+      "renderMs": 32.30000001192093
+    },
+    {
+      "at": 20330.69999998808,
+      "intervalMs": 33.20000000000073,
+      "renderMs": 28.599999994039536
+    },
+    {
+      "at": 20358.19999998808,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 24.899999991059303
+    },
+    {
+      "at": 20385.5,
+      "intervalMs": 33.39999999999782,
+      "renderMs": 20.200000002980232
+    }
+  ],
+  "streaming": {
+    "loaded": [
+      "fase2",
+      "k1j-1",
+      "k0j-1",
+      "k2j-1",
+      "k3j1",
+      "k3j0"
+    ],
+    "bytes": 5113664,
+    "failures": 0,
+    "available": 12,
+    "pending": [],
+    "timings": [
+      {
+        "id": "k1j-1",
+        "importMs": 1384.7999999970198,
+        "prepareMs": 4154.100000008941,
+        "workerMs": 1700.0999999940395,
+        "buildMs": 62.19999998807907
+      },
+      {
+        "id": "k0j-1",
+        "importMs": 1386.2999999970198,
+        "prepareMs": 6303.100000008941,
+        "workerMs": 1265,
+        "buildMs": 34.3999999910593
+      },
+      {
+        "id": "k2j-1",
+        "importMs": 1388.4000000059605,
+        "prepareMs": 12449.70000000298,
+        "workerMs": 2750.5999999940395,
+        "buildMs": 61.29999999701977
+      },
+      {
+        "id": "k3j1",
+        "importMs": 4589.600000008941,
+        "prepareMs": 465.09999999403954,
+        "workerMs": 439.40000000596046,
+        "buildMs": 13.099999994039536
+      },
+      {
+        "id": "k3j0",
+        "importMs": 4590,
+        "prepareMs": 1418.5,
+        "workerMs": 942.1000000089407,
+        "buildMs": 28.099999994039536
+      }
+    ]
+  },
+  "shaderWarmupHidden": true,
+  "backend": "WebGL2",
+  "webgpuAdapter": null,
+  "tileStats": [
+    {
+      "id": "k1j-1",
+      "meshes": 19,
+      "instances": 6893,
+      "sharedFacades": 4,
+      "unsharedFacades": 0,
+      "deckMinY": -0.6000000238418579,
+      "deckMaxY": 2.3841858265427618e-8,
+      "colliders": 2261,
+      "kinds": [
+        "TileDeck",
+        "TileWater",
+        "TileParks",
+        "",
+        "TileBuildings0",
+        "TileBuildings1",
+        "TileBuildings2",
+        "TileBuildings3",
+        "TileHipRoofs",
+        "TileBridge"
+      ]
+    },
+    {
+      "id": "k0j-1",
+      "meshes": 16,
+      "instances": 4709,
+      "sharedFacades": 4,
+      "unsharedFacades": 0,
+      "deckMinY": -0.6000000238418579,
+      "deckMaxY": 2.3841858265427618e-8,
+      "colliders": 1665,
+      "kinds": [
+        "TileDeck",
+        "TileWater",
+        "TileParks",
+        "",
+        "TileBuildings0",
+        "TileBuildings1",
+        "TileBuildings2",
+        "TileBuildings3",
+        "TileHipRoofs",
+        "TileBridge"
+      ]
+    },
+    {
+      "id": "k2j-1",
+      "meshes": 14,
+      "instances": 11111,
+      "sharedFacades": 4,
+      "unsharedFacades": 0,
+      "deckMinY": -0.6000000238418579,
+      "deckMaxY": 2.3841858265427618e-8,
+      "colliders": 3779,
+      "kinds": [
+        "TileDeck",
+        "TileWater",
+        "TileParks",
+        "",
+        "TileBuildings0",
+        "TileBuildings1",
+        "TileBuildings2",
+        "TileBuildings3",
+        "TileHipRoofs",
+        "TileBridge"
+      ]
+    },
+    {
+      "id": "k3j1",
+      "meshes": 18,
+      "instances": 1494,
+      "sharedFacades": 4,
+      "unsharedFacades": 0,
+      "deckMinY": -0.6000000238418579,
+      "deckMaxY": 2.3841858265427618e-8,
+      "colliders": 476,
+      "kinds": [
+        "TileDeck",
+        "TileWater",
+        "TileParks",
+        "",
+        "TileBuildings0",
+        "TileBuildings1",
+        "TileBuildings2",
+        "TileBuildings3",
+        "TileHipRoofs"
+      ]
+    },
+    {
+      "id": "k3j0",
+      "meshes": 121,
+      "instances": 3436,
+      "sharedFacades": 4,
+      "unsharedFacades": 0,
+      "deckMinY": -0.6000000238418579,
+      "deckMaxY": 2.3841858265427618e-8,
+      "colliders": 1158,
+      "kinds": [
+        "TileDeck",
+        "TileWater",
+        "TileParks",
+        "",
+        "TileHybridCap",
+        "TileHybridWell",
+        "TileBuildings0",
+        "TileBuildings1",
+        "TileBuildings2",
+        "TileBuildings3",
+        "TileMedianeraOverlay",
+        "TileHipRoofs"
+      ]
+    }
+  ],
+  "tiles": {
+    "loaded": [
+      "fase2",
+      "k1j-1",
+      "k0j-1",
+      "k2j-1"
+    ],
+    "bytes": 4529851,
+    "failures": 0,
+    "available": 12,
+    "pending": [
+      "k3j1",
+      "k3j0"
+    ],
+    "timings": [
+      {
+        "id": "k1j-1",
+        "importMs": 1384.7999999970198,
+        "prepareMs": 4154.100000008941,
+        "workerMs": 1700.0999999940395,
+        "buildMs": 62.19999998807907
+      },
+      {
+        "id": "k0j-1",
+        "importMs": 1386.2999999970198,
+        "prepareMs": 6303.100000008941,
+        "workerMs": 1265,
+        "buildMs": 34.3999999910593
+      },
+      {
+        "id": "k2j-1",
+        "importMs": 1388.4000000059605,
+        "prepareMs": 12449.70000000298,
+        "workerMs": 2750.5999999940395,
+        "buildMs": 61.29999999701977
+      }
+    ]
+  },
+  "after": {
+    "loaded": [
+      "fase2",
+      "k1j-1",
+      "k0j-1",
+      "k2j-1"
+    ],
+    "bytes": 4529851,
+    "failures": 0,
+    "available": 12,
+    "pending": [
+      "k3j1",
+      "k3j0"
+    ],
+    "timings": [
+      {
+        "id": "k1j-1",
+        "importMs": 1384.7999999970198,
+        "prepareMs": 4154.100000008941,
+        "workerMs": 1700.0999999940395,
+        "buildMs": 62.19999998807907
+      },
+      {
+        "id": "k0j-1",
+        "importMs": 1386.2999999970198,
+        "prepareMs": 6303.100000008941,
+        "workerMs": 1265,
+        "buildMs": 34.3999999910593
+      },
+      {
+        "id": "k2j-1",
+        "importMs": 1388.4000000059605,
+        "prepareMs": 12449.70000000298,
+        "workerMs": 2750.5999999940395,
+        "buildMs": 61.29999999701977
+      }
+    ]
+  },
+  "tileMs": [],
+  "fps": 33.58606012233969,
+  "frames": 101,
+  "legacyBoroughs": false,
+  "fireEscapeInstances": 0,
+  "drawCalls": 746,
+  "triangles": 5114261,
+  "residentBytes": 2352001,
+  "meshes": 183,
+  "loaded": [
+    "k1j-1",
+    "k0j-1",
+    "k2j-1",
+    "k3j1",
+    "k3j0"
+  ],
+  "pageErrors": [],
+  "failedRequests": [],
+  "tileLog": [
+    "[madrid-tiles] +k1j-1 5601ms 573052 B (2 resident)",
+    "[madrid-tiles] +k0j-1 7724ms 502333 B (3 resident)",
+    "[madrid-tiles] +k2j-1 13899ms 692803 B (4 resident)",
+    "[madrid-tiles] +k3j1 5068ms 263712 B (5 resident)",
+    "[madrid-tiles] +k3j0 6037ms 320101 B (6 resident)"
+  ],
+  "consoleErrors": []
+}

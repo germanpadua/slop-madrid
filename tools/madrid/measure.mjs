@@ -197,6 +197,15 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
   const routeFrames = (window.__madrid.frameSamples || []).filter((s) => s.at >= routeStart);
   const intervals = routeFrames.map((s) => s.intervalMs).sort((a, b) => a - b);
   return {
+    emptyInstanceStorage: (() => {
+      const empty = [];
+      sceneOf.traverseVisible(object => {
+        if (object.isInstancedMesh && object.instanceMatrix.array.byteLength === 0) {
+          empty.push({ name: object.name, parent: object.parent?.name });
+        }
+      });
+      return empty;
+    })(),
     streetLifecycle,
     sourcedStreetFeatures: [...(tileWorld?.residentStreetFeatures?.() || [])].map(([id, data]) => ({
       id, trees: data.trees.length, signals: data.signals.length, ways: data.ways.length
@@ -237,6 +246,10 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
     distanceDetail: window.__madrid.distanceDetail?.status(),
     shaderWarmupHidden: sceneOf.getObjectByName('MadridTileShaderWarmup')?.visible === false,
     backend: renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2',
+    webgpuAdapter: (() => {
+      const info = renderer.backend.device?.adapterInfo;
+      return info ? { vendor: info.vendor, architecture: info.architecture, device: info.device, description: info.description } : null;
+    })(),
     tileStats,
     tiles: before,
     after: tileSet,
@@ -311,7 +324,7 @@ if (process.env.VIEWS_DIR) {
 }
 const contextLost = logs.some((line) => /CONTEXT_LOST|Device Lost/i.test(line));
 const graphicsErrors = logs.filter((line) => /GPUValidationError|Shader Error|GL_INVALID|Error compiling/i.test(line));
-const passed = (!checkStreetLifecycle || result.streetLifecycle?.passed) && graphicsErrors.length === 0 && !contextLost && pageErrors.length === 0 && failed.length === 0 && result.frames > 0 && result.shaderWarmupHidden && result.placeSamples.every(p => p.frames > 0) && result.tileStats.every((tile) => !tile.unsharedFacades) && result.tileMs.every((tile) => tile.ok) && (result.after?.failures || 0) === 0 && !result.legacyBoroughs && result.fireEscapeInstances === 0;
+const passed = result.emptyInstanceStorage.length === 0 && (!checkStreetLifecycle || result.streetLifecycle?.passed) && graphicsErrors.length === 0 && !contextLost && pageErrors.length === 0 && failed.length === 0 && result.frames > 0 && result.shaderWarmupHidden && result.placeSamples.every(p => p.frames > 0) && result.tileStats.every((tile) => !tile.unsharedFacades) && result.tileMs.every((tile) => tile.ok) && (result.after?.failures || 0) === 0 && !result.legacyBoroughs && result.fireEscapeInstances === 0;
 console.log(JSON.stringify({
   passed,
   gpu: gpuInfo.gpu,
