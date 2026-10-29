@@ -6,8 +6,8 @@ Prohibido push/deploy/merge a main. Auditoría detallada y checklists: `MADRID-P
 | Bloque | Estado | Orden, razón y criterio de cierre |
 |---|---|---|
 | 0. Auditar antes de producto | **hecho** | MADRID.md completo, log all, diff upstream, consumidores/datos y suite 137/137; documentos escritos antes de producto |
-| A1. Ingesta escalable | pendiente | Descargar PBF público a /tmp, osmium por celda; cache IDEAM por área, sin mega-JSON de entrega. Primero contigüidad de almendra construida |
-| A2. Cobertura | pendiente | Generar vecinos centrales y extender al norte/este según fuentes, hashes y dedupe; registrar celdas restantes sin fingir cobertura |
+| A1. Ingesta escalable | **hecho** | `pbf.py`: PBF diario verificado, osmium smart por core, caché IDEAM paginada por envolvente (el servicio no tiene campo distrito); procedencia y md5 por tesela |
+| A2. Cobertura | **avance entregado; resto pendiente** | 18/85 listas, 67 pendientes, 23 km² de cores. Diez vecinas conectan semilla, Chamberí, Salamanca y Arganzuela; módulos fase3/semilla preservados |
 | B1. Worker y presupuesto | pendiente | Antes de ampliar residentes: reservas en vuelo, semilla completa, import en worker terminable; tests de carreras/fallos |
 | B2. Mundo activo y mapa | pendiente | Modelo activo de datos, mapa/cache/búsqueda con alta/baja; grafo emitido por tesela, unión sin intersecciones ficticias |
 | B3. Tráfico y LOD | pendiente | Adaptar red/simulación, LOD0; preservar movimiento cercano y no resetear todos los actores en cada carga |
@@ -26,6 +26,9 @@ no promesa de cierre de todos los subsistemas. Cada commit deja estado concreto;
 
 ## Continuación
 
-1. Instalar/probar osmium y obtener extracto público con procedencia/fecha/hash.
-2. Preparar pipeline por tesela sin alterar los módulos conquistados hasta verificar integridad.
-3. Mantener esta tabla y el registro de mediciones del informe con cada cierre.
+1. Caché actual `/tmp/slop-paridad-cache/madrid-261028.osm.pbf`, MD5 `c1dfa14ee00cca5710549dadb49b4e5e`.
+   Regenerar las diez nuevas: `python3 tools/madrid/pbf.py --pbf /tmp/slop-paridad-cache/madrid-261028.osm.pbf --rebuild --clean-tile-cache k0j2 k1j2 k2j2 k3j2 k3j0 k1j-1 k3j-1 k1j3 k2j3 k3j3`.
+2. `node tools/madrid/tiles.mjs verify`; suite completa; `node tools/madrid/measure.mjs --cpu` (sin GPU).
+3. Ampliar cobertura requiere revisar el test histórico que exige que TODOS los módulos publicados quepan juntos
+   en 12 MiB. No se ha debilitado: total actual 11.077.635 B. La política residente sí cuenta semilla completa.
+4. Terminar B y C, actualizar mediciones y límites con evidencia antes de cerrar.

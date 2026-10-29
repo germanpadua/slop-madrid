@@ -16,7 +16,7 @@ Este informe es de código/datos; **no constituye aprobación visual**. El propi
 - Manifiesto inicial: **8/85 listas, 77 pendientes**, 15,20 km² de cores listos, 6.788.893 B de módulos
   (incluye semilla y manzanas). No confundir 85 km de cuadrícula envolvente con los 52,1 km² de almendra.
   La selección de celdas usa la **caja** del anillo M-30; varias celdas periféricas están fuera del interior.
-- Monumentos: diez módulos, 1.126.998 B sumados. La tabla antigua de MADRID.md precede al último rediseño.
+- Monumentos: diez módulos, 1.125.998 B sumados. La tabla antigua de MADRID.md precede al último rediseño.
 - Disco real: 7,4 GiB libres, no 11. Cachés nuevos en `/tmp`; nada de ZIP municipal de 2,2 GB.
 - Referencias externas: se intentó acceder a [TinyWarsaw](https://tinywarsaw.app/preview/engine/) y
   [Pages actual](https://germanpadua.github.io/slop-madrid/); el navegador de lectura devolvió error interno.
@@ -57,8 +57,10 @@ Inspección del propietario (build local `http://localhost:8000/?debug=1`; Pages
 
 `roads` permite dibujar y etiquetar; no contiene identidad de nodos OSM, acceso, nivel/puente/túnel. No basta unir
 cruces 2D indiscriminadamente: fabricaría intersecciones. El generador debe emitir su `roadGraph` por tesela.
-También se observa un acoplo peligroso previo: el emisor de graph escribe `[...dir, hw, inner]`, mientras
-`road-network.js` desestructura `inner` en el slot 6. Es necesario corregirlo al integrar la red.
+La lectura completa del emisor confirma que `outLinks` elimina `hw` antes de exportar: el slot 6 de `inner`
+es correcto. Sí hay un fallo de identidad en la entrada Overpass: cuando out-geom no trae id de nodo, el fallback
+incluye el id de vía, por lo que un cruce compartido recibe identidades distintas. Corregirlo en el generador y
+normalizar por coordenadas de vértices reales al unir datos existentes (sin conectar cruces geométricos arbitrarios).
 
 Inspección (`http://localhost:8000/?debug=1`):
 
@@ -114,3 +116,31 @@ Inspección (`http://localhost:8000/?debug=1`; `https://germanpadua.github.io/sl
 ## Registro de ejecución
 
 Auditoría cerrada antes de escribir código de producto. Estado y próximos comandos en `PARIDAD-PLAN.md`.
+
+### A1/A2 — avance entregado
+
+`tools/madrid/pbf.py` usa el [extracto diario de Geofabrik](https://download.geofabrik.de/europe/spain/madrid.html)
+del 28-10-2026 (85.464.364 B, timestamp OSM `2026-10-28T21:21:02Z`, MD5 proveedor verificado
+`c1dfa14ee00cca5710549dadb49b4e5e`). `osmium extract -s smart` conserva vías y relaciones completas por
+celda; adaptación XML conserva IDs compartidos de nodo y roles. IDEAM no expone distrito: paginar por bbox
+con `orderByFields=OBJECTID`, sin duplicados, caché reusada en `/tmp`. Catastro no se consulta porque el
+constructor consume sólo IDEAM para estos edificios; la procedencia nueva ya no lo atribuye falsamente.
+
+Se entregan k0j2, k1j2, k2j2, k3j2, k3j0, k1j-1, k3j-1, k1j3, k2j3 y k3j3. **18 listas / 67 pendientes**,
+23,00 km² de cores, 11.077.635 B de módulos listos. Cada celda lleva md5, tamaño, counts y `sourceSnapshot`.
+Los ocho módulos previos (semilla partida + siete vecinas) no cambian. Ningún mega-JSON de entrega.
+
+La ampliación reveló duplicados por propiedad bloque/huérfana. Las celdas nuevas usan centro de parcela y mantienen
+anillos enteros; las huellas ya publicadas conservan su dueño fijo de fase 3/semilla. Dedupe incluye ahora la
+semilla. No se afirma que todos los bloques grandes o las esquinas de cuatro celdas tengan acera completa: el
+criterio anterior de >50 % y el descarte en borde de fetch siguen pendientes de una regeneración coordinada.
+
+Se extraen helpers puros a `tools/geo-geometry.mjs`: Madrid deja de construir Manhattan al importar helpers.
+El generador NYC conserva los mismos helpers y su test de reconstrucción. Antes, cada import añadía decenas de
+segundos; últimas celdas nuevas tardan ~8–10 s incluyendo extracción y caché/consulta municipal.
+
+Inspección A entregada (`http://localhost:8000/?debug=1`):
+
+- [ ] Desde Sol ir al norte por San Bernardo y Bravo Murillo: se completan los antiguos huecos intermedios.
+- [ ] Volar al sur desde Atocha y al este hacia Salamanca: continuidad de datos; las 67 pendientes siguen visibles.
+- [ ] En los bordes k0j2/k0j3 y k3j2/k4j2 no deben aparecer edificios dobles; verificar también en vista de calle.
