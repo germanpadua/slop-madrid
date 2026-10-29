@@ -87,7 +87,8 @@ await page.waitForFunction(() => window.__madrid && window.__madrid.renderer && 
 const bootMs = Date.now() - t0;
 const initLine = logs.find((l) => l.startsWith('[init]')) || '';
 
-const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view, aerialZoom }) => {
+const hideRoots = (process.env.HIDE_ROOTS || '').split(',').filter(Boolean);
+const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view, aerialZoom, hideRoots }) => {
   const { renderer, tileStreamer, tileWorld, controllerManager } = window.__madrid;
   const waitFor = async (fn, timeoutMs = 120000) => {
     const start = performance.now();
@@ -145,6 +146,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
     await waitFor(() => tileStreamer.status().loaded.length >= 6, 120000);
   }
   const tileSet = tileStreamer ? tileStreamer.status() : null;
+  for (const n of hideRoots) { const o = window.__madrid.scene.getObjectByName(n); if (o) o.visible = false; }
   // Count completed application renders; renderer-info field names vary across Three.js versions.
   const frames0 = window.__madrid.renderedFrames || 0;
   const start = performance.now();
@@ -227,7 +229,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
     meshes: tileWorld ? tileWorld.meshCount() : 0,
     loaded: tileWorld ? tileWorld.ids() : []
   };
-}, { walk, bootOnly, stress, places, view, aerialZoom });
+}, { walk, bootOnly, stress, places, view, aerialZoom, hideRoots });
 
 let detailComparison = null;
 if (process.env.DETAIL_COMPARE) detailComparison = await page.evaluate(async () => {
