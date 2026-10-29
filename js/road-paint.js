@@ -17,7 +17,7 @@ import { createRoadPaintMaterial } from './tsl-materials.js';
 
 const WHITE = new THREE.Color(0xe6e2d6);
 const YELLOW = WHITE; // Madrid centre markings use the same white palette.
-const HEIGHT = 0.012; // above the asphalt
+const HEIGHT = 0.03; // above the asphalt
 
 // The worker forwards the builder's physical marking edges next to the routing ones; prefer them when
 // they are there (dead ends and non-routable streets get paint too), otherwise fall back to routing.
@@ -49,7 +49,7 @@ function usableEdge(e) {
     Number.isFinite(e.dx) && Number.isFinite(e.dz) && Number.isFinite(e.len) && Number.isFinite(e.half);
 }
 
-function buildPaintMesh(network, material) {
+function buildPaintMesh(network, material, containsRoadSurface) {
   const position = [];
   const side = [];
   const paint = [];
@@ -149,7 +149,19 @@ function buildPaintMesh(network, material) {
     let phase = 0;
     for (let i = 1; i < path.length; i++) {
       const [ax,az] = path[i-1], [bx,bz] = path[i];
-      strip(ax,az,bx,bz, CROSSWALK - 0.3, WHITE, 1.2, 0.5, phase);
+      const length=Math.hypot(bx-ax,bz-az),steps=Math.max(1,Math.ceil(length/0.35));
+      const width=CROSSWALK-0.3,nx=length?-(bz-az)/length*width/2:0,nz=length?(bx-ax)/length*width/2:0;
+      let start=null;
+      for(let k=0;k<=steps;k++) {
+        const t=Math.min(1,(k+0.5)/steps),x=ax+(bx-ax)*t,z=az+(bz-az)*t;
+        const inside=k<steps&&(!containsRoadSurface||(containsRoadSurface(x+nx,z+nz)&&containsRoadSurface(x-nx,z-nz)));
+        if(inside&&start===null)start=k;
+        if(!inside&&start!==null) {
+          const a=start/steps,b=k/steps;
+          strip(ax+(bx-ax)*a,az+(bz-az)*a,ax+(bx-ax)*b,az+(bz-az)*b,width,WHITE,1.2,0.5,phase+length*a);
+          start=null;
+        }
+      }
       phase += Math.hypot(bx-ax,bz-az);
     }
   }
@@ -282,7 +294,7 @@ function createRoadPaint(scene, network) {
     mesh = null;
   }
 
-  function rebuild(nextNetwork) {
+  function rebuild(nextNetwork, containsRoadSurface) {
     if (disposed) return null;
     if (!nextNetwork) {
       release();
@@ -299,7 +311,7 @@ function createRoadPaint(scene, network) {
     if (!material) material = createRoadPaintMaterial();
     let next = null;
     try {
-      next = buildPaintMesh(nextNetwork, material);
+      next = buildPaintMesh(nextNetwork, material, containsRoadSurface);
     } catch (error) {
       // Keep the previous markings on screen rather than leaving the street blank on a malformed swap.
       if (!warned) console.warn('[road-paint] resident network paint skipped:', error.message);

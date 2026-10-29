@@ -1,3 +1,5 @@
+import { surfaceRoads } from './madrid-road-surface-geometry.js';
+import { createMadridRoadSurfaces } from './madrid-road-surfaces.js';
 // js/madrid-tile-world.js — phase-3 tile renderer: turns a generated tile module (js/geodata/tile-<id>.js, see
 // tools/madrid/build.mjs + tools/madrid/tiles.mjs) into scene geometry, and takes it out again on eviction.
 //
@@ -129,6 +131,7 @@ export function createTileWorld(scene, { colliders = null, materials = null, see
   const medianeraMat = new THREE.MeshStandardNodeMaterial({ color: 0xb9a684, roughness: 0.97, metalness: 0, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }); // warmer masonry tone; sits ON the owner wall (0.01), depth via polygonOffset not displacement
   const mats = {
     road: materials?.road || createRoadSurfaceMaterial(),
+    ground: materials?.ground || createSidewalkMaterial(),
     curb: materials?.curb || createCurbMaterial(),
     sidewalk: materials?.sidewalk || createSidewalkMaterial(),
     water: materials?.water || createWaterMaterial(),
@@ -161,7 +164,7 @@ export function createTileWorld(scene, { colliders = null, materials = null, see
     const water = (tile.water || []).map(toPts).filter((r) => r.length >= 3);
     const waterBoxes = water.map((r) => ({ ring: r, bb: bboxOf(r) }));
 
-    // 1. Ground: each core rectangle is one asphalt slab with the real water cut out (the channel becomes a hole with
+    // 1. Ground: neutral paving, with separate surface-road corridors and real water cut out (a hole with
     //    a vertical bank, exactly like the seed), plus the water surface 0.45 m below the street.
     const coreRects = core.map((r) => ({ rect: r, pts: rectPts(r) }));
     for (const { rect, pts } of coreRects) {
@@ -169,10 +172,12 @@ export function createTileWorld(scene, { colliders = null, materials = null, see
         const c = r.reduce((a, p) => ({ x: a.x + p.x / r.length, z: a.z + p.z / r.length }), { x: 0, z: 0 });
         return c.x >= rect[0] && c.x <= rect[2] && c.z >= rect[1] && c.z <= rect[3];
       });
-      const deck = createExtrudedPolygonMesh(pts, -0.6, 0.6, mats.road, true, false, holes.length ? holes : null);
+      const deck = createExtrudedPolygonMesh(pts, -0.6, 0.6, mats.ground, true, false, holes.length ? holes : null);
       deck.name = 'TileDeck';
       group.add(deck);
     }
+    const streets=createMadridRoadSurfaces(surfaceRoads(tile.streetFeatures),core,mats.road);
+    if(streets)group.add(streets);
     for (const ring of water) {
       const plane = createFlatPolygonMesh(ring, -0.45, mats.water, true);
       plane.name = 'TileWater';

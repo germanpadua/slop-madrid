@@ -1,3 +1,4 @@
+import { createRoadSurfaceQuery, surfaceRoads } from './madrid-road-surface-geometry.js';
 import * as THREE from 'three/webgpu';
 import { GEO } from './madrid-geodata.js';
 import { pass, mrt, output, normalView, positionView, metalness, roughness, vec2, smoothstep } from 'three/tsl';
@@ -218,7 +219,8 @@ async function initApp() {
         // Markings follow the live graph: same lanes the cars use, and on a tile swap the old geometry is
         // disposed while the material (and its compiled pipeline) is reused.
         const tPaint = performance.now();
-        roadPaint.rebuild(network);
+        const surfaces=[...tileWorld.residentStreetFeatures().values()].flatMap(surfaceRoads);
+        roadPaint.rebuild(network,createRoadSurfaceQuery(surfaces));
         const mesh = roadPaint.mesh;
         roadPaintStats = {
           rebuildMs: +(performance.now() - tPaint).toFixed(1),

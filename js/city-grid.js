@@ -1,3 +1,5 @@
+import { surfaceRoads } from './madrid-road-surface-geometry.js';
+import { createMadridRoadSurfaces } from './madrid-road-surfaces.js';
 import * as THREE from 'three/webgpu';
 import {
   float,
@@ -1539,6 +1541,8 @@ function buildCityGrid(scene) {
   // Granite bulkhead around every land piece (NYC): Madrid's frame is a cut, not a shoreline, so it is not walled
   const roadMat = createRoadSurfaceMaterial();
   cityMaterials.road = roadMat;
+  const groundMat=GEO.frame?.madrid ? createSidewalkMaterial() : roadMat;
+  cityMaterials.ground=groundMat;
   // The seed's fetch bounds include100m overlap. Its deck must own only its core;
   // otherwise equal-height seed/tile decks z-fight and slice through park water.
   const LAND = GEO.frame?.madrid && GEO.core?.length
@@ -1555,11 +1559,12 @@ function buildCityGrid(scene) {
     }
   }
 
-  // Unified roadway asphalt deck (Y = 0.0). Madrid: a 0.6 m slab carved by the real water polygons (GEO.water), so the
+  // Madrid ground slab: neutral paving at Y=0; separate source corridors carry asphalt above it.
+  // A 0.6 m slab is carved by real water polygons (GEO.water), so the
   // Manzanares is a hole in the city with a real bank; the channel surface sits 0.45 m below the street.
   if (MADRID_RIVER) {
     for (const ring of LAND) {
-      const deck = createExtrudedPolygonMesh(ring, -0.6, 0.6, roadMat, true, false, MADRID_WATER);
+      const deck = createExtrudedPolygonMesh(ring, -0.6, 0.6, groundMat, true, false, MADRID_WATER);
       deck.name = 'MadridDeck';
       group.add(deck);
     }
@@ -1607,7 +1612,13 @@ function buildCityGrid(scene) {
     }
     if (bridgeSpans) group.userData.bridgeSpans = bridgeSpans;
   } else {
-    for (const ring of LAND) group.add(createFlatPolygonMesh(ring, 0.0, roadMat, true));
+    for (const ring of LAND) group.add(createFlatPolygonMesh(ring, 0.0, groundMat, true));
+  }
+
+  if(GEO.frame?.madrid) {
+    const core=GEO.core?.length?GEO.core:LAND.map(r=>[Math.min(...r.map(p=>p.x)),Math.min(...r.map(p=>p.z)),Math.max(...r.map(p=>p.x)),Math.max(...r.map(p=>p.z))]);
+    const streets=createMadridRoadSurfaces(surfaceRoads(GEO.streetFeatures),core,roadMat);
+    if(streets)group.add(streets);
   }
 
   // =========================================================================
