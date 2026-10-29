@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { GEO } from './madrid-geodata.js';
 import {
   Fn,
   float,
@@ -1810,8 +1811,10 @@ function createRoadSurfaceMaterial() {
     roughness: 0.48
   });
 
-  const cAsphaltDark = color(0x2b2e33);
-  const cAsphaltLight = color(0x464a51);
+  // Madrid asphalt is a mid grey (the Manhattan charcoal reads near-black under the street-level light here)
+  const isMadridRoad = !!(GEO.frame && GEO.frame.madrid);
+  const cAsphaltDark = color(isMadridRoad ? 0x5b5e63 : 0x2b2e33);
+  const cAsphaltLight = color(isMadridRoad ? 0x7a7d83 : 0x464a51);
   const cManhole = color(0x4a433c);
 
   // Puddle field & wetness masks shared by every channel below (each node is generated once per fragment)
