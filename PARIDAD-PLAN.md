@@ -64,3 +64,31 @@ La maqueta demostraba un radio circular de tejados de solo 560 m: la cubierta co
 Comparación docs/validation/2026-10-29-roofs/: desaparece el límite circular en maqueta, patio visible y paleta terracota continua. Harness passed=true, cero errores gráficos/pageerrors. Atributos CPU 72583390→73075186 bytes (+491796; ~0,47 MiB); draws 711→740; triángulos de muestra 4289107→4310035. No se eleva presupuesto de datos. Muestras concurrentes de navegador: NO usar tiempos/FPS para atribuir aceleración. Tests nuevos: 4000 cubiertas sin pérdida/duplicación, separación hip/ring y conservación de transformaciones. Suite 162/162 al resolver precarga del nuevo módulo. Rollback: collectRoofBatches, lotes estáticos y exclusión de Madrid del pool dinámico.
 
 Checklist A1: http://localhost:8080/?debug=1, abrir maqueta y alejarse de Sol: tejados terracota deben continuar más allá del antiguo círculo cercano. Revisar móvil y k3j0, especialmente cubiertas de patios y bordes. No se declara aún A completo por esta vista general.
+
+## C0/B0 — recuperar fuente OSM y vegetación residente (hecho)
+
+Overpass dejó de ser bloqueo: descargado extracto Geofabrik Madrid de ~81,5 MiB en /tmp, checksum MD5 c1dfa14ee00cca5710549dadb49b4e5e coincidente con proveedor. SHA256 y bbox consultada están dentro de streetFeaturesSource en el manifiesto y de cada streetFeatures. Se conserva nodo OSM original por árbol/señal y por vértice de vía, más highway/access/oneway/layer/bridge/tunnel y otras etiquetas útiles. Ningún cruce se ha inferido por proximidad. Esto prepara B, pero aún no conecta el nuevo grafo a tráfico/peatones.
+
+12 entradas ready: 10831 árboles, 6706 en semilla; fuentes completas para bbox de todas ellas. Árboles instanciados en posición OSM exacta (redondeo 1 cm), sin plantación procedural adicional. Copas/troncos low-poly ilustrativos: height y diameter_crown cuando existen y son plausibles; en ausencia, símbolo de 7 m de alto/4,4 m de diámetro. No se afirma especie o volumen municipal medido. Dos draws por grupo con datos, frustum bounds y retirada de geometría/instancias al descargar tesela. Materiales compartidos.
+
+Empaquetado conserva contrato JSON TILE y actualiza bytes/MD5 por módulo; URLs versionadas del streamer existentes. Primera versión excedía el presupuesto y fallaba cinco pruebas: se redujeron etiquetas a las necesarias y se restauró el contrato, sin cambiar los límites de las pruebas. Total ready + blocks = 12089352 B (11,53 MiB), bajo 12 MiB. El empaquetador comprueba ese límite antes de escribir y es idempotente (checksum del manifiesto idéntico tras segunda ejecución).
+
+Reproducción, con pyosmium instalado en el Python elegido:
+
+```sh
+curl -fL -o /tmp/madrid-paridad.osm.pbf https://download.geofabrik.de/europe/spain/madrid-latest.osm.pbf
+python tools/madrid/extract-osm-features.py /tmp/madrid-paridad.osm.pbf /tmp/madrid-osm-features.json --bbox=-3.75,40.39,-3.65,40.46
+node tools/madrid/pack-street-features.mjs /tmp/madrid-osm-features.json
+```
+
+La URL latest cambia: comparar SHA256 con manifiesto para reproducir exactamente este conjunto. En esta sesión pyosmium 4.3.2 se instaló solo en /tmp/madrid-osmium con uv, usando Python 3.13.15. PBF/fuentes crudas se mantienen en /tmp para continuar B, no se añaden al repositorio. Tras reconstruir teselas con build.mjs hay que repetir pack-street-features para retener estos datos.
+
+Validación: suite ampliada 164/164; pruebas de identidad/procedencia/propiedad única de árboles y tramos y coordenadas de nodos iguales entre teselas. Harness `--tiles k3j0,k3j1 --check-street-lifecycle`: passed=true, cero errores gráficos; descarga k3j0 retira grupo y datos, recarga conserva exactamente 147 árboles. Snapshot de esa ruta: 79663096 B de atributos CPU, 685 draws y 4498737 tris; streaming 6613374 B. Cámara y conjunto distintos del boot: no atribuir reducción de draws respecto a A1 a mejora de rendimiento. Capturas aéreas y viewport móvil en docs/validation/2026-10-29-streets/. Paseo con teclado sin pageerrors. Falta validación de móvil físico y LOD de copas.
+
+Rollback C0/B0: revertir datos enriquecidos/manifiesto y renderer de árboles junto con empaquetador; cubiertas y revoco son independientes.
+
+Checklist C0: http://localhost:8080/?debug=1, maqueta desde Sol: copas en plazas/parques y alineaciones reales. Pasear por Cibeles/Retiro y revisar separación respecto a fachadas. Al salir/volver a k3j0 debe haber la misma población vegetal sin duplicaciones. Señales y vías están recuperadas como datos; todavía no se dibujan las señales ni se simula tráfico nuevo sobre ellas.
+
+Siguiente acción: ensamblar grafo residente por IDs OSM y permisos de circulación, conectar al motor conservando población y validando bordes/retirada. El propietario autoriza GPU local, WebGPU y Blender para comprobaciones. Prueba WebGPU separada en curso; WebGL2 sigue predeterminado hasta tener evidencia de estabilidad. Blender no aparece en PATH; no bloquea estas verificaciones de navegador.
+
+WebGPU comprobado en GPU local: backend real WebGPU, arranque 32623 ms, sin pérdida de dispositivo, pero passed=false por GPUValidationError de binding de buffers de tamaño cero. Informe webgpu.json en evidencia C0/B0. WebGL2 permanece predeterminado. Siguiente diagnóstico: meshes instanciados vacíos enviados a compile/render, sin ocultar errores ni declarar paridad de backend.

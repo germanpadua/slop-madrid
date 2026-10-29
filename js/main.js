@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { GEO } from './madrid-geodata.js';
 import { pass, mrt, output, normalView, positionView, metalness, roughness, vec2, smoothstep } from 'three/tsl';
 import { ssr } from 'three/addons/tsl/display/SSRNode.js';
 import { createPostProcessing } from './post-processing.js';
@@ -175,7 +176,7 @@ async function initApp() {
   // 4b. Phase-3 tile streaming: the seed (phase-2 geodata) is the world above; the neighbouring 1 km tiles of the
   //     almendra are imported on demand around the camera and evicted past the memory budget (js/madrid-tiles.js).
   //     Pending tiles show the "out of map" floor, never empty city ground.
-  const tileWorld = createTileWorld(scene, { colliders: allColliders, materials: cityMaterials });
+  const tileWorld = createTileWorld(scene, { colliders: allColliders, materials: cityMaterials, seedStreetFeatures: GEO.streetFeatures });
   const tileCompileProbes = tileWorld.createCompileProbes();
   let tileStreamer = null;
   let distanceDetail = null;

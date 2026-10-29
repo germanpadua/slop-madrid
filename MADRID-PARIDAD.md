@@ -52,3 +52,9 @@ Paseo local automatizado con teclado (~35 m), maqueta y viewport móvil: cero pa
 ### Avance A1 — silueta aérea
 
 Cubiertas del centro desacopladas del detalle cercano: desaparece el círculo de 560 m sin tejados. Son las decisiones ilustrativas ya existentes, persistentes por celdas con culling; no nuevas huellas ni alturas. Coste medido +0,47 MiB de atributos CPU, +29 draws en arranque. Comparación aérea y móvil guardada en docs/validation/2026-10-29-roofs/. Pendiente revisión amplia de patios y simulación fuera de semilla.
+
+### Avance C0/B0 — puntos y topología OSM recuperados
+
+Extracto directo [Geofabrik Madrid](https://download.geofabrik.de/europe/spain/madrid.html), checksum verificado, reemplaza las consultas Overpass fallidas. Se añaden 10831 árboles reales a la cobertura ready y se recuperan nodos originales de vías/señales con permisos y niveles; no se infieren intersecciones geométricas. Las copas son símbolos low-poly documentados, posiciones procedentes de OSM. Tráfico y semáforos sobre estos datos siguen pendientes.
+
+Total módulos ready más bloques 12089352 B, presupuesto sin elevar. Suite 164/164 y ciclo de retirada/recarga k3j0 verificado en navegador (147 árboles tras volver). Evidencia y reproducción en PARIDAD-PLAN.md y docs/validation/2026-10-29-streets/. C0 reduce el vacío vegetal, pero todavía está lejos del dosel/terreno derivados de GUGiK de TinyWarsaw.

@@ -36,6 +36,7 @@ const port = server.address().port;
 const args = process.argv.slice(2);
 const tileArg = args.indexOf('--tiles');
 const bootOnly = args.includes('--boot-only');
+const checkStreetLifecycle = args.includes('--check-street-lifecycle');
 const stress = args.includes('--stress');
 const placesArg = args.indexOf('--places');
 const places = placesArg >= 0 ? args[placesArg + 1].split(',') : [];
@@ -92,8 +93,8 @@ await page.waitForFunction(() => window.__madrid && window.__madrid.renderer && 
 const bootMs = Date.now() - t0;
 const initLine = logs.find((l) => l.startsWith('[init]')) || '';
 
-const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view, aerialZoom }) => {
-  const { renderer, tileStreamer, tileWorld, controllerManager } = window.__madrid;
+const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view, aerialZoom, checkStreetLifecycle }) => {
+  const { renderer, tileStreamer, tileWorld, controllerManager, scene: sceneOf } = window.__madrid;
   const waitFor = async (fn, timeoutMs = 120000) => {
     const start = performance.now();
     while (performance.now() - start < timeoutMs) {
@@ -149,6 +150,18 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
     tileStreamer.update(1800, 0, performance.now());
     await waitFor(() => tileStreamer.status().loaded.length >= 6, 120000);
   }
+  let streetLifecycle = null;
+  if (checkStreetLifecycle) {
+    const id = walk.find(id => tileWorld?.has(id));
+    if (!id) throw new Error('Street lifecycle check requires a loaded --tiles target');
+    const expected = tileWorld.residentStreetFeatures().get(id)?.trees.length;
+    tileStreamer.dropTile(id);
+    const removed = !tileWorld.has(id) && !tileWorld.residentStreetFeatures().has(id) && !sceneOf.getObjectByName(`MadridTile:${id}`);
+    await tileStreamer.loadTile(id);
+    const group = sceneOf.getObjectByName(`MadridTile:${id}`);
+    const actual = group?.getObjectByName('MadridSourcedStreetTrees')?.userData.sourceCount;
+    streetLifecycle = { id, expected, actual, removed, passed: removed && expected > 0 && actual === expected };
+  }
   const tileSet = tileStreamer ? tileStreamer.status() : null;
   // Count completed application renders; renderer-info field names vary across Three.js versions.
   const frames0 = window.__madrid.renderedFrames || 0;
@@ -158,7 +171,6 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
   const secs = (performance.now() - start) / 1000;
   const info = renderer.info?.render || {};
   // Per-tile geometry: deck slab height, instanced buildings and the tiles' collider count.
-  const sceneOf = window.__madrid.scene;
   const seedFacadeMaterials = new Set((sceneOf.getObjectByName('ManhattanCityBlocks')?.children || [])
     .filter((o) => o.geometry?.getAttribute('box')).map((o) => o.userData.madridDetailedMaterial || o.material));
   const tileStats = (tileWorld ? tileWorld.ids() : []).map((id) => {
@@ -185,6 +197,10 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
   const routeFrames = (window.__madrid.frameSamples || []).filter((s) => s.at >= routeStart);
   const intervals = routeFrames.map((s) => s.intervalMs).sort((a, b) => a - b);
   return {
+    streetLifecycle,
+    sourcedStreetFeatures: [...(tileWorld?.residentStreetFeatures?.() || [])].map(([id, data]) => ({
+      id, trees: data.trees.length, signals: data.signals.length, ways: data.ways.length
+    })),
     // Totals include boot; glProfile below contains only slow calls during the route.
     glTotalsSinceNavigation: globalThis.__glTotals || null,
     geometryStorage: (() => {
@@ -239,7 +255,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
     meshes: tileWorld ? tileWorld.meshCount() : 0,
     loaded: tileWorld ? tileWorld.ids() : []
   };
-}, { walk, bootOnly, stress, places, view, aerialZoom });
+}, { walk, bootOnly, stress, places, view, aerialZoom, checkStreetLifecycle });
 
 let detailComparison = null;
 if (process.env.DETAIL_COMPARE) detailComparison = await page.evaluate(async () => {
@@ -295,7 +311,7 @@ if (process.env.VIEWS_DIR) {
 }
 const contextLost = logs.some((line) => /CONTEXT_LOST|Device Lost/i.test(line));
 const graphicsErrors = logs.filter((line) => /GPUValidationError|Shader Error|GL_INVALID|Error compiling/i.test(line));
-const passed = graphicsErrors.length === 0 && !contextLost && pageErrors.length === 0 && failed.length === 0 && result.frames > 0 && result.shaderWarmupHidden && result.placeSamples.every(p => p.frames > 0) && result.tileStats.every((tile) => !tile.unsharedFacades) && result.tileMs.every((tile) => tile.ok) && (result.after?.failures || 0) === 0 && !result.legacyBoroughs && result.fireEscapeInstances === 0;
+const passed = (!checkStreetLifecycle || result.streetLifecycle?.passed) && graphicsErrors.length === 0 && !contextLost && pageErrors.length === 0 && failed.length === 0 && result.frames > 0 && result.shaderWarmupHidden && result.placeSamples.every(p => p.frames > 0) && result.tileStats.every((tile) => !tile.unsharedFacades) && result.tileMs.every((tile) => tile.ok) && (result.after?.failures || 0) === 0 && !result.legacyBoroughs && result.fireEscapeInstances === 0;
 console.log(JSON.stringify({
   passed,
   gpu: gpuInfo.gpu,

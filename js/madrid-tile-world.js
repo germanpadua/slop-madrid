@@ -7,6 +7,7 @@
 // same parcels). Everything here is real geometry owned by the tile core; polygons crossing a seam were already
 // clipped by the builder, so adjacent tiles never draw the same surface twice.
 import * as THREE from 'three/webgpu';
+import { createSourcedStreetTrees } from './madrid-street-trees.js';
 import { Fn, abs, color, fract, max, mix, positionGeometry, positionWorld, smoothstep } from 'three/tsl';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createExtrudedPolygonMesh, createFlatPolygonMesh, offsetPolygonInward } from './city-grid.js';
@@ -121,7 +122,7 @@ function createOutOfMapFloor(scene, bbox) {
   return mesh;
 }
 
-export function createTileWorld(scene, { colliders = null, materials = null } = {}) {
+export function createTileWorld(scene, { colliders = null, materials = null, seedStreetFeatures = null } = {}) {
   const farBuildingMaterial = new THREE.MeshStandardNodeMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
   // Shared materials: the facades come from the seed's own table (cached by options, so one shader compile each).
   // Madrid almendra palettes (caliza / ladrillo visto / revoco encalado, balcones rhythm) - NOT the
@@ -148,6 +149,12 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     // Named monuments get their own material (caliza blanca / granito berroqueno), not one blanket tone.
     landmarkByName: new Map()
   };
+  const streetFeatures = new Map();
+  const seedTrees = createSourcedStreetTrees(seedStreetFeatures?.trees);
+  if (seedStreetFeatures) {
+    streetFeatures.set('fase2', seedStreetFeatures);
+    scene.add(seedTrees);
+  }
   const groups = new Map(); // tile id -> { group, colliders }
   // Footprints already in the scene: the ownership rules keep each building in exactly one tile, and this guard makes
   // that a hard invariant of the renderer (a doubled ring would be two coplanar facades in the same place).
@@ -559,6 +566,10 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     group.userData.id = tile.id;
     group.userData.detailBounds = [Math.min(...core.map(r => r[0])), Math.min(...core.map(r => r[1])),
       Math.max(...core.map(r => r[2])), Math.max(...core.map(r => r[3]))];
+    if (tile.streetFeatures) {
+      group.add(createSourcedStreetTrees(tile.streetFeatures.trees));
+      streetFeatures.set(tile.id, tile.streetFeatures);
+    }
     scene.add(group);
     if (colliders && tileColliders.length) colliders.push(...tileColliders);
     groups.set(tile.id, { group, colliders: tileColliders });
@@ -581,6 +592,7 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       for (let i = colliders.length - 1; i >= 0; i--) if (drop.has(colliders[i])) colliders.splice(i, 1);
     }
     groups.delete(id);
+    streetFeatures.delete(id);
     return true;
   }
 
@@ -624,9 +636,13 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     removeTile,
     has: (id) => groups.has(id),
     ids: () => [...groups.keys()],
+    residentStreetFeatures: () => new Map(streetFeatures),
     residentBytes: () => [...groups.values()].reduce((n, g) => n + (g.group.userData.bytes || 0), 0),
     meshCount: () => [...groups.values()].reduce((n, g) => n + g.group.children.length, 0),
     disposeAll() {
+      scene.remove(seedTrees);
+      seedTrees.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.isInstancedMesh) o.dispose?.(); });
+      streetFeatures.delete('fase2');
       for (const id of [...groups.keys()]) removeTile(id);
     }
   };

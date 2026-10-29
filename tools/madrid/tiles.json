@@ -1347,8 +1347,8 @@
    "blocksModule": "js/madrid-geodata-blocks.js",
    "overlapped": false,
    "areaKm2": 8.45,
-   "bytes": 738732,
-   "md5": "acaa2795a8899d7200c6c74f11e6b1f9",
+   "bytes": 2761663,
+   "md5": "856611df5238b46891c12621430fca85",
    "blocksBytes": 3169682,
    "blocksMd5": "f985a504f2219045e71b4751f439dc49",
    "counts": {
@@ -2792,8 +2792,8 @@
    "module": "js/geodata/tile-k0j-1.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": 287174,
-   "md5": "ed24241b7c53eb1979ef4e692378bf10",
+   "bytes": 502333,
+   "md5": "6fed33c103737accfb00ca9fadc013c7",
    "counts": {
     "blocks": 77,
     "parcels": 1665,
@@ -2889,8 +2889,8 @@
    "module": "js/geodata/tile-k0j3.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": 450984,
-   "md5": "c575357d6b82d909fe58499af10d5bb0",
+   "bytes": 755370,
+   "md5": "a8e41cbd5df0a849aa10f1f275f5d336",
    "counts": {
     "blocks": 71,
     "parcels": 2531,
@@ -3166,8 +3166,8 @@
    "module": "js/geodata/tile-k1j-1.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": 340592,
-   "md5": "5e9f677a390639cbdb5afb16d039cdaa",
+   "bytes": 573052,
+   "md5": "ba306f12394e7577f30e7595bf5345e1",
    "counts": {
     "blocks": 102,
     "parcels": 2261,
@@ -3533,8 +3533,8 @@
    "module": "js/geodata/tile-k2j-1.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": 495213,
-   "md5": "333802cf725323e25dd95ab48401dfa7",
+   "bytes": 692803,
+   "md5": "8302cf4f225d3cb75ab6b2f8bbed93bd",
    "counts": {
     "blocks": 98,
     "parcels": 3779,
@@ -3675,8 +3675,8 @@
    "module": "js/geodata/tile-k2j4.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": 424999,
-   "md5": "bd9a0ef684b6975f8fbd00774b30d7f7",
+   "bytes": 613966,
+   "md5": "b5ec02e8f6a5a9d8d6b69e9fd81094a7",
    "counts": {
     "blocks": 70,
     "parcels": 2727,
@@ -3907,8 +3907,8 @@
    "module": "js/geodata/tile-k3j-1.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": 229533,
-   "md5": "0231ad0a93bef5408d1d8df0169178f6",
+   "bytes": 434627,
+   "md5": "35558c3ff08cae6808d548cd467eb985",
    "counts": {
     "blocks": 72,
     "parcels": 1390,
@@ -3959,8 +3959,8 @@
    "module": "js/geodata/tile-k3j0.js",
    "overlapped": true,
    "areaKm2": 0.75,
-   "bytes": 202659,
-   "md5": "4ab80481fa09801ad8fe14a988b3b838",
+   "bytes": 320101,
+   "md5": "9c5b6ca4ff064e812c76ee55acc9e14a",
    "counts": {
     "blocks": 49,
     "parcels": 1160,
@@ -4011,8 +4011,8 @@
    "module": "js/geodata/tile-k3j1.js",
    "overlapped": true,
    "areaKm2": 0.75,
-   "bytes": 121670,
-   "md5": "ff10a81d001440199d720ff66363111c",
+   "bytes": 263712,
+   "md5": "58dc151b79ecda1b0666bb6781bd77f2",
    "counts": {
     "blocks": 14,
     "parcels": 476,
@@ -4429,8 +4429,8 @@
    "module": "js/geodata/tile-k4j0.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": 370804,
-   "md5": "e8c42f3e04df4aa1127d45673f2a0c24",
+   "bytes": 572291,
+   "md5": "214a7b38c38539fd9774abd16737ee61",
    "counts": {
     "blocks": 107,
     "parcels": 2676,
@@ -4481,8 +4481,8 @@
    "module": "js/geodata/tile-k4j1.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": 399280,
-   "md5": "55108357e85a9c30becc0421643c2649",
+   "bytes": 590365,
+   "md5": "100169f28ecb37ea89e02c2244b0bfb4",
    "counts": {
     "blocks": 81,
     "parcels": 2828,
@@ -4533,8 +4533,8 @@
    "module": "js/geodata/tile-k4j2.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": 693314,
-   "md5": "06e2df3ee93044f020c4f376d9bde6bb",
+   "bytes": 839387,
+   "md5": "2040f194982a8d513114006b25520dbb",
    "counts": {
     "blocks": 81,
     "parcels": 4851,
@@ -5225,5 +5225,17 @@
     "Catastro INSPIRE WFS (© IGN/Catastro)"
    ]
   }
- ]
+ ],
+ "streetFeaturesSource": {
+  "provider": "OpenStreetMap / Geofabrik Madrid",
+  "license": "ODbL-1.0",
+  "url": "https://download.geofabrik.de/europe/spain/madrid.html",
+  "sha256": "d262f1c908907f596b4d02c2064014482e1b2ffced0f2b2886ab4ef89ec06471",
+  "bbox": [
+   -3.75,
+   40.39,
+   -3.65,
+   40.46
+  ]
+ }
 }
