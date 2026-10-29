@@ -41,6 +41,7 @@ import {
   WALL_KINDS
 } from './tsl-materials.js';
 import { GEO } from './madrid-geodata.js';
+import { createMadridLandmarkReserves, overlapsMadridLandmark } from './madrid-landmark-reserves.js';
 import { roofDecision } from './madrid-roofs.js';
 import { collectRoofBatches } from './madrid-roof-batches.js';
 import { MADRID_FACADE_OPTS } from './madrid-tiles.js';
@@ -392,6 +393,7 @@ function buildCityBlocks(scene) {
   // Storey height of each facade: buildings are massed in whole storeys so every window row lines up across tiers
   const storeys = facades.map(([, opts]) => opts.floorHeight);
 
+  const madridLandmarkReserves = GEO.frame?.madrid ? createMadridLandmarkReserves({ 'Palacio de Cibeles': LANDMARK_SITES['Palacio de Cibeles'] }) : [];
   const buckets = materials.map(() => []);
   const broadwayBillboards = [];
 
@@ -675,6 +677,26 @@ function buildCityBlocks(scene) {
    *      ground floor, the others get a residential entrance), freestanding, walls (see wallKinds) }
    */
   function commit(blk, b, o = {}) {
+    // Omit a whole generic building when a physical mass overlaps the palace's source ring.
+    // Test in world space, leaving neighboring buildings and empty patios outside the ring intact.
+    const reserved = madridLandmarkReserves.length && b.parts.some((p) => overlapsMadridLandmark([
+      toWorld(p.x0, p.z0), toWorld(p.x1, p.z0), toWorld(p.x1, p.z1), toWorld(p.x0, p.z1)
+    ], madridLandmarkReserves));
+    if (!reserved) return commitBuilding(blk, b, o);
+    // Consume the original decoration/random decisions so later valid buildings remain identical.
+    // Scratch metadata and discarded append-only batches create no replacement geometry/colliders.
+    const scratch = Object.fromEntries(Object.entries(blk).map(([key, value]) => [key, Array.isArray(value) ? value.slice() : value]));
+    scratch.avenueFronts = { w: blk.avenueFronts.w.slice(), e: blk.avenueFronts.e.slice() };
+    const marks = buckets.map((items) => items.length);
+    const colliderMark = colliders.length;
+    try { commitBuilding(scratch, b, o); }
+    finally {
+      buckets.forEach((items, i) => { items.length = marks[i]; });
+      colliders.length = colliderMark;
+    }
+  }
+
+  function commitBuilding(blk, b, o = {}) {
     // Madrid masonry keeps its cornices and roofscape, without the exterior escape
     // stairs and cedar tanks inherited from Manhattan's residential templates.
     if (GEO.frame?.madrid) o = { ...o, fireEscapes: false, rearFireEscapes: false, wtP: 0 };

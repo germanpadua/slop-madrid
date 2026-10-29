@@ -238,7 +238,7 @@ async function initApp() {
   // stats and the controller from the page. Nothing is exposed on a normal visit.
   if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug')) {
     window.__madrid = { renderer, scene, tileStreamer, tileWorld, controllerManager, cameraSystem, trafficSystem,
-      roadService, roadStats, roadPaint, roadPaintStats, cityGrid, streetDetails };
+      roadService, roadStats, roadPaint, roadPaintStats, cityGrid, cityBlocks, streetDetails };
   }
 
   const touchControls = new TouchControls(controllerManager);

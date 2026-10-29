@@ -23,6 +23,10 @@ const jsonOut = arg('--json-out', null);
 const shotPath = arg('--shot', null);
 const ndcPoint = arg('--ndc', null);
 const at = arg('--at', null);
+const buildingsFile = arg('--buildings-file', null);
+const view = arg('--view', 'chase');
+const zoom = Number(arg('--zoom', '1'));
+if (!['chase', 'maqueta'].includes(view) || !(zoom >= 0.45 && zoom <= 2.4)) throw new Error('Invalid view/zoom');
 
 const server = http.createServer((req, res) => {
   const url = decodeURIComponent(req.url.split('?')[0]);
@@ -33,27 +37,43 @@ const server = http.createServer((req, res) => {
 });
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
 const port = server.address().port;
-const browser = await chromium.launch({
+let browser;
+try {
+browser = await chromium.launch({
   executablePath: process.env.CHROME_PATH || undefined,
-  args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=swiftshader', '--enable-webgpu-developer-features']
+  args: process.env.HARDWARE_GPU
+    ? ['--enable-unsafe-webgpu', '--ignore-gpu-blocklist', '--use-angle=gl']
+    : ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=swiftshader', '--enable-webgpu-developer-features']
 });
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+const page = await browser.newPage({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 720 } });
+if (buildingsFile) await page.route('**/js/buildings.js', (route) => route.fulfill({ contentType: 'text/javascript', body: fs.readFileSync(buildingsFile, 'utf8') }));
+page.on('console', (m) => { if (m.type() === 'error' || process.env.VERBOSE) console.error('[console]', m.text()); });
 page.on('pageerror', (e) => console.error('[pageerror]', String(e)));
 await page.goto('http://127.0.0.1:' + port + '/?debug=1&capture=1', { waitUntil: 'load', timeout: 120000 });
-await page.waitForFunction(() => window.__madrid && document.querySelector('#loading-overlay.hidden'), null, { timeout: 180000 });
-const out = await page.evaluate(async ({ place, gridN, waitMs, ndcPoint, shotPath, at }) => {
+await page.waitForFunction(() => (window.__madrid && document.querySelector('#loading-overlay.hidden')) || document.querySelector('#loading-status button'), null, { timeout: 90000 });
+if (await page.locator('#loading-status button').count()) throw new Error(await page.locator('#loading-status').textContent());
+const out = await page.evaluate(async ({ place, gridN, waitMs, ndcPoint, shotPath, at, view, zoom }) => {
   const THREE = await import('three');
   const api = window.__madrid;
-  const { TELEPORT_LOCATIONS } = await import(new URL('./js/city-config.js', location.href).href);
+  const { footprintsOverlap } = await import(new URL('./js/madrid-landmark-reserves.js', location.href).href);
+  const { TELEPORT_LOCATIONS, LANDMARK_SITES } = await import(new URL('./js/city-config.js', location.href).href);
   document.querySelector('#mode-person').click();
-  document.querySelector('#cam-chase').click();
+  document.querySelector(`#cam-${view}`).click();
+  api.cameraSystem.zoomMultiplier = zoom;
   const custom = at ? { x: Number(at.split(',')[0]), z: Number(at.split(',')[1]), heading: Number(at.split(',')[2] || 0) } : null;
   const target = custom || TELEPORT_LOCATIONS[place] || { x: 0, z: 0, heading: 0 };
   const startFrames = api.renderedFrames || 0;
   api.controllerManager.teleportActiveTo(target.x, target.z, target.heading);
   const t0 = performance.now();
-  while (performance.now() - t0 < waitMs && (api.renderedFrames || 0) - startFrames < 3) {
+  while (performance.now() - t0 < waitMs) {
     await new Promise((r) => setTimeout(r, 200));
+  }
+  const palace = LANDMARK_SITES['Palacio de Cibeles'];
+  const ring = Array.from({ length: palace.ring.length / 2 }, (_, i) => [palace.ring[i * 2], palace.ring[i * 2 + 1]]);
+  const overlappingPalace = [];
+  for (const block of api.cityBlocks?.allBlocks || []) for (const f of block.footprints) {
+    const pts = f.pts ? f.pts.map((p) => [p.x, p.z]) : [[f.x0,f.z0],[f.x1,f.z0],[f.x1,f.z1],[f.x0,f.z1]];
+    if (footprintsOverlap(pts, ring)) overlappingPalace.push({ block: block.id, pts, height: f.h });
   }
   const entity = api.controllerManager.getActiveEntity?.();
   const entityPos = entity ? { x: +entity.position.x.toFixed(1), y: +entity.position.y.toFixed(1), z: +entity.position.z.toFixed(1) } : null;
@@ -90,11 +110,16 @@ const out = await page.evaluate(async ({ place, gridN, waitMs, ndcPoint, shotPat
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   const shot = shotPath ? document.querySelector('canvas').toDataURL('image/jpeg', 0.72) : null;
   const cameraPos = camera.getWorldPosition(new THREE.Vector3());
-  return { place, target, mode, entity: entityPos, camera: { x: +cameraPos.x.toFixed(1), y: +cameraPos.y.toFixed(1), z: +cameraPos.z.toFixed(1) }, occluders, shot,
+  const gl = document.querySelector('canvas').getContext('webgl2');
+  const debugInfo = gl?.getExtension('WEBGL_debug_renderer_info');
+  const glRenderer = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : null;
+  return { view, zoom, overlappingPalace, glRenderer, framesAfterTeleport: (api.renderedFrames || 0) - startFrames, place, target, mode, entity: entityPos, camera: { x: +cameraPos.x.toFixed(1), y: +cameraPos.y.toFixed(1), z: +cameraPos.z.toFixed(1) }, occluders, shot,
     roadPaintStats: api.roadPaintStats || null, roadStats: api.roadStats ? { routingNodes: api.roadStats.routingNodes, routingEdges: api.roadStats.routingEdges } : null };
-}, { place, gridN, waitMs, ndcPoint, shotPath, at });
+}, { place, gridN, waitMs, ndcPoint, shotPath, at, view, zoom });
 if (jsonOut) fs.writeFileSync(path.resolve(ROOT, jsonOut), JSON.stringify({ ...out, shot: undefined }, null, 2));
 if (shotPath && out.shot) fs.writeFileSync(path.resolve(ROOT, shotPath), Buffer.from(out.shot.split(',')[1], 'base64'));
 console.log(JSON.stringify({ place: out.place, target: out.target, mode: out.mode, entity: out.entity, camera: out.camera, hits: out.occluders.length, jsonOut, shotPath, roadPaintStats: out.roadPaintStats }));
-await browser.close();
-server.close();
+} finally {
+  await browser?.close();
+  server.close();
+}

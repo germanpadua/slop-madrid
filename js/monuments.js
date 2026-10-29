@@ -145,18 +145,42 @@ function buildPuertaDeAlcala(mat) {
 // Palacio de Cibeles (Palacios & Otamendi, 1919): the white "catedral de las
 // Comunicaciones". Reference-grounded (Patrimonio y Paisaje - Ayto. de Madrid;
 // CentroCentro): 5-floor neoplateresco body on the real OSM footprint, regular
-// window rhythm, main WEST facade onto Plaza de Cibeles with grand arched
-// entrance, two pentagonal towers flanking that facade (dark pizarra spires),
+// window rhythm, main NORTHWEST facade onto Plaza de Cibeles with grand arched
+// entrance, two pentagonal towers flanking that facade (open galleries and pinnacles),
 // octagonal clock cimborrio over the crossing (70 m real), roofline pinnacles,
-// columned portico on the Paseo del Prado (east) side.
+// columned portico on the Paseo del Prado (west) side.
 // Coordinates: local (lx = ring_x - cx, lz = ring_z - cz); shapes in (x, -z) so
 // rotateX(-PI/2) maps them to true (x, z) - the city-grid.js:222 convention.
 function buildPalacioDeCibeles(mat, lm) {
   const g = new THREE.Group();
+  g.name = 'PalacioCibeles';
   const trimMat = new THREE.MeshStandardNodeMaterial({ color: 0xf0ebdf, roughness: 0.62, metalness: 0.03 });
   const slateMat = new THREE.MeshStandardNodeMaterial({ color: 0x46423e, roughness: 0.6, metalness: 0.08 });
   const plinthMat = new THREE.MeshStandardNodeMaterial({ color: 0x8d8272, roughness: 0.85, metalness: 0.02 });
   const openMat = new THREE.MeshStandardNodeMaterial({ color: 0x2f2b26, roughness: 1, metalness: 0 }); // openings read as shadow
+
+  // The two small NW lobes of the supplied OSM ring bound the monumental frontage.
+  // Use their bounds, not a west-facing axis-aligned facade invented independently of the site.
+  // These anchors describe this source ring; their centres are illustrative tower placement,
+  // not surveyed tower centres. See docs/validation/2026-10-29-cibeles-architecture.md.
+  const lobeCenter = (first, last) => {
+    const xs = [], zs = [];
+    for (let i = first; i <= last; i++) {
+      xs.push(lm.ring[i * 2] - lm.cx);
+      zs.push(lm.ring[i * 2 + 1] - lm.cz);
+    }
+    return { x: (Math.min(...xs) + Math.max(...xs)) / 2, z: (Math.min(...zs) + Math.max(...zs)) / 2 };
+  };
+  const southTower = lobeCenter(0, 6), northTower = lobeCenter(21, 28);
+  const frontLength = Math.hypot(southTower.x - northTower.x, southTower.z - northTower.z);
+  const tx = (southTower.x - northTower.x) / frontLength, tz = (southTower.z - northTower.z) / frontLength;
+  const nx = -tz, nz = tx; // outward, toward the fountain / northwest
+  const frontX = (southTower.x + northTower.x) / 2, frontZ = (southTower.z + northTower.z) / 2;
+  const frontage = new THREE.Group();
+  frontage.name = 'CibelesNorthwestFrontage';
+  frontage.position.set(frontX, 0, frontZ);
+  frontage.rotation.y = Math.atan2(nx, nz);
+  g.add(frontage);
 
   const ringShape = (scale) => {
     const s = new THREE.Shape();
@@ -186,7 +210,7 @@ function buildPalacioDeCibeles(mat, lm) {
   // --- Window rhythm: dark recessed openings, 5 floors, following the REAL ring
   // wall segment by segment (handles the zigzag/chamfer; windows sit proud of the wall).
   const FLOORS = [4.5, 9.5, 14.5, 19.5, 24.5]; // window center heights
-  const winGeo = new THREE.BoxGeometry(1.8, 2.8, 0.16);
+  const winGeo = new THREE.BoxGeometry(1.8, 3.8, 0.16);
   {
     const n = lm.ring.length / 2;
     const pts = [];
@@ -205,10 +229,10 @@ function buildPalacioDeCibeles(mat, lm) {
       for (let c = 0; c <= cols; c++) {
         const t = cols === 0 ? 0.5 : c / cols;
         const wx = ax + (bx - ax) * t, wz = az + (bz - az) * t;
-        const westEntrance = nx < -0.5 && wz > 20 && wz < 40;
-        const eastPortico = nx > 0.5 && wx > 55 && wz > -32 && wz < 16;
+        const entranceDistance = Math.hypot(wx - frontX, wz - frontZ);
+        const northwestEntrance = entranceDistance < 7;
         for (const fy of FLOORS) {
-          if ((westEntrance || eastPortico) && fy < 12) continue;
+          if (northwestEntrance && fy < 12) continue;
           const w = new THREE.Mesh(winGeo, openMat);
           w.position.set(wx + nx * 0.15, fy, wz + nz * 0.15);
           w.rotation.y = ang;
@@ -218,80 +242,154 @@ function buildPalacioDeCibeles(mat, lm) {
     }
   }
 
-  // --- Grand entrance on the west face (triple-height arch group, trim surround).
-  for (const ez of [25, 30, 35]) {
-    const arch = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 0.5, 12, 1, false, 0, Math.PI), trimMat);
-    arch.rotation.z = Math.PI / 2; arch.rotation.y = Math.PI / 2;
-    arch.position.set(-56.3, 8, ez);
-    g.add(arch);
-    const door = new THREE.Mesh(new THREE.BoxGeometry(0.3, 8, 3.6), openMat);
-    door.position.set(-56.5, 4 + 1.2, ez);
-    g.add(door);
-    const step = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.5, 4.4), plinthMat);
-    step.position.set(-57.6, 0.25 + 1.2, ez);
-    g.add(step);
+  // Central tall arched entrance and narrow upper window bays, seen in the official
+  // frontal photograph. Relief, bay sizes and subdivisions remain low-poly symbols.
+  const entrance = new THREE.Group();
+  entrance.name = 'CibelesNorthwestEntrance';
+  const archShape = new THREE.Shape();
+  archShape.moveTo(-3, 0);
+  archShape.lineTo(3, 0);
+  archShape.lineTo(3, 7);
+  archShape.absarc(0, 7, 3, 0, Math.PI, false);
+  archShape.closePath();
+  const door = new THREE.Mesh(new THREE.ExtrudeGeometry(archShape, { depth: 0.2, bevelEnabled: false }), openMat);
+  door.position.set(0, 1.2, 0.3);
+  entrance.add(door);
+  for (const x of [-4, 4]) {
+    const pier = new THREE.Mesh(new THREE.BoxGeometry(1.2, 27, 1.2), trimMat);
+    pier.position.set(x, 13.5, 0.4);
+    entrance.add(pier);
   }
+  for (const x of [-2.5, 0, 2.5]) {
+    const bay = new THREE.Mesh(new THREE.BoxGeometry(1.3, 5.2, 0.2), openMat);
+    bay.position.set(x, 23, 0.4);
+    entrance.add(bay);
+  }
+  const steps = new THREE.Mesh(new THREE.BoxGeometry(10, 1.2, 3), plinthMat);
+  steps.position.set(0, 0.6, 1);
+  entrance.add(steps);
+  frontage.add(entrance);
 
-  // --- Two pentagonal towers flanking the WEST facade (one at each end),
-  // full height from the ground, arched gallery band, slate spire.
-  const towerGeo = new THREE.CylinderGeometry(6.2, 7.0, 46, 5);
+  // Pentagonal shafts stop BELOW the open gallery: the previous dark cylinder was
+  // buried inside a solid 46 m shaft. References show balustrades/pinnacles, not cones.
+  const towerGeo = new THREE.CylinderGeometry(6.2, 7.0, 40, 5);
   const galleryGeo = new THREE.CylinderGeometry(5.6, 5.6, 4, 5);
-  const spireGeo = new THREE.ConeGeometry(4.6, 10, 5);
-  for (const [tx, tz] of [[-56.5, 50], [-53.5, 6]]) {
-    const tower = new THREE.Mesh(towerGeo, mat);
-    tower.position.set(tx, 23, tz);
-    tower.castShadow = true;
-    g.add(tower);
-    const gallery = new THREE.Mesh(galleryGeo, openMat); // dark arched gallery band
-    gallery.position.set(tx, 42, tz);
-    g.add(gallery);
-    const trim = new THREE.Mesh(new THREE.CylinderGeometry(6.4, 6.4, 0.8, 5), trimMat);
-    trim.position.set(tx, 44.5, tz);
-    g.add(trim);
-    const spire = new THREE.Mesh(spireGeo, slateMat);
-    spire.position.set(tx, 46 + 5, tz);
-    spire.castShadow = true;
-    g.add(spire);
+  const sideCrown = (tower) => {
+    const gallery = new THREE.Mesh(galleryGeo, openMat);
+    gallery.name = 'CibelesTowerGallery';
+    gallery.position.y = 42;
+    tower.add(gallery);
+    for (let i = 0; i < 5; i++) {
+      const a = i * Math.PI * 2 / 5;
+      const col = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 4, 5), trimMat);
+      col.position.set(Math.sin(a) * 6.1, 42, Math.cos(a) * 6.1);
+      tower.add(col);
+      const pinnacle = new THREE.Mesh(new THREE.ConeGeometry(0.65, 4, 5), trimMat);
+      pinnacle.position.set(Math.sin(a) * 6.1, 47, Math.cos(a) * 6.1);
+      tower.add(pinnacle);
+    }
+    for (const [y, h] of [[40, 0.8], [44.5, 1]]) {
+      const rim = new THREE.Mesh(new THREE.CylinderGeometry(6.6, 6.6, h, 5), trimMat);
+      rim.position.y = y;
+      tower.add(rim);
+    }
+  };
+  for (const x of [-frontLength / 2, frontLength / 2]) {
+    const tower = new THREE.Group();
+    tower.name = x < 0 ? 'CibelesNorthTower' : 'CibelesSouthTower';
+    tower.position.x = x;
+    const shaft = new THREE.Mesh(towerGeo, mat);
+    shaft.name = 'CibelesTowerShaft';
+    shaft.position.y = 20;
+    shaft.castShadow = true;
+    tower.add(shaft);
+    // Tall narrow recesses distinguish the shaft from a blank defensive turret.
+    for (let i = 0; i < 5; i++) {
+      const a = (i + 0.5) * Math.PI * 2 / 5;
+      // Polygon apothem, plus a small surface offset, puts windows on the flat faces.
+      for (const y of [8, 17, 26, 35]) {
+        const radius = (7 - 0.8 * y / 40) * Math.cos(Math.PI / 5) + 0.12;
+        const opening = new THREE.Mesh(new THREE.BoxGeometry(1.4, 4.8, 0.2), openMat);
+        opening.position.set(Math.sin(a) * radius, y, Math.cos(a) * radius);
+        opening.rotation.y = a;
+        tower.add(opening);
+      }
+    }
+    sideCrown(tower);
+    frontage.add(tower);
   }
 
   // --- Octagonal clock cimborrio over the crossing: drum, open colonnade,
-  // clock stage with 4 dark faces, small drum, slate spire. Tip at 72 (real 70).
-  const cimbX = -12, cimbZ = 2;
-  const drum = new THREE.Mesh(new THREE.CylinderGeometry(9, 10, 14, 8), mat);
-  drum.position.set(cimbX, 38 + 7, cimbZ);
+  // clock stage and pinnacled crown. The documented total height is 70 m.
+  const clockTower = new THREE.Group();
+  clockTower.name = 'CibelesClockTower';
+  // Above the central entrance, set behind its facade plane. Position is illustrative.
+  clockTower.position.set(frontX - nx * 8, 0, frontZ - nz * 8);
+  clockTower.rotation.y = frontage.rotation.y; // principal dial faces the NW entrance
+  g.add(clockTower);
+  const cimbX = 0, cimbZ = 0;
+  // The NW tower anchor is outside the recessed upper tier. Start at the main
+  // body roof (28 m), so the cimborrio remains attached rather than floating at 38 m.
+  const drum = new THREE.Mesh(new THREE.CylinderGeometry(9, 10, 16, 8), mat);
+  drum.name = 'CibelesClockLowerDrum';
+  drum.position.set(cimbX, 36, cimbZ);
   drum.castShadow = true;
-  g.add(drum);
-  for (let i = 0; i < 8; i++) { // colonnade band
-    const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
-    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 4, 6), trimMat);
-    col.position.set(cimbX + Math.sin(a) * 8.2, 52 + 2, cimbZ + Math.cos(a) * 8.2);
-    g.add(col);
-  }
-  const clockStage = new THREE.Mesh(new THREE.CylinderGeometry(8.6, 8.6, 4.5, 8), mat);
-  clockStage.position.set(cimbX, 56 + 2.25, cimbZ);
+  clockTower.add(drum);
+  // The official frontal photograph places the clock BELOW the tall upper gallery.
+  const clockStage = new THREE.Mesh(new THREE.CylinderGeometry(8.6, 8.6, 6, 8), mat);
+  clockStage.name = 'CibelesClockStage';
+  clockStage.position.set(cimbX, 47, cimbZ);
+  clockStage.rotation.y = -Math.PI / 8; // flat octagon faces align with the four dials
   clockStage.castShadow = true;
-  g.add(clockStage);
+  clockTower.add(clockStage);
+  const galleryCore = new THREE.Mesh(new THREE.CylinderGeometry(7.4, 7.4, 10, 8), openMat);
+  galleryCore.name = 'CibelesClockUpperGallery';
+  galleryCore.position.y = 55;
+  clockTower.add(galleryCore);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+    const col = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 10, 6), trimMat);
+    col.name = 'CibelesClockGalleryColumn';
+    col.position.set(cimbX + Math.sin(a) * 8.2, 55, cimbZ + Math.cos(a) * 8.2);
+    clockTower.add(col);
+  }
   const clockGeo = new THREE.CylinderGeometry(2.6, 2.6, 0.3, 16);
-  for (let i = 0; i < 4; i++) { // dark clock faces on the cardinal sides
+  const clockRadius = 8.6 * Math.cos(Math.PI / 8) + 0.16;
+  for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2;
     const face = new THREE.Mesh(clockGeo, openMat);
+    face.name = 'CibelesClockFace';
+    // Three.js Euler XYZ transforms the cylinder's +Y axis into (sin(a),0,cos(a)):
+    // local Z rotation is applied before X. The dials need the same orientation.
     face.rotation.x = Math.PI / 2;
     face.rotation.z = -a;
-    face.position.set(cimbX + Math.sin(a) * 8.7, 58.2, cimbZ + Math.cos(a) * 8.7);
-    face.rotation.x = Math.PI / 2;
-    g.add(face);
+    face.position.set(cimbX + Math.sin(a) * clockRadius, 47, cimbZ + Math.cos(a) * clockRadius);
+    clockTower.add(face);
     const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.34, 8), trimMat);
+    dial.name = 'CibelesClockDial';
     dial.rotation.x = Math.PI / 2;
-    dial.position.set(cimbX + Math.sin(a) * 8.75, 58.2, cimbZ + Math.cos(a) * 8.75);
-    g.add(dial);
+    dial.rotation.z = -a;
+    dial.position.set(cimbX + Math.sin(a) * (clockRadius + 0.04), 47, cimbZ + Math.cos(a) * (clockRadius + 0.04));
+    clockTower.add(dial);
   }
+  const galleryCornice = new THREE.Mesh(new THREE.CylinderGeometry(8.8, 8.8, 0.8, 8), trimMat);
+  galleryCornice.name = 'CibelesClockGalleryCornice';
+  galleryCornice.position.y = 60.4;
+  clockTower.add(galleryCornice);
   const smallDrum = new THREE.Mesh(new THREE.CylinderGeometry(5.5, 6.5, 3, 8), mat);
   smallDrum.position.set(cimbX, 60.5 + 1.5, cimbZ);
-  g.add(smallDrum);
-  const cimborrioSpire = new THREE.Mesh(new THREE.ConeGeometry(5.0, 9, 8), slateMat);
-  cimborrioSpire.position.set(cimbX, 63.5 + 4.5, cimbZ);
-  cimborrioSpire.castShadow = true;
-  g.add(cimborrioSpire);
+  clockTower.add(smallDrum);
+  const crown = new THREE.Mesh(new THREE.CylinderGeometry(6.2, 6.2, 1.5, 8), trimMat);
+  crown.position.y = 64.25;
+  clockTower.add(crown);
+  for (let i = 0; i < 8; i++) {
+    const a = i * Math.PI * 2 / 8;
+    const finial = new THREE.Mesh(new THREE.ConeGeometry(0.6, 5, 6), trimMat);
+    finial.name = 'CibelesClockPinnacle';
+    finial.position.set(Math.sin(a) * 5.8, 67.5, Math.cos(a) * 5.8);
+    finial.castShadow = true;
+    clockTower.add(finial);
+  }
 
   // --- Roofline pinnacles (white obelisk cones) at the outer corners + south run.
   const pinGeo = new THREE.ConeGeometry(1.4, 5, 6);
@@ -301,7 +399,8 @@ function buildPalacioDeCibeles(mat, lm) {
     g.add(pin);
   }
 
-  // --- Portico on the Paseo del Prado side (east face): 8 columns + entablature + terrace.
+  // --- Existing rear portico approximation. Its surveyed position remains unresolved;
+  // do not identify this east-facing model detail as the west-side Paseo del Prado portico.
   const colGeo = new THREE.CylinderGeometry(0.7, 0.75, 9, 8);
   for (let i = 0; i < 8; i++) {
     const col = new THREE.Mesh(colGeo, mat);
@@ -332,8 +431,8 @@ const PROCEDURAL = {
 const PUERTA_PIERS = [[-21.45, -18.8], [-14.8, -11.5], [-6.5, -3], [3, 6.5], [11.5, 14.8], [18.8, 21.45]];
 export function buildProceduralColliders(name, lm) {
   if (name === 'Palacio de Cibeles') {
-    // Solid building: full footprint bbox, tall enough for the cimborrio spire (72 m).
-    return [{ minX: lm.cx - lm.w / 2, maxX: lm.cx + lm.w / 2, minZ: lm.cz - lm.d / 2, maxZ: lm.cz + lm.d / 2, maxY: 72 }];
+    // Solid building: full footprint bbox, up to the documented 70 m cimborrio crown.
+    return [{ minX: lm.cx - lm.w / 2, maxX: lm.cx + lm.w / 2, minZ: lm.cz - lm.d / 2, maxZ: lm.cz + lm.d / 2, maxY: 70 }];
   }
   if (name !== 'Puerta de Alcalá') return null;
   const D = 14;
