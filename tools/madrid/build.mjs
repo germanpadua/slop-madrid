@@ -867,13 +867,12 @@ if (IS_TILE) {
     core: CORE.map((r) => r.map(r1)),
     frame: { bbox: [r1(wx0), r1(wz0), r1(wx1), r1(wz1)], bearingDeg: 0, origin: 'Puerta del Sol', units: 'm' },
     blocks: blockLayer.blocks,
-    // Flat parcel list owned by this core (the tile renderer draws one facade box per parcel; ownership by the
+    // Flat parcel list owned by this core (the tile renderer extrudes each real contour; ownership by the
     // parcel's own centre keeps every footprint in exactly one tile, whatever block its raster merged into).
-    // A footprint that sits on a block is written only by that block's owner (seam buildings included, so a block is
-    // whole in one tile); a footprint in no block belongs to the core that holds its centre.
-    parcels: parcels.filter((p) => legacyParcels.size
-      ? inCore(p.cx, p.cz) && !legacyParcels.has(flat(p.ring).join(','))
-      : (p.frameBlock >= 0 ? p.owned : inCore(p.cx, p.cz))).map((p) => ({ ring: flat(p.ring), h: p.h,
+    // Geographic centre owns facades independently of changing block traces. Older neighbour modules keep
+    // their historical seam parcels; exclude those exact rings while building the seven added cells.
+    parcels: parcels.filter((p) => inCore(p.cx, p.cz) && !legacyParcels.has(flat(p.ring).join(',')))
+      .map((p) => ({ ring: flat(p.ring), h: p.h,
         ...(p.holes.length ? { holes: p.holes.map(flat) } : {}) })),
     parks: parksClipped.map((p) => ({ name: p.name, cat: p.cat, acres: p.acres, rings: p.rings.map(flat) })),
     water: waterClipped.map(flat),

@@ -46,7 +46,8 @@ test('expansion never repeats an existing seed parcel (including legacy owners)'
 });
 test('PBF cells carry source provenance, connected graph indices and sourced street nodes inside their core', () => {
   const expanded = readyTiles().filter((t) => t.sourceSnapshot);
-  assert.ok(expanded.length >= 10, 'contiguous phase4 sample is delivered');
+  // Shared northern cells now use the origin Overpass pipeline; the seven exclusive HEAD cells keep PBF.
+  assert.deepEqual(expanded.map((t) => t.id).sort(), ['k0j2', 'k1j2', 'k1j3', 'k2j2', 'k2j3', 'k3j2', 'k3j3']);
   for (const t of expanded) {
     assert.match(t.sourceSnapshot.osmUrl, /^https:\/\/download.geofabrik.de\//);
     assert.match(t.sourceSnapshot.osmMd5, /^[0-9a-f]{32}$/);

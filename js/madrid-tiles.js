@@ -44,12 +44,22 @@ export function distanceToCore(tile, x, z) {
  * @param {object} [o.budget] TILE_BUDGET fields, any subset
  * @returns {{load: string[], drop: string[], distances: Map<string, number>}}
  */
-export function planTiles({ tiles, loaded, x, z, bytes = 0, budget = TILE_BUDGET }) {
+export function planTiles({ tiles, loaded, x, z, bytes = 0, budget = TILE_BUDGET, vx = 0, vz = 0 }) {
   const b = { ...TILE_BUDGET, ...budget };
   const has = (id) => loaded.has(id);
   const sizeOf = (t) => loaded.get?.(t.id)?.bytes ?? tileBytes(t);
+  // Speed-aware look-ahead (tinywarsaw engine notes): while the camera moves, prefetch what the velocity vector
+  // reaches in LOOKAHEAD_S instead of what surrounds the current position, so a flight never frames an unbuilt
+  // tile ahead. Eviction still uses the true position: what you leave behind is dropped as before.
+  const LOOKAHEAD_S = 6;
+  const speed = Math.hypot(vx, vz);
+  const ahead = Math.min(speed * LOOKAHEAD_S, b.preloadRadius * 1.5); // clamp: a fast jet must not pull half the map
+  const ax = speed > 0.1 ? x + (vx / speed) * ahead : x;
+  const az = speed > 0.1 ? z + (vz / speed) * ahead : z;
   const distances = new Map();
   for (const t of tiles) distances.set(t.id, distanceToCore(t, x, z));
+  const aheadDistances = new Map();
+  for (const t of tiles) aheadDistances.set(t.id, distanceToCore(t, ax, az));
 
   const drop = [];
   const dropped = new Set();
@@ -76,8 +86,8 @@ export function planTiles({ tiles, loaded, x, z, bytes = 0, budget = TILE_BUDGET
   // 3. Prefetch the nearest ready tiles that fit (nearest first; no eviction beyond the caps above).
   const load = [];
   const candidates = tiles
-    .filter((t) => t.status === 'ready' && !has(t.id) && !dropped.has(t.id) && (distances.get(t.id) ?? Infinity) <= b.preloadRadius)
-    .sort((p, q) => (distances.get(p.id) ?? Infinity) - (distances.get(q.id) ?? Infinity));
+    .filter((t) => t.status === 'ready' && !has(t.id) && !dropped.has(t.id) && (aheadDistances.get(t.id) ?? Infinity) <= b.preloadRadius)
+    .sort((p, q) => (aheadDistances.get(p.id) ?? Infinity) - (aheadDistances.get(q.id) ?? Infinity));
   for (const t of candidates) {
     const fits = () => resident + sizeOf(t) <= b.maxResidentBytes && count + 1 <= b.maxResidentTiles;
     if (!fits()) {
@@ -199,6 +209,9 @@ export async function createTileStreamer({
     if (disposed) return null;
     const moved = Math.hypot(x - lastX, z - lastZ);
     if (moved < 20 && now - lastAt < 400) return null;
+    const dt = Number.isFinite(lastAt) ? (now - lastAt) / 1000 : 0;
+    const vx = dt > 0 ? (x - lastX) / dt : 0;
+    const vz = dt > 0 ? (z - lastZ) / dt : 0;
     lastX = x; lastZ = z; lastAt = now;
     for (const id of inFlight.keys()) {
       if (distanceToCore(tiles.find((t) => t.id === id), x, z) > budgetCfg.dropRadius) dropTile(id);
@@ -208,6 +221,8 @@ export async function createTileStreamer({
       loaded,
       x,
       z,
+      vx,
+      vz,
       bytes: [...loaded.values()].reduce((n, v) => n + v.bytes, 0),
       budget: budgetCfg
     });
@@ -224,3 +239,76 @@ export async function createTileStreamer({
     }
   };
 }
+
+/**
+ * Madrid facade palettes for the tile world (phase-4 style). The seed table FACADE_DEFS in buildings.js is
+ * Manhattan pre-war masonry; these are the almendra anchors instead (references in MADRID.md): caliza blanca de
+ * Colmenar, ladrillo visto and revoco encalado, with Madrid residential rhythm - narrow bays for balcones de
+ * forja (~1.5 m) and ~3.1-3.4 m floors - instead of the 2.2-2.6 m New York bays and storefront fronts.
+ * Plain data so the choice stays testable in Node; madrid-tile-world.js pairs each entry with FACADE_DEFS' factory.
+ */
+export const MADRID_FACADE_OPTS = Object.freeze([
+  Object.freeze({ // 0: caliza blanca (Gran Via / Palacio Real limestone)
+    stoneColor: 0xe7ddc6,
+    trimColor: 0xcfc2a6,
+    windowGlassColor: 0x202e3a,
+    windowWidth: 1.5,
+    floorHeight: 3.4,
+    litProbability: 0.5,
+    warmth: 0.85,
+    seed: 21.7
+  }),
+  Object.freeze({ // 1: ladrillo visto rojizo (residencial / neomudejar)
+    stoneColor: 0xa45538,
+    trimColor: 0xd8c39a,
+    windowGlassColor: 0x1c2833,
+    windowWidth: 1.5,
+    floorHeight: 3.3,
+    litProbability: 0.48,
+    warmth: 0.9,
+    seed: 33.2
+  }),
+  Object.freeze({ // 2: revoco ocre claro (La Latina / Lavapies - el ocre luminoso de Tiny-Madrid)
+    stoneColor: 0xe0ba7f,
+    trimColor: 0xf0e2c2,
+    windowGlassColor: 0x243441,
+    windowWidth: 1.4,
+    floorHeight: 3.1,
+    litProbability: 0.45,
+    warmth: 0.95,
+    seed: 47.9
+  }),
+  Object.freeze({ // 3: revoco salmon rosado (acentos del casco antiguo en Tiny-Madrid)
+    stoneColor: 0xdc9d7e,
+    trimColor: 0xecd3b8,
+    windowGlassColor: 0x223038,
+    windowWidth: 1.4,
+    floorHeight: 3.2,
+    litProbability: 0.45,
+    warmth: 0.95,
+    seed: 58.3
+  })
+]);
+
+/** Face treatment for tile parcels: residential fronts with entrance bays, not four NYC storefronts. */
+export const MADRID_PARCEL_FACE = 'entry';
+
+/**
+ * Named-monument facade styles for the tile world: each identified landmark gets the material of its real
+ * reference (caliza blanca de Colmenar, granito berroqueno, the red fronts of the Plaza Mayor), not one blanket
+ * tone. First regex that matches the OSM name wins; unmatched landmarks keep the neutral stone default.
+ */
+export const MADRID_LANDMARK_STYLES = Object.freeze([
+  Object.freeze([/\bpalacio real\b/i, Object.freeze({ color: 0xece5d3, roughness: 0.7 })]),
+  Object.freeze([/\balmudena\b/i, Object.freeze({ color: 0xe8e1cf, roughness: 0.72 })]),
+  Object.freeze([/\bplaza de toros\b/i, Object.freeze({ color: 0x9a4b38, roughness: 0.8 })]),
+  Object.freeze([/\bpuerta de alcal/i, Object.freeze({ color: 0xe5dfce, roughness: 0.65 })]),
+  Object.freeze([/\bcibeles\b/i, Object.freeze({ color: 0xeae3d1, roughness: 0.7 })]),
+  Object.freeze([/\bmetr[oó]polis\b/i, Object.freeze({ color: 0xdfd7c2, roughness: 0.68 })]),
+  Object.freeze([/\bteatro real\b/i, Object.freeze({ color: 0xe6dfd0, roughness: 0.7 })]),
+  Object.freeze([/\bplaza mayor\b/i, Object.freeze({ color: 0xb0624a, roughness: 0.8 })]),
+  Object.freeze([/\bcasa de la panader[ií]a\b/i, Object.freeze({ color: 0xa8574a, roughness: 0.78 })]),
+  Object.freeze([/\btemplo de debod\b/i, Object.freeze({ color: 0xc9b18a, roughness: 0.8 })]),
+  Object.freeze([/\bbanco de espa[nñ]a\b/i, Object.freeze({ color: 0xe6dfcd, roughness: 0.7 })]),
+  Object.freeze([/\b(catedral|iglesia|basilica|basílica|ermita)\b/i, Object.freeze({ color: 0xe3dcc8, roughness: 0.74 })])
+]);

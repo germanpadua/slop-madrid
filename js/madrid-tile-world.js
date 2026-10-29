@@ -3,11 +3,11 @@
 //
 // The seed tile (phase 2) keeps the full procedural city of js/madrid-geodata.js. Tiles are rendered at the same
 // 1:1 frame with the same facades, paving and water, one level of detail below the seed: every IDEAM parcel becomes
-// one facade box of its real height inside its real block slab (the seed masses a block into tiers/steps from the
+// one contour extrusion of its real height inside its real block slab (the seed masses a block into tiers/steps from the
 // same parcels). Everything here is real geometry owned by the tile core; polygons crossing a seam were already
 // clipped by the builder, so adjacent tiles never draw the same surface twice.
 import * as THREE from 'three/webgpu';
-import { Fn, abs, color, fract, max, mix, positionWorld, smoothstep } from 'three/tsl';
+import { Fn, abs, color, fract, max, mix, positionGeometry, positionWorld, smoothstep } from 'three/tsl';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createExtrudedPolygonMesh, createFlatPolygonMesh, offsetPolygonInward } from './city-grid.js';
 import {
@@ -15,12 +15,27 @@ import {
   createParkLawnMaterial,
   createRoadSurfaceMaterial,
   createSidewalkMaterial,
-  createWaterMaterial
+  createWaterMaterial,
+  WALL_KINDS
 } from './tsl-materials.js';
 import { FACADE_DEFS } from './buildings.js';
-import { landmarkExtrusions } from './monument-sites.js';
+import { OPEN_SPACE, landmarkExtrusions } from './monument-sites.js';
 import { buildMadridStreetPoints } from './madrid-street-points.js';
-import { createParcelGeometry } from './madrid-parcel-geometry.js';
+import { createParcelGeometry, createParcelRoofGeometry } from './madrid-parcel-geometry.js';
+import { buildProceduralMonument, buildProceduralColliders, hasProceduralMonument } from './monuments.js';
+import { partyWallHeights } from './madrid-adjacency.js';
+import { roofDecision } from './madrid-roofs.js';
+import { MADRID_FACADE_OPTS, MADRID_LANDMARK_STYLES } from './madrid-tiles.js';
+
+// Tejados: shared terracotta material + palette (Tiny-Madrid illustrated references, user-chosen).
+// Geometry is per tile (eviction disposes mesh.geometry); materials stay alive like facades.
+const hipRoofMat = new THREE.MeshStandardNodeMaterial({ vertexColors: true, roughness: 0.9, metalness: 0.0, side: THREE.DoubleSide });
+hipRoofMat.colorNode = Fn(() => {
+  const course = smoothstep(0.35, 0.65, fract(positionGeometry.y.mul(22.0)));
+  return mix(color(0xffffff), color(0xd8cec6), course.mul(0.14));
+})();
+const HIP_PALETTE = [0xb0512b, 0xbc5f33, 0xa6492a, 0xc06a3d, 0x9a5238].map((c) => new THREE.Color(c));
+const HIP_SLATE = new THREE.Color(0x5d646e);
 
 const toPts = (flat) => {
   const out = [];
@@ -85,9 +100,9 @@ function createOutOfMapFloor(scene, bbox) {
 }
 
 export function createTileWorld(scene, { colliders = null, materials = null } = {}) {
-  // Same palette/procedural facades as the seed, in world-space mode for arbitrary sourced contours. The cache
-  // shares these variants across tiles; they require their own first GPU compile (not measured by the CPU harness).
-  const facades = FACADE_DEFS.slice(0, 3).map(([create, opts]) => create({ ...opts, boxLocal: false }));
+  // All contour parcels use Madrid masonry, with world-space projection and per-wall treatments.
+  // Never tier-indexed NYC curtain-wall factories: every palette binds to the pre-war factory.
+  const facades = MADRID_FACADE_OPTS.map((opts) => FACADE_DEFS[0][0]({ ...opts, boxLocal: false, parcelWalls: true, madrid: true }));
   const mats = {
     road: materials?.road || createRoadSurfaceMaterial(),
     curb: materials?.curb || createCurbMaterial(),
@@ -95,7 +110,17 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     water: materials?.water || createWaterMaterial(),
     lawn: materials?.lawn || createParkLawnMaterial(false),
     stone: new THREE.MeshStandardNodeMaterial({ color: 0xc9c2b4, roughness: 0.88, metalness: 0.02 }),
-    landmark: new THREE.MeshStandardNodeMaterial({ color: 0xd6cdbb, roughness: 0.85, metalness: 0.03 })
+    landmark: new THREE.MeshStandardNodeMaterial({ color: 0xcfc8b8, roughness: 0.85, metalness: 0.03 }),
+    // Named monuments get their own material (caliza blanca / granito berroqueno), not one blanket tone.
+    landmarkByName: new Map()
+  };
+  const landmarkMaterial = (name) => {
+    const hit = MADRID_LANDMARK_STYLES.find(([re]) => re.test(name));
+    if (!hit) return mats.landmark;
+    if (!mats.landmarkByName.has(hit[0])) {
+      mats.landmarkByName.set(hit[0], new THREE.MeshStandardNodeMaterial({ ...hit[1], metalness: 0.03 }));
+    }
+    return mats.landmarkByName.get(hit[0]);
   };
   const groups = new Map(); // tile id -> { group, colliders }
   // Footprints already in the scene: the ownership rules keep each building in exactly one tile, and this guard makes
@@ -170,10 +195,11 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       group.add(mesh);
     }
 
-    // 4. Exact IDEAM rings, merged into three facade batches. A bounding box fills concave patios and streets.
+    // 4. Exact IDEAM contours and patios, with tile-local party-wall heights on their real walls.
     const items = facades.map(() => []);
     const parcels = tile.parcels || [];
     const drawnHere = [];
+    const pabs = [];
     for (let index = 0; index < parcels.length; index++) {
       const parcel = parcels[index];
       const ring = toPts(parcel.ring || []);
@@ -185,10 +211,20 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       const bb = bboxOf(ring);
       const w = bb.x1 - bb.x0, d = bb.z1 - bb.z0;
       if (w < 2 || d < 2) continue;
-      const cx = (bb.x0 + bb.x1) / 2, cz = (bb.z0 + bb.z1) / 2;
-      const tier = Math.floor(hash(cx, cz, index) * facades.length) % facades.length;
-      items[tier].push(createParcelGeometry(parcel.ring, parcel.h, parcel.holes));
+      pabs.push({ x0: bb.x0, x1: bb.x1, z0: bb.z0, z1: bb.z1, w, d, h: parcel.h, index, ring: parcel.ring, holes: parcel.holes });
       tileColliders.push({ minX: bb.x0, maxX: bb.x1, minZ: bb.z0, maxZ: bb.z1, minY: 0, maxY: parcel.h });
+    }
+    // Party-wall detection on the real ring footprints (js/madrid-adjacency.js): a side becomes a
+    // windowless medianera tier only where shared boundary runs cover the majority of that side.
+    const nHArr = partyWallHeights(pabs);
+    for (let pi = 0; pi < pabs.length; pi++) {
+      const P = pabs[pi];
+      const cx = (P.x0 + P.x1) / 2, cz = (P.z0 + P.z1) / 2;
+      const tier = Math.floor(hash(cx, cz, P.index) * facades.length) % facades.length;
+      const tone = hash(cz, cx, 3);
+      items[tier].push(createParcelGeometry(P.ring, P.h, P.holes, {
+        bbox: P, partyHeights: nHArr[pi], tone, front: WALL_KINDS.entry
+      }));
     }
     items.forEach((list, i) => {
       if (!list.length) return;
@@ -201,15 +237,51 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       group.add(mesh);
     });
 
+    // 4b. Shared roof decisions and terracotta palette; clip every slope to the sourced contour and holes.
+    const roofGeos = [];
+    for (const P of pabs) {
+      const decision = roofDecision(P, pabs);
+      if (!decision) continue;
+      const geo = createParcelRoofGeometry(P.ring, P.holes, P, decision);
+      if (!geo.getAttribute('position').count) { geo.dispose(); continue; }
+      const tint = decision.slate ? HIP_SLATE : HIP_PALETTE[decision.ci % HIP_PALETTE.length];
+      const colors = new Float32Array(geo.getAttribute('position').count * 3);
+      for (let i = 0; i < colors.length; i += 3) tint.toArray(colors, i);
+      geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+      roofGeos.push(geo);
+    }
+    if (roofGeos.length) {
+      const geo = mergeGeometries(roofGeos, false);
+      roofGeos.forEach((g) => g.dispose());
+      const mesh = new THREE.Mesh(geo, hipRoofMat);
+      mesh.castShadow = mesh.receiveShadow = true;
+      mesh.name = 'TileContourRoofs';
+      group.add(mesh);
+    }
+
+    // Plazas stay walkable; mesh-owned sites never get an extra volume, procedural or extruded.
+    for (const [name, lm] of Object.entries(tile.landmarks || {})) {
+      if (!lm.ring || lm.ring.length < 6) continue;
+      if (OPEN_SPACE.test(name)) {
+        group.add(createFlatPolygonMesh(toPts(lm.ring), 0.12, mats.stone, true));
+      } else if (hasProceduralMonument(name)) {
+        const monument = buildProceduralMonument(name, landmarkMaterial(name), lm);
+        monument.position.set(lm.cx, 0, lm.cz);
+        group.add(monument);
+        tileColliders.push(...(buildProceduralColliders(name, lm) || []));
+      }
+    }
+
     // 5. Landmarks: real footprint extruded to its IDEAM/OSM height. No height = no volume (nothing invented); the
-    //    footprint stays covered by its parcel box, so there is no gap to fill.
-    for (const { lm } of landmarkExtrusions(tile.landmarks || {})) {
-      if (!(lm.h > 0)) continue;
+    //    footprint stays covered by its sourced parcel, so there is no gap to fill.
+    for (const { name: lmName, lm } of landmarkExtrusions(tile.landmarks || {})) {
+      if (hasProceduralMonument(lmName)) continue;
       if (parcels.some((p) => pointInRing(toPts(p.ring), lm.cx, lm.cz))) continue;
       const ring = toPts(lm.ring);
       if (ring.length < 3) continue;
       if (shoelace(ring) > 0) ring.reverse();
-      const mesh = createExtrudedPolygonMesh(ring, 0, lm.h, mats.landmark, true, true);
+      const lmMat = landmarkMaterial(lmName);
+      const mesh = createExtrudedPolygonMesh(ring, 0, lm.h, lmMat, true, true);
       mesh.name = 'TileLandmark';
       group.add(mesh);
       const bb = bboxOf(ring);

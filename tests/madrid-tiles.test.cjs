@@ -217,6 +217,29 @@ test('streaming prefetches around the camera, evicts far tiles and never drops t
   assert.ok(!plan.drop.includes('fase2'));
 });
 
+test('speed-aware look-ahead prefetches along the velocity, not behind it (tinywarsaw engine notes)', () => {
+  const mk = (id, coreRect, bytes = 500 * 1024) => ({ id, status: 'ready', core: [coreRect], bytes });
+  const seeded = () => new Map([[ 'fase2', { bytes: 4 * 1024 * 1024 } ]]);
+  const tiles = [
+    mk('fase2', [-500, -500, 500, 500], 4 * 1024 * 1024),
+    mk('ahead', [3500, -500, 4500, 500]),   // 3 000 m east of the camera
+    mk('behind', [-4500, -500, -3500, 500]) // 3 000 m west of the camera
+  ];
+  // parked at the origin: both are outside the 1 600 m preload radius, nothing loads
+  let plan = planTiles({ tiles, loaded: seeded(), x: 0, z: 0, bytes: 4 * 1024 * 1024 });
+  assert.deepEqual(plan.load, []);
+  // flying east at 400 m/s: the 6 s look-ahead (clamped to 1.5x the radius, 2 400 m) pulls 'ahead' into range,
+  // while 'behind' stays out — a flight never frames an unbuilt tile on its path
+  plan = planTiles({ tiles, loaded: seeded(), x: 0, z: 0, vx: 400, vz: 0, bytes: 4 * 1024 * 1024 });
+  assert.deepEqual(plan.load, ['ahead']);
+  // flying west: the mirror image
+  plan = planTiles({ tiles, loaded: seeded(), x: 0, z: 0, vx: -400, vz: 0, bytes: 4 * 1024 * 1024 });
+  assert.deepEqual(plan.load, ['behind']);
+  // eviction still measures from the true position: a tile left 3 km behind is dropped mid-flight
+  plan = planTiles({ tiles, loaded: new Map([...seeded(), ['behind', { bytes: 500 * 1024 }]]), x: 0, z: 0, vx: 400, vz: 0, bytes: 4.5 * 1024 * 1024 });
+  assert.deepEqual(plan.drop, ['behind']);
+});
+
 test('the memory budget is a hard cap: the resident set never exceeds it', () => {
   const tiles = [0, 1, 2, 3, 4, 5].map((i) => ({
     id: `t${i}`, status: 'ready', core: [[i * 400, -500, i * 400 + 800, 500]], bytes: 3 * 1024 * 1024
@@ -337,4 +360,41 @@ test('tile import uses a terminable module worker and preserves the cache-bustin
   controller.abort();
   await assert.rejects(cancelled, { name: 'AbortError' });
   assert.ok(instance.terminated);
+});
+
+test('madrid facade palettes are Madrid, not Manhattan', async () => {
+  const { MADRID_FACADE_OPTS, MADRID_PARCEL_FACE } = await import('../js/madrid-tiles.js');
+  assert.equal(MADRID_FACADE_OPTS.length, 4);
+  // Manhattan table uses 2.2-2.6 m bays and 3.4-3.5 m floors; Madrid blocks use ~1.4-1.6 m bays (balcones)
+  // and 3.1-3.4 m floors.
+  for (const o of MADRID_FACADE_OPTS) {
+    assert.ok(o.windowWidth <= 1.6, `bay too wide: ${o.windowWidth}`);
+    assert.ok(o.floorHeight >= 3.0 && o.floorHeight <= 3.4, `floor out of range: ${o.floorHeight}`);
+    assert.ok(typeof o.stoneColor === 'number' && typeof o.trimColor === 'number' && typeof o.windowGlassColor === 'number');
+  }
+  const stones = new Set(MADRID_FACADE_OPTS.map((o) => o.stoneColor));
+  assert.equal(stones.size, 4, 'palettes must be distinct');
+  assert.equal(MADRID_PARCEL_FACE, 'entry');
+});
+
+test('landmark styles match named monuments, not blanket tones', async () => {
+  const { MADRID_LANDMARK_STYLES } = await import('../js/madrid-tiles.js');
+  const match = (name) => MADRID_LANDMARK_STYLES.find(([re]) => re.test(name));
+  assert.ok(match('Palacio Real de Madrid'));
+  assert.ok(match('Catedral de la Almudena'));
+  assert.ok(match('Puerta de Alcalá'));
+  assert.ok(match('Edificio Metrópolis'));
+  assert.ok(!match('Monumento al General Vara de Rey y Héroes del Caney'), 'unlisted monuments keep the default');
+  const colors = new Set(MADRID_LANDMARK_STYLES.map(([, s]) => s.color));
+  assert.ok(colors.size >= 4, 'styles must not collapse into one blanket color');
+});
+
+test('every Madrid facade tier uses the pre-war masonry factory, never tier-indexed NYC glass', () => {
+  // Regression 407dabf: FACADE_DEFS[3+] are NYC curtain-wall factories that ignore the Madrid palette;
+  // tier-indexing turned tier-3 (salmón) parcels into dark glass towers. The tile renderer must always
+  // use FACADE_DEFS[0][0] (pre-war masonry) for every Madrid tier.
+  const { readFileSync } = require('node:fs');
+  const src = readFileSync(require('node:path').join(__dirname, '..', 'js', 'madrid-tile-world.js'), 'utf8');
+  assert.ok(src.includes('MADRID_FACADE_OPTS.map((opts) => FACADE_DEFS[0][0]'), 'tile renderer must bind every Madrid tier to FACADE_DEFS[0][0] (pre-war masonry)');
+  assert.ok(!/FACADE_DEFS\[i\s*%/.test(src), 'tier-indexed FACADE_DEFS selects NYC curtain-wall for tier >= 3');
 });

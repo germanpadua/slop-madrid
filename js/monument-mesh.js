@@ -3,6 +3,9 @@
 // The module carries quantised positions (int16 decimetres, x east / y up / z south, local to `origin`), interleaved
 // vertex colours (uint8 RGB) and an index buffer. Every monument was flattened per source building by the pipeline,
 // so its lowest vertex is exactly on the simulation ground: the group is placed at (origin.x, 0, origin.z).
+// Retirement happens before static batching in landmarks.js and madrid-tile-world.js:
+// MONUMENT_SITE_NAMES reserves all ten modules and hasProceduralMonument excludes their names.
+// No generic or procedural fallback survives at these sites while this mesh streams in or out.
 import * as THREE from 'three/webgpu';
 import { attribute, smoothstep } from 'three/tsl';
 import { cityUniforms } from './tsl-materials.js';

@@ -383,7 +383,7 @@ const WALL_KINDS = { shop: 0, entry: 1, rear: 2, lotLine: 3, blankStone: 4 };
  * (folded into `solid`); `wallS`, `wallW`, `wallH`, `fromTop` & `boxSeed` place things on the wall (painted signs).
  * Plain JS (not Fn) so it inlines into each node graph exactly like hand-written code.
  */
-function facadeCell(windowWidth, floorHeight, boxLocal, cornerPier = 0) {
+function facadeCell(windowWidth, floorHeight, boxLocal, cornerPier = 0, parcelWalls = false) {
   // Box-local walls are told apart by the box's own normals (createFacadeBoxes instances may be turned about +y to
   // follow a non-grid street); world-space walls by the world normal
   const nWall = boxLocal ? normalGeometry : facadeWorldNormal;
@@ -446,6 +446,16 @@ function facadeCell(windowWidth, floorHeight, boxLocal, cornerPier = 0) {
     uCoord = gridU.mul(bayWidth);
   }
 
+  if (parcelWalls && !boxLocal) {
+    // Contour extrusions retain world projection while carrying per-edge medianera/rear treatments.
+    const frame = attribute('wallFrame', 'vec4');
+    kind = attribute('facadeKind', 'float');
+    tone = attribute('facadeTone', 'float');
+    wallS = frame.x; wallW = frame.y; wallH = frame.z; fromTop = frame.w;
+    bays = max(floor(wallW.div(windowWidth)), 1.0);
+    bayIdx = floor(wallS.div(windowWidth));
+  }
+
   const vCoord = positionWorld.y;
   const gridV = vCoord.div(floorHeight);
   const cellId = vec2(floor(gridU), floor(gridV));
@@ -465,7 +475,7 @@ function facadeCell(windowWidth, floorHeight, boxLocal, cornerPier = 0) {
   // windows, and starts with one above the roof it stands on; every wall is capped by a coping at its top
   let partial = float(0.0);
   let coping = float(0.0);
-  if (boxLocal) {
+  if (boxLocal || parcelWalls) {
     const top = vCoord.add(fromTop);
     const floorBase = floor(gridV).mul(floorHeight);
     const whole = step(top.sub(wallH).sub(0.05), floorBase).mul(step(floorBase.add(floorHeight), top.add(0.05)));
@@ -697,10 +707,12 @@ function createPreWarBuildingMaterial(opts = {}) {
     crownGlowColor = 0xffe0a3,
     seed = 42.0,
     boxLocal = false,
-    cornerPier = 1.2 // solid masonry at both ends of every wall above the shopfronts (box-local mode)
+    parcelWalls = false,
+    cornerPier = 1.2, // solid masonry at both ends of every wall above the shopfronts (box-local mode)
+    madrid = false // Madrid dialect: iron balcony rails instead of sash bars, stone zocalo ground floor, no AC units, no 6-floor cornice belt
   } = opts;
 
-  const cacheKey = `${stoneColor}_${trimColor}_${windowWidth}_${floorHeight}_${litProbability}_${warmth}_${crownGlowHeight}_${seed}_${boxLocal}_${cornerPier}`;
+  const cacheKey = `${stoneColor}_${trimColor}_${windowWidth}_${floorHeight}_${litProbability}_${warmth}_${crownGlowHeight}_${seed}_${boxLocal}_${cornerPier}_${madrid}_${parcelWalls}`;
   if (_preWarCache.has(cacheKey)) {
     return _preWarCache.get(cacheKey);
   }
@@ -721,6 +733,7 @@ function createPreWarBuildingMaterial(opts = {}) {
   const uWarmth = uniform(warmth);
   const uCrownGlowHeight = uniform(crownGlowHeight);
   const uSeed = uniform(seed);
+  const uMadrid = uniform(madrid ? 1.0 : 0.0);
   const cSoot = color(0x4a4236);
   const cWarmWindow = color(0xffcf86);
   const cCoolWindow = color(0xcfe2ff);
@@ -733,7 +746,7 @@ function createPreWarBuildingMaterial(opts = {}) {
 
   // The facade cell, the window opening and the apartment behind it are built once and shared by every output below,
   // so the shader carries a single copy of them (and evaluates the interior mapping once per pixel)
-  const facade = facadeCell(uWindowWidth, uFloorHeight, boxLocal, cornerPier);
+  const facade = facadeCell(uWindowWidth, uFloorHeight, boxLocal, cornerPier, parcelWalls);
   const { isRoof, uCoord, vCoord, gridV, cellId, cellUV, fw, bayWidth, isGroundFloor, solid, back, blank, door, tone } = facade;
   const { wallS, wallW, wallH, fromTop, boxSeed, coping } = facade;
   const open = float(1.0).sub(solid).mul(float(1.0).sub(door)); // 0 in the corner piers, blank walls & doorways
@@ -755,7 +768,7 @@ function createPreWarBuildingMaterial(opts = {}) {
   // Window AC units (~12% of upper-floor windows), none in the floor the band course covers
   const beltFloor = step(5.0, mod(floor(gridV), 6.0)).mul(front);
   const acRand = hash2D(cellId.add(vec2(uSeed.mul(1.3).add(7.1), 91.7)));
-  const hasAC = step(0.88, acRand).mul(float(1.0).sub(isGroundFloor)).mul(float(1.0).sub(isRoof)).mul(open).mul(float(1.0).sub(beltFloor));
+  const hasAC = step(0.88, acRand).mul(float(1.0).sub(isGroundFloor)).mul(float(1.0).sub(isRoof)).mul(open).mul(float(1.0).sub(beltFloor)).mul(float(1.0).sub(uMadrid));
 
   mat.colorNode = Fn(() => {
     const oneMinusEffX = float(1.0).sub(effHalfX);
@@ -767,16 +780,23 @@ function createPreWarBuildingMaterial(opts = {}) {
     // Horizontal cornice belt every 6 floors (street fronts only) + ground floor storefront fascia at top of floor 0
     const cornicePhase = fract(gridV.div(6.0));
     const isCornice = max(
-      filteredPulse(cornicePhase, 0.86, 1.0, fw.y.div(6.0)).mul(front),
+      filteredPulse(cornicePhase, 0.86, 1.0, fw.y.div(6.0)).mul(front).mul(float(1.0).sub(uMadrid)),
       isGroundFloor.mul(filteredPulse(cellUV.y, 0.86, 1.0, fw.y))
     );
 
     // Double-hung meeting rail on upper floors + storefront transom & mullions on ground floor
-    const sashBarY = lineAA(cellUV.y.sub(0.52), 0.012).mul(float(1.0).sub(isGroundFloor));
-    const sashBarX = lineAA(cellUV.x.sub(0.50), 0.009).mul(float(1.0).sub(isGroundFloor)).mul(0.55);
+    const sashBarY = lineAA(cellUV.y.sub(0.52), 0.012).mul(float(1.0).sub(isGroundFloor)).mul(float(1.0).sub(uMadrid));
+    const sashBarX = lineAA(cellUV.x.sub(0.50), 0.009).mul(float(1.0).sub(isGroundFloor)).mul(0.55).mul(float(1.0).sub(uMadrid));
     const storeTransom = lineAA(cellUV.y.sub(0.70), 0.015).mul(isGroundFloor);
     const storeMullion = lineAA(fract(cellUV.x.mul(2.0)).sub(0.5), 0.018).mul(isGroundFloor);
-    const sashMask = clamp(max(max(sashBarY, sashBarX), max(storeTransom, storeMullion)), 0.0, 1.0);
+    // Madrid: wrought-iron balcony rail guarding the lower part of the tall upper-floor openings (replaces the sash).
+    // Vertical bars every ~0.30 m plus a top rail; the sash color mix draws them as dark iron over the glass.
+    const railTop = effHalfY.add(float(1.0).sub(effHalfY.mul(2.0)).mul(0.38));
+    const railZone = inX.mul(filteredPulse(cellUV.y, effHalfY, railTop, fw.y))
+      .mul(float(1.0).sub(isGroundFloor)).mul(uMadrid);
+    const railBars = max(lineAA(cellUV.y.sub(railTop), 0.012), step(0.80, fract(uCoord.div(0.30))));
+    const railMask = railZone.mul(railBars);
+    const sashMask = clamp(max(max(max(sashBarY, sashBarX), max(storeTransom, storeMullion)), railMask), 0.0, 1.0);
 
     // Protruding Window Air-Conditioner Unit, sitting on the sill (see hasAC)
     const acMinX = float(0.31);
@@ -812,9 +832,14 @@ function createPreWarBuildingMaterial(opts = {}) {
     // Rear, court & lot-line walls are plain common brick (red-brown or buff by building); lot-line walls weather in
     // patches of grey parging (worked out on those walls only), some are parged all over
     const backBrick = mix(
-      mix(color(0x6c3d30), color(0x8a503e), fract(tone.mul(7.31))),
-      mix(color(0x9a8669), color(0xb09a7a), fract(tone.mul(5.17))),
-      step(0.58, tone)
+      mix(
+        mix(color(0x6c3d30), color(0x8a503e), fract(tone.mul(7.31))),
+        mix(color(0x9a8669), color(0xb09a7a), fract(tone.mul(5.17))),
+        step(0.58, tone)
+      ),
+      // Madrid medianeras: light revoco/parging tones ( Tiny-Madrid refs ), never NYC dark common brick
+      mix(color(0xb3a48c), color(0xcbbfa7), fract(tone.mul(5.17))),
+      uMadrid
     );
     const parged = float(0.0).toVar();
     If(blank.mul(back).greaterThan(0.5), () => {
@@ -836,7 +861,9 @@ function createPreWarBuildingMaterial(opts = {}) {
     const brickShiftVec = vec3(float(1.0).add(brickWarmShift), float(1.0), float(1.0).sub(brickWarmShift));
 
     const streakNoise = mix(float(0.5), noise2D(vec2(uCoord.mul(1.4), vCoord.mul(0.05))), float(1.0).sub(smoothstep(0.5, 1.0, uFw.mul(1.4))));
-    const sootDirt = smoothstep(0.25, 0.78, streakNoise).mul(float(1.0).sub(smoothstep(0.0, 180.0, vCoord))).mul(0.36);
+    // Madrid dialect: dry climate, regularly repainted revoco - most of the NYC soot streaking lifts
+    const sootDirt = smoothstep(0.25, 0.78, streakNoise).mul(float(1.0).sub(smoothstep(0.0, 180.0, vCoord)))
+      .mul(mix(0.36, 0.13, uMadrid));
 
     const lintelShadow = smoothstep(oneMinusEffY.sub(0.14), oneMinusEffY, cellUV.y).mul(0.58);
     const jambShadow = float(1.0).sub(smoothstep(effHalfX, effHalfX.add(0.08), cellUV.x)).mul(0.42);
@@ -895,9 +922,10 @@ function createPreWarBuildingMaterial(opts = {}) {
     });
 
     const wallTint = mix(mix(cStone, backTint, back), signPaint.xyz, signPaint.w);
+    const wallTintZ = mix(wallTint, cTrim.mul(0.82), isGroundFloor.mul(front).mul(uMadrid).mul(0.55)); // Madrid stone zocalo
     // Trim stone on the band courses, the storefront fascia and the coping capping every wall
     const trimMix = max(isCornice.mul(0.62).add(isGroundFloor.mul(0.28)), coping.mul(0.8));
-    const masonryTint = mix(wallTint, cTrim, trimMix)
+    const masonryTint = mix(wallTintZ, cTrim, trimMix)
       .mul(brickRnd.mul(0.14).add(1.0))
       .mul(brickShiftVec);
     const masonryWithMortar = mix(masonryTint, masonryTint.mul(0.62), mortarJoint);
@@ -955,7 +983,7 @@ function createPreWarBuildingMaterial(opts = {}) {
   })();
 
   mat.roughnessNode = Fn(() => {
-    const belt = filteredPulse(gridV.div(6.0), 0.86, 1.0, fw.y.div(6.0)).mul(front);
+    const belt = filteredPulse(gridV.div(6.0), 0.86, 1.0, fw.y.div(6.0)).mul(front).mul(float(1.0).sub(uMadrid));
     const inX = filteredPulse(cellUV.x, halfWinX, 1.0 - halfWinX, fw.x).mul(open).mul(float(1.0).sub(belt));
     const inY = filteredPulse(cellUV.y, halfWinY, 1.0 - halfWinY, fw.y);
     const isWindow = inX.mul(inY).mul(float(1.0).sub(isRoof));
@@ -979,7 +1007,7 @@ function createPreWarBuildingMaterial(opts = {}) {
     const footprint = max(fwidth(uCoord), fwidth(vCoord)); // Meters per pixel
 
     // Stone band course every 6 floors on street fronts: no window recesses, sills or AC units in it
-    const belt = filteredPulse(gridV.div(6.0), 0.86, 1.0, ramp.y.div(6.0)).mul(front);
+    const belt = filteredPulse(gridV.div(6.0), 0.86, 1.0, ramp.y.div(6.0)).mul(front).mul(float(1.0).sub(uMadrid));
     const inX = filteredPulse(cellUV.x, effHalfX, float(1.0).sub(effHalfX), ramp.x).mul(open).mul(float(1.0).sub(belt));
     const inY = filteredPulse(cellUV.y, effHalfY, float(1.0).sub(effHalfY), ramp.y);
     const isWindow = inX.mul(inY);
@@ -1017,15 +1045,19 @@ function createPreWarBuildingMaterial(opts = {}) {
     const inX = filteredPulse(cellUV.x, glowHalfX, float(1.0).sub(glowHalfX), fw.x).mul(open);
     const inY = filteredPulse(cellUV.y, glowHalfY, float(1.0).sub(glowHalfY), fw.y);
     const isCornice = max(
-      filteredPulse(fract(gridV.div(6.0)), 0.86, 1.0, fw.y.div(6.0)).mul(front),
+      filteredPulse(fract(gridV.div(6.0)), 0.86, 1.0, fw.y.div(6.0)).mul(front).mul(float(1.0).sub(uMadrid)),
       isGroundFloor.mul(filteredPulse(cellUV.y, 0.86, 1.0, fw.y))
     );
 
-    const sashBarY = lineAA(cellUV.y.sub(0.52), 0.014).mul(float(1.0).sub(isGroundFloor));
-    const sashBarX = lineAA(cellUV.x.sub(0.50), 0.010).mul(float(1.0).sub(isGroundFloor)).mul(0.55);
+    const sashBarY = lineAA(cellUV.y.sub(0.52), 0.014).mul(float(1.0).sub(isGroundFloor)).mul(float(1.0).sub(uMadrid));
+    const sashBarX = lineAA(cellUV.x.sub(0.50), 0.010).mul(float(1.0).sub(isGroundFloor)).mul(0.55).mul(float(1.0).sub(uMadrid));
     const storeTransom = lineAA(cellUV.y.sub(0.70), 0.016).mul(isGroundFloor);
     const storeMullion = lineAA(fract(cellUV.x.mul(2.0)).sub(0.5), 0.020).mul(isGroundFloor);
-    const sashMask = clamp(max(max(sashBarY, sashBarX), max(storeTransom, storeMullion)), 0.0, 1.0);
+    const railTopE = glowHalfY.add(float(1.0).sub(glowHalfY.mul(2.0)).mul(0.38));
+    const railZoneE = inX.mul(filteredPulse(cellUV.y, glowHalfY, railTopE, fw.y))
+      .mul(float(1.0).sub(isGroundFloor)).mul(uMadrid);
+    const railMaskE = railZoneE.mul(max(lineAA(cellUV.y.sub(railTopE), 0.014), step(0.80, fract(uCoord.div(0.30)))));
+    const sashMask = clamp(max(max(max(sashBarY, sashBarX), max(storeTransom, storeMullion)), railMaskE), 0.0, 1.0);
 
     const inACBox = filteredPulse(cellUV.x, 0.31, 0.69, fw.x)
       .mul(filteredPulse(cellUV.y, glowHalfY, glowHalfY.add(0.22), fw.y))

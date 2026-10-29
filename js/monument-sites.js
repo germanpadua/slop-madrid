@@ -18,7 +18,20 @@ export const MONUMENT_SITES = {
   banco: ['Banco de España']
 };
 
-export const MONUMENT_SITE_NAMES = new Set(Object.values(MONUMENT_SITES).flat());
+// The original eight brief sites remain available to callers; the ten delivered modules also
+// include Almudena (split from Palacio) and Metrópolis. Reserve aliases before any static batching.
+export const MONUMENT_MESH_SITES = {
+  ...MONUMENT_SITES,
+  neptuno: ['Fuente de Neptuno'],
+  almudena: ['Catedral de la Almudena'],
+  metropolis: ['Edificio Metrópolis', 'Metrópolis']
+};
+export const MONUMENT_SITE_NAMES = new Set(Object.values(MONUMENT_MESH_SITES).flat());
+export const OPEN_SPACE = /^(Plaza|Glorieta|Parque|Jardín|Jardines|Paseo|Campo|Cuesta)\b|^Puerta del Sol\b/i;
+
+export function hasProceduralMonument(name) {
+  return !MONUMENT_SITE_NAMES.has(name) && name === 'Palacio de Cibeles';
+}
 
 /**
  * Footprints landmarks.js should extrude. Open squares are never masses (the old fallback turned Plaza Mayor or
@@ -33,9 +46,9 @@ export function landmarkExtrusions(sites) {
     if (!lm || !lm.ring || lm.ring.length < 6 || lm.w < 12) continue;
     // Open squares (any name starting with Plaza) and any untagged footprint this wide are ground, not masses:
     // never turn them into invented 24 m slabs. Buildings big enough for a ring carry their IDEAM height.
-    if (/^Plaza\s/i.test(name)) continue;
+    if (OPEN_SPACE.test(name)) continue;
     if (!(lm.h > 0)) continue;
-    // Real height (IDEAM parcel) where known; the 160 m ceiling only guards the extruder.
+    // Keep the measured IDEAM height without a floor or a ceiling.
     const H = lm.h;
     out.push({ name, lm, H });
   }

@@ -8,6 +8,7 @@ import {
   color,
   uv,
   positionWorld,
+  positionGeometry,
   normalWorldGeometry,
   abs,
   fract,
@@ -40,6 +41,7 @@ import {
   WALL_KINDS
 } from './tsl-materials.js';
 import { GEO } from './madrid-geodata.js';
+import { roofDecision } from './madrid-roofs.js';
 import { fdrViaduct, pavedPlazaRects, parkTreeSites, sidewalkBlocks } from './city-grid.js';
 
 // js/buildings.js
@@ -720,7 +722,48 @@ function buildCityBlocks(scene) {
 
     // 2. Rooftop gear on the highest roof: water tower on one half, bulkhead / mechanical penthouse on the other
     const roof = o.roof ?? 'mech';
-    if (roof !== 'none') {
+    if (madridParcels && (roof === 'prewar' || roof === 'walkup')) {
+      // Madrid residential roofscape (grounded in the Tiny-Madrid illustrated references): most prewar /
+      // walk-up parcels carry a terracotta hip roof (tejado a cuatro aguas, slight eaves overhang, rare
+      // slate variant); the rest keep a flat roof with a small stair bulkhead. NYC cedar water towers
+      // do not exist on Madrid rooflines and are never emitted here.
+      const tw = rectW(top);
+      const td = rectD(top);
+      // Rules shared with the tile renderer via js/madrid-roofs.js (documented there); the procedural
+      // city has no cadastral neighbour list, so the ring clash test sees no neighbours here.
+      {
+        const d = roofDecision({ x0: top.x0, x1: top.x1, z0: top.z0, z1: top.z1, w: tw, d: td, h: top.y1 });
+        if (d) {
+          blk.hipRoofs.push({
+            x: (top.x0 + top.x1) * 0.5,
+            y: top.y1,
+            z: (top.z0 + top.z1) * 0.5,
+            w: tw,
+            d: td,
+            h: d.h,
+            rot: d.rot,
+            ci: d.ci,
+            slate: d.slate,
+            ring: d.kind === 'ring'
+          });
+        } else {
+        const hw = Math.min(tw - 1.2, range(2.4, 4.2));
+        const hd = Math.min(td - 1.2, range(2.4, 4.2));
+        if (hw >= 1.8 && hd >= 1.8) {
+          const jx = (tw - hw) * 0.5 - 0.6;
+          const jz = (td - hd) * 0.5 - 0.6;
+          blk.hvacUnits.push({
+            x: (top.x0 + top.x1) * 0.5 + range(-jx, jx),
+            y: top.y1,
+            z: (top.z0 + top.z1) * 0.5 + range(-jz, jz),
+            w: hw,
+            h: o.hvacH ?? range(2.4, 3.2),
+            d: hd
+          });
+        }
+        }
+      }
+    } else if (roof !== 'none') {
       const tw = rectW(top);
       const td = rectD(top);
       const halves = tw >= td
@@ -1948,6 +1991,7 @@ function buildCityBlocks(scene) {
       cornices: [],
       waterTowers: [],
       hvacUnits: [],
+      hipRoofs: [],
       fireEscapes: [],
       awnings: [],
       scaffoldSheds: [],
@@ -2014,7 +2058,7 @@ function buildCityBlocks(scene) {
         b.ry = th;
       }
     });
-    for (const list of [blk.cornices, blk.waterTowers, blk.hvacUnits, blk.fireEscapes, blk.awnings, blk.scaffoldSheds]) {
+    for (const list of [blk.cornices, blk.waterTowers, blk.hvacUnits, blk.hipRoofs, blk.fireEscapes, blk.awnings, blk.scaffoldSheds]) {
       for (const o of list) {
         [o.x, o.z] = toWorld(o.x, o.z);
         o.ry = th;
@@ -2376,6 +2420,63 @@ function buildCityBlocks(scene) {
   barrelInst.frustumCulled = coneInst.frustumCulled = legsInst.frustumCulled = false;
   group.add(legsInst, barrelInst, coneInst);
 
+  // 2b. Madrid terracotta hip roofs: unit cuatro-aguas prism (ridge along x), instanced & scaled per parcel
+  const MAX_HIP_ROOFS = 1600;
+  const hipGeo = new THREE.BufferGeometry();
+  hipGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array([
+    -0.5, 0, -0.5, 0.5, 0, -0.5, 0.25, 1, 0,
+    -0.5, 0, -0.5, 0.25, 1, 0, -0.25, 1, 0,
+    0.5, 0, 0.5, -0.5, 0, 0.5, -0.25, 1, 0,
+    0.5, 0, 0.5, -0.25, 1, 0, 0.25, 1, 0,
+    -0.5, 0, 0.5, -0.5, 0, -0.5, -0.25, 1, 0,
+    0.5, 0, -0.5, 0.5, 0, 0.5, 0.25, 1, 0
+  ]), 3));
+  hipGeo.computeVertexNormals();
+  // Perimeter roof ring for patio blocks: outer slopes up to a ridge ring, inner slopes down to a
+  // patio opening (the parcel's own top face shows through as the patio floor). Unit span 1x1.
+  const ringGeo = new THREE.BufferGeometry();
+  {
+    const k1 = 0.16, k2 = 0.30, yi = 0.45;
+    const O = 0.5, R = 0.5 - k1, I = 0.5 - k2;
+    const A = [-O, 0, -O], B = [O, 0, -O], C = [O, 0, O], D = [-O, 0, O];
+    const RA = [-R, 1, -R], RB = [R, 1, -R], RC = [R, 1, R], RD = [-R, 1, R];
+    const IA = [-I, yi, -I], IB = [I, yi, -I], IC = [I, yi, I], ID = [-I, yi, I];
+    const tri = [];
+    const quad = (p, q, r, s) => { tri.push(...p, ...q, ...r, ...p, ...r, ...s); };
+    const o = [A, B, C, D], rg = [RA, RB, RC, RD], inr = [IA, IB, IC, ID];
+    for (let s = 0; s < 4; s++) {
+      const t = (s + 1) % 4;
+      quad(o[s], o[t], rg[t], rg[s]);
+      quad(rg[s], rg[t], inr[t], inr[s]);
+    }
+    ringGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(tri), 3));
+  }
+  ringGeo.computeVertexNormals();
+  const hipMat = new THREE.MeshStandardNodeMaterial({ roughness: 0.9, metalness: 0.0, side: THREE.DoubleSide });
+  hipMat.colorNode = Fn(() => {
+    // subtle horizontal tile-course shading up the slope
+    const course = smoothstep(0.35, 0.65, fract(positionGeometry.y.mul(22.0)));
+    return mix(color(0xffffff), color(0xd8cec6), course.mul(0.14));
+  })();
+  const hipPalette = [
+    new THREE.Color(0xb0512b),
+    new THREE.Color(0xbc5f33),
+    new THREE.Color(0xa6492a),
+    new THREE.Color(0xc06a3d),
+    new THREE.Color(0x9a5238)
+  ];
+  const hipSlate = new THREE.Color(0x5d646e);
+  const hipInst = new THREE.InstancedMesh(hipGeo, hipMat, MAX_HIP_ROOFS);
+  hipInst.castShadow = hipInst.receiveShadow = true;
+  hipInst.frustumCulled = false;
+  for (let i = 0; i < MAX_HIP_ROOFS; i++) hipInst.setColorAt(i, hipPalette[0]);
+  group.add(hipInst);
+  const ringInst = new THREE.InstancedMesh(ringGeo, hipMat, MAX_HIP_ROOFS);
+  ringInst.castShadow = ringInst.receiveShadow = true;
+  ringInst.frustumCulled = false;
+  for (let i = 0; i < MAX_HIP_ROOFS; i++) ringInst.setColorAt(i, hipPalette[0]);
+  group.add(ringInst);
+
   // 3. Rooftop mechanical penthouses & HVAC chillers with top exhaust fans & side louvers
   const hvacMat = new THREE.MeshStandardNodeMaterial({ roughness: 0.52, metalness: 0.45 });
   hvacMat.colorNode = Fn(() => {
@@ -2525,6 +2626,8 @@ function buildCityBlocks(scene) {
     let corniceCount = 0;
     let wtCount = 0;
     let hvacCount = 0;
+    let hipCount = 0;
+    let ringCount = 0;
     fireEscapeSystem.begin();
     let awningCount = 0;
     let shedCount = 0;
@@ -2574,6 +2677,25 @@ function buildCityBlocks(scene) {
         hvacInst.setMatrixAt(hvacCount++, dummy.matrix);
       }
 
+      // 3b. Madrid terracotta hip roofs (per-instance rotation: block turn + ridge along the long axis)
+      for (let i = 0; i < blk.hipRoofs.length && hipCount + ringCount < MAX_HIP_ROOFS * 2; i++) {
+        const r = blk.hipRoofs[i];
+        dummy.rotation.set(0, (blk.ry || 0) + r.rot, 0);
+        dummy.position.set(r.x, r.y, r.z);
+        dummy.scale.set((r.rot ? r.d : r.w) + 0.6, r.h, (r.rot ? r.w : r.d) + 0.6);
+        dummy.updateMatrix();
+        if (r.ring) {
+          ringInst.setMatrixAt(ringCount, dummy.matrix);
+          ringInst.setColorAt(ringCount, r.slate ? hipSlate : hipPalette[r.ci % hipPalette.length]);
+          ringCount++;
+        } else {
+          hipInst.setMatrixAt(hipCount, dummy.matrix);
+          hipInst.setColorAt(hipCount, r.slate ? hipSlate : hipPalette[r.ci % hipPalette.length]);
+          hipCount++;
+        }
+      }
+      dummy.rotation.set(0, blk.ry || 0, 0);
+
       // 4. Wrought-iron fire escapes
       for (const fe of blk.fireEscapes) fireEscapeSystem.add(fe, focusX, focusZ);
 
@@ -2622,6 +2744,13 @@ function buildCityBlocks(scene) {
 
     hvacInst.count = hvacCount;
     flagRange(hvacInst.instanceMatrix, hvacCount);
+
+    hipInst.count = hipCount;
+    flagRange(hipInst.instanceMatrix, hipCount);
+    if (hipInst.instanceColor) flagRange(hipInst.instanceColor, hipCount);
+    ringInst.count = ringCount;
+    flagRange(ringInst.instanceMatrix, ringCount);
+    if (ringInst.instanceColor) flagRange(ringInst.instanceColor, ringCount);
 
     fireEscapeSystem.end();
 

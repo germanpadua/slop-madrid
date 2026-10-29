@@ -55,6 +55,7 @@ const tileArg = args.indexOf('--tiles');
 const walk = tileArg >= 0 ? args[tileArg + 1].split(',') : ['k3j1', 'k4j1', 'k4j2', 'k2j-1', 'k0j-1', 'k0j3', 'k2j4'];
 
 const browser = await chromium.launch({
+  executablePath: process.env.CHROME_PATH || undefined, // e.g. /usr/bin/google-chrome when no bundled chromium
   args: cpuOnly ? ['--disable-gpu'] : nativeGpu ? [] : ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=swiftshader', '--enable-webgpu-developer-features']
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
@@ -72,6 +73,7 @@ if (cpuOnly) {
       const t0 = performance.now();
       const THREE = await import('three/webgpu');
       const { createTileWorld } = await import(baselineRef ? '/js/__baseline-world.js' : '/js/madrid-tile-world.js');
+      const { createParcelRoofGeometry } = await import('/js/madrid-parcel-geometry.js');
       const { createTileStreamer } = await import('/js/madrid-tiles.js');
       const { createActiveMadridData } = await import('/js/madrid-active-data.js');
       const { GEO } = await import('/js/madrid-geodata.js');
@@ -125,18 +127,50 @@ if (cpuOnly) {
       config.setActiveMadridData(model); map.setActiveData(model); map.renderFullMap();
       mapSmoke.afterDisposal = { residentTiles: model.tiles.size, roadCount: config.ROADS.length, blockCount: config.BLOCKS.length };
       const remainingMeshes = world.meshCount();
-      world.addTile({ id: 'probe', core: [[0, 0, 50, 50]], blocks: [],
+      world.addTile({ id: 'probe', core: [[0, 0, 100, 50]], blocks: [],
         parcels: [{ ring: [5, 5, 25, 5, 25, 10, 10, 10, 10, 25, 5, 25], h: 12 },
-          { ring: [30, 5, 45, 5, 45, 25, 30, 25], holes: [[34, 9, 41, 9, 41, 21, 34, 21]], h: 12 }] });
+          { ring: [30, 5, 45, 5, 45, 25, 30, 25], holes: [[34, 9, 41, 9, 41, 21, 34, 21]], h: 12 },
+          { ring: [50, 5, 65, 5, 65, 25, 50, 25], h: 20 },
+          { ring: [65, 5, 80, 5, 80, 25, 65, 25], h: 12 }] });
       scene.updateMatrixWorld(true);
       const heightAt = (x, z) => {
         const r = new THREE.Raycaster(new THREE.Vector3(x, 100, z), new THREE.Vector3(0, -1, 0));
         return r.intersectObjects(scene.children, true)[0]?.point.y;
       };
       const geometryChecks = { roofHeight: heightAt(7, 7), emptyPatioHeight: heightAt(20, 20), innerCourtyardHeight: heightAt(37, 15) };
+      geometryChecks.partyWallVertices = 0;
+      scene.traverse((o) => {
+        const kind = o.geometry?.getAttribute('facadeKind');
+        const pos = o.geometry?.getAttribute('position');
+        if (!kind) return;
+        for (let i = 0; i < kind.count; i++) if (kind.getX(i) === 3) {
+          if (Math.abs(pos.getX(i) - 65) > 0.01 || pos.getY(i) < 12) throw new Error('Party wall escaped its contour edge/height');
+          geometryChecks.partyWallVertices++;
+        }
+      });
       world.disposeAll();
-      if (!baselineRef && (Math.abs(geometryChecks.roofHeight - 12) > 0.01 || Math.abs(geometryChecks.emptyPatioHeight) > 0.01 ||
-        Math.abs(geometryChecks.innerCourtyardHeight) > 0.01)) throw new Error('Footprint raycast failed');
+      if (!baselineRef && (!(geometryChecks.roofHeight >= 12 && geometryChecks.roofHeight <= 16.2) || Math.abs(geometryChecks.emptyPatioHeight) > 0.01 ||
+        Math.abs(geometryChecks.innerCourtyardHeight) > 0.01 || !geometryChecks.partyWallVertices)) throw new Error(`Footprint raycast failed: ${JSON.stringify(geometryChecks)}`);
+      // Exercise BOTH slope templates directly, independent of the deterministic flat/hip/ring roll.
+      geometryChecks.clippedRoofs = [];
+      for (const kind of ['hip', 'ring']) {
+        for (const rot of [0, Math.PI / 2]) {
+          const flat = [0, 0, 40, 0, 40, 40, 0, 40], holes = [[5, 5, 12, 5, 12, 12, 5, 12]];
+          const P = { x0: 0, x1: 40, z0: 0, z1: 40, w: 40, d: 40, h: 12 };
+          const geo = createParcelRoofGeometry(flat, holes, P, { kind, rot, h: 3 });
+          const mat = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.updateMatrixWorld();
+          const hit = (x, z) => new THREE.Raycaster(new THREE.Vector3(x, 100, z), new THREE.Vector3(0, -1, 0)).intersectObject(mesh)[0]?.point.y;
+          if (!(hit(3, 3) > 12) || hit(8, 8) !== undefined) throw new Error(`${kind} roof filled a sourced courtyard`);
+          geo.dispose();
+          const L = [0, 0, 40, 0, 40, 8, 8, 8, 8, 40, 0, 40];
+          mesh.geometry = createParcelRoofGeometry(L, [], P, { kind, rot, h: 3 });
+          if (!(hit(3, 3) > 12) || hit(25, 25) !== undefined) throw new Error(`${kind} roof filled a concave street/patio`);
+          mesh.geometry.dispose(); mat.dispose();
+          geometryChecks.clippedRoofs.push({ kind, rot, courtyardOpen: true, concavityOpen: true });
+        }
+      }
       if (remainingMeshes !== 0 || peakBytes > mf.budget.maxResidentBytes || peakTiles > mf.budget.maxResidentTiles) throw new Error('Resident budget/disposal failed');
       return { mode: 'cpu-no-renderer', baselineRef, importMs: +importMs.toFixed(1), tileTimes, peakBytes, peakTiles,
         peakGeometryBufferBytes: peakBuffers, remainingMeshes, geometryChecks, mapSmoke,

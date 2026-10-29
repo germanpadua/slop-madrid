@@ -93,6 +93,7 @@ servicio principal es:
 
 - `https://tiles-eu1.arcgis.com/UrtTdLP2PYSxwtI6/arcgis/rest/services/MODELADO_3D_MADRID/SceneServer/layers/0`
 - `store.profile = meshpyramids` (i3s 1.10), quadtree `nodes/root` → children → hojas
+  (a pesar del nombre "realista", es LOD2 extruido de cubiertas — NO malla fotogramétrica; veredicto más abajo)
   `nodes/<id>/geometries/0` (gzip, PerAttributeArray: position Float32 WGS84 lon/lat/z,
   normal, uv0, color UInt8) + `features/0` (id, position, mbb, layer="Building") +
   `shared` (materials vertexColors) + `attributes/0`. Acceso **anónimo**, sin key.
@@ -105,6 +106,12 @@ servicio principal es:
   (Puerta de Alcalá, Cibeles, Sol): decenas de MB como mucho.
 - Otras escenas descartadas: `Hosted/Escena_WSL1` (piloto 860×390 m en la sierra,
   ~40.53°N, unidades ft), `MODELO_3D_VECTORIAL`, BIM, nube de puntos (no hitos centro).
+
+**Estado 2026-10-28 (verificado en vivo)**: fetcher implementado (`tools/madrid/i3s.py <nombre> <lon0,lat0,lon1,lat1> <outdir>`): recorre el quadtree, descarga hojas por bbox y decodifica el buffer. Layout confirmado: cabecera `uint32 vertexCount, uint32 featureCount`, posiciones `f32 x3` **offsets relativos al centro mbs del nodo** (lon/lat en grados, z en metros), normales `f32 x3`, uv0 `f32 x2`, color `u8 x4`, ids de feature al final. Puerta de Alcalá: 5 hojas, 18,6 MB en bruto, vértices verificados dentro del bbox (-3.6866, 40.4188, 667 m). Pendiente: paquete runtime (GLB diezmado) + proyección a mundo + chequeo pixel.
+**Veredicto de fidelidad 2026-10-28 (verificado)**: el modelo municipal es **LOD2 extruido de cubiertas de EDIFICIOS** — los MONUMENTOS en plaza abierta NO están: 0 vértices en ±35-47 m del centro de la Puerta de Alcalá (-3.68878, 40.42003) en las 5 hojas que cubren su bbox. Sirve como capa opcional de cubiertas del tejido general, NO para hitos reconocibles. Licencia verificada: CC BY 4.0 (https://datos.madrid.es/dataset/300722-0-ancho-viario-mapas, campo "Licencia"; condiciones https://datos.madrid.es/pages/condiciones-generales-ayuntamiento-de-madrid) — reutilización y redistribución permitidas CON ATRIBUCIÓN (© Ayuntamiento de Madrid) si algún día se publica malla derivada. Conclusión: monumentos reconocibles = modelado procedural propio (estilizado, coherente con el juego); i3s queda como mejora opcional de cubiertas.
+
+Evidencia de vinculación licencia↔malla (por si algún día se publica malla derivada): la página de dataset cuya URL lleva el slug histórico `300722-0-ancho-viario-mapas` tiene por **título real** "Modelo tridimensional de edificaciones de la cartografía base municipal" (responsable: Dirección General de Planificación Estratégica, publicado 22-nov-2024), y su pestaña Descargas enlaza el Geoportal, cuyos recursos I3S/SLPK apuntan a `.../I3S_SLPK/MODELADO_3D_MADRID.zip` — el mismo modelo que sirve el SceneServer. La licencia CC BY 4.0 de esa ficha es por tanto la del modelo; queda anotada la cadena slug→título→zip por la falta de licencia en el propio servicio ArcGIS. Veredicto acotado a ESTE servicio municipal: no cierra preguntas de fidelidad/licencia de otras fuentes i3s.
+Corrección de diagnóstico: los monumentos del centro NO estaban "en teselas sin construir" — están en la semilla fase2 (`GEO.landmarks`, 42 sitios extruidos) con materiales por nombre desde d61392e; solo Puerta de Alcalá falta del conjunto (ver nota de gate x=1208 abajo). NOTA 2026-10-28 tarde: la frase original decía que «la cubre esta vía i3s» — FALSO según el veredicto de fidelidad de arriba: el i3s municipal tiene 0 vértices en la huella de la Puerta. La vía de malla real para monumentos es el prototipo ZONA* 3DTilesServer (fotogrametría municipal; Puerta verificada completa y georreferenciada ~0,6 m; derivados SOLO locales hasta cerrar licencia por elemento).
 
 Integración fase 1: fetcher `tools/madrid/i3s.py` (trae hojas por bbox de hito),
 conversión a un paquete de meshes con colisión aproximada; **el fork base funciona sin
@@ -133,6 +140,26 @@ presupuesto de memoria); la fase 4 es llenar el término municipal.
 - **Volúmenes medidos en fase 3**: 0,115–0,65 MB por tesela densa (media 0,4 MB/km²), ~2 900 parcelas y ~80
   manzanas por km² en la almendra construida. El municipio completo a este LOD ≈ 200–300 MB: por red, nunca un
   solo JSON.
+
+## Referencia Tiny Warsaw (28-10-2026, engine notes de tinywarsaw.app/preview/engine/)
+
+El usuario pasó tinywarsaw.app como referencia. Proyecto comparable: escalaron de 49 km² a 332 km² (924 celdas de
+600 m, 141 617 edificios, 2,14 M árboles) manteniendo la carga usable en móvil. Lo que ya coincide con este repo:
+un módulo por celda + manifiesto, URLs versionadas, presupuesto por bytes y el extracto regional OSM
+(Geofabrik/osmium) previsto para la fase 4. Lo adoptado y lo anotado:
+
+- **Adoptado (28-10-2026)**: prefetch con anticipación por velocidad en `planTiles` (~6 s por delante del vector de
+  la cámara, tope 1,5× el radio; las expulsiones miden desde la posición real). Sus cifras: frames con una celda
+  sin construir en vuelo, 26 → 0. Test nuevo en `tests/madrid-tiles.test.cjs`.
+- **Para fase 4**: niveles lejanos preconstruidos en el pack (edificios bajos pintados en la textura del suelo,
+  >25 m como bloques, KTX2 con fallback WebP): su vista completa en móvil bajó de 4,58 M a 0,36 M triángulos y de
+  761 a 12 draw calls. Es la forma madura de nuestro "nivel 0" ya esbozado arriba y sustituiría el plano "fuera de
+  mapa" por ciudad lejana real.
+- **Riesgo señalado**: probaron WebGPU y lo descartaron por más lento que WebGL en su desktop y un Samsung S23.
+  Este fork es WebGPU+TSL: el rendimiento en móvil físico hay que validarlo en el dispositivo del usuario.
+- **Ideas menores**: reveal temprano + brillo sutil en celdas cargando; suelo con malla gruesa en zonas planas
+  dentro de una tolerancia de altura; malla de suelo recortada bajo las calzadas y horneada en el pack;
+  árboles como shaders/impostores (aún no hay árboles aquí); alojamiento en Cloudflare Workers con ficheros <25 MiB.
 
 ## Verificación
 
@@ -390,11 +417,14 @@ Total 2,74 MB de módulos de tesela; semilla 721 KB + 3,09 MB.
   de manzanas que la fase 2.
 - **Propiedad** (dedupe entre teselas, sin duplicar ni recortar geometría): el ráster de manzanas se ancla a una
   cuadrícula global de 100 m (no a la caja de cada tesela), así la misma manzana se traza idéntica en todas las
-  teselas que la llevan. Una manzana completa pertenece a la tesela con **más de la mitad de su área** en el core;
-  una huella pertenece a la manzana que contiene su centro (tolerancia 2,5 m por la simplificación del contorno) y,
-  si no está en ninguna, a la tesela que contiene su centro. Manzanas que tocan el borde de descarga se descartan
-  (estarían cortadas); parques y agua se recortan al core (Sutherland–Hodgman por rectángulo); hitos por centroide;
-  los vanos de puente por el punto medio del segmento (un vano se dibuja una vez).
+  teselas que la llevan. Una manzana completa pertenece a la tesela con **más de la mitad de su área** en el core —
+  eso decide losas y aceras. Las **fachadas** (una caja por huella) pertenecen siempre a la tesela cuyo core contiene
+  el **centro de la huella**, esté o no sobre una manzana: dos builds con datos de días distintos pueden trazar
+  manzanas ligeramente distintas en una costura, y atar las fachadas a la manzana emitía la misma huella desde dos
+  teselas (detectado 28-10-2026 en la costura k0j-1/k1j-1, corregido en `build.mjs`); el centro de la huella no
+  depende de la segmentación. Manzanas que tocan el borde de descarga se descartan (estarían cortadas); parques y
+  agua se recortan al core (Sutherland–Hodgman por rectángulo); hitos por centroide; los vanos de puente por el
+  punto medio del segmento (un vano se dibuja una vez).
 - La semilla se regeneró con el mismo pipeline y 100 m de solape (`build-seed`): sus bordes ya no llevan manzanas
   cortadas, y las manzanas del anillo de solape pertenecen a la tesela vecina, que las dibuja enteras.
 - Salida: módulo autocontenido `export const TILE = {id, label, core, frame, blocks, parcels, parks, water, roads,
@@ -597,3 +627,142 @@ Atocha y el resto llevan su tesela.
   por debajo de la hoja sin cambiar el traversal.
 - **Cuantización 0,1 m**: suficiente a escala de calle; los detalles de estatua menores de ~25 cm se pierden en
   Cibeles/Alcalá.
+
+
+## 2026-10-28 — Artefacto de bandas en el cielo: estado de la investigación
+
+- Las bandas luminosas visibles en capturas NO son el puente de Williamsburg ni los
+  puentes del East River: `EAST_RIVER_BRIDGES` y `OUTER_BRIDGES` están vacíos desde
+  f017b7f y los builders de boroughs.js no construyen nada. Cualquier atribución
+  previa a cables de puente queda retirada (vivía solo en notas de trabajo).
+- Evidencia reunida: sin meshes con NaN, sin InstancedMesh corruptos, sin
+  Points/Sprites/Lines, nada sobre la cámara en 200 m; raycast preciso hacia las
+  bandas solo toca el SkyMesh; persisten tras ocultar el root PlayerHelicopter y
+  HighwayTraffic. El disco de rotor del helicóptero sí produce estelas propias
+  (controllers.js, blurDisc) cuando la cámara chase queda bajo él.
+- Hipótesis abierta (NO conclusión): banding del shader procedural de nubes del
+  SkyMesh bajo el backend WebGL2. Contexto: ?capture fuerza WebGL2
+  (main.js: `captureFrame` implica `forceWebGL`) y el navegador cloud carece de
+  WebGPU (`navigator.gpu === false`), así que TODA captura local es WebGL2 y no se
+  puede descartar ni confirmar el artefacto en la experiencia pública WebGPU desde
+  ese navegador. El A/B con cloudCoverage=0 en página pesada quedó descartado (5 caídas de pestaña;
+  ruta agotada). Diagnóstico acotado del código del SkyMesh: proyección de horizonte
+  sensible a precisión (cloudUV = direction.xz/(direction.y·elev), hash fract), pero
+  las bandas se observaron ALTAS en el cielo (pitch 25-45°), así que no lo explica
+  limpiamente: sin causa verificada.
+
+## 2026-10-28 — Losa blanca de las vistas NE = Palacio de Cibeles (geometría deficiente, no NYC)
+
+- La gran caja blanca al este de la Puerta de Alcalá en las vistas NE quedó
+  identificada por raycast Möller–Trumbore desde la cámara (1344,27,-293):
+  impacto en malla de `Landmarks` (material eae3d1) en (1066,49,-276), dentro de
+  la huella OSM del **Palacio de Cibeles** (x 948-1066, cx 1006.8, cz -221.2,
+  w 119.6 × d 133, h IDEAM 63.8). No es geometría de NYC ni un artefacto de
+  captura: es un hito madrileño real renderizado como extrusión genérica lisa
+  de 63.8 m (js/landmarks.js), un ejemplo directo de la queja del usuario de que
+  los edificios/monumentos no encajan con el estilo de Madrid.
+- Bug de convención corregido en landmarks.js: las huellas se construían en
+  espacio (x, +z), pero rotateX(-PI/2) exige (x, -z) (city-grid.js:222), así que
+  TODA huella asimétrica de hito y todo pavimento de plaza asimétrico quedaba
+  espejado N-S respecto a las calles. Las plazas rectangulares (Independencia,
+  Cibeles) no lo delataban por simetría. Corregido a (x, -z) en los dos sitios
+  (extrusión y pavimento).
+- Palacio de Cibeles v1 procedural (monuments.js): referencias públicas
+  (Patrimonio y Paisaje, Ayto. de Madrid; CentroCentro) - cuerpo blanco
+  neoplateresco de 5 plantas (~28 m) sobre la huella real OSM, cuerpo superior
+  retranqueado, dos torres pentagonales flanqueando la fachada principal
+  achaflanada hacia la fuente, cimborrio octogonal del reloj de 70 m real
+  (modelo: 72 m con chapitel), chapiteles de pizarra, pináculos y pórtico de
+  columnas al Paseo del Prado. Colisionador: bbox de la huella con maxY 72.
+
+
+## Fachada madrileña procedural (2026-10-28, 3a87920 + 2efed51)
+
+- `createPreWarBuildingMaterial` acepta `madrid: true` (flag aislado, NYC/NJ intactos): rejas de
+  forja en el tercio inferior de los vanos altos en vez de guillotina, sin unidades de AA, sin faja
+  de cornisa cada 6 plantas (se conservan fascia de bajos y copete), zócalo de piedra en planta baja.
+  Cableado en js/madrid-tile-world.js para los paquetes de parcelas.
+- Medianeras: cuando una parcela colindante es más baja, el lienzo por encima de su cubierta se emite
+  como piso apilado `WALL_KINDS.lotLine` (medianera ciega, sin vanos). Vecinos solo dentro de la
+  tesela (aproximación acotada; bordes entre teselas conservan frente de calle).
+- **Validación visual pendiente de mapa completo**: los cambios están verificados por píxeles en un
+  harness que importa los módulos reales del juego (material + instanciado de cajas + opciones
+  MADRID_FACADE_OPTS) sobre la manzana real #315, NO en el mapa completo. La captura headless del
+  arranque completo es inviable en este sandbox (compilación TSL bajo SwiftShader > 120 s de límite
+  por comando; los hijos detached se terminan al salir; sin cron/dbus de usuario). Verificación real
+  pendiente en navegador con GPU.
+- Coste medido (submit CPU, 1280x720 SwiftShader, mediana de 15): +0,30 ms por frame con `madrid:true`.
+  Sin cambio de geometría; el coste GPU no se puede aislar en SwiftShader.
+
+## Tejados (hip roofs, 2026-10-28)
+Madrid residential parts (prewar/walkup) get instanced terracotta hip roofs (tejado a cuatro aguas, 6 tris/roof) instead of NYC water towers: 72% of SINGLE-SPAN parcels (max span <= 24m), ridge along the long axis, 0.6m eaves overhang, 8% slate variant; the rest and ALL large footprints keep a flat roof with a small bulkhead. Patio blocks (min span > 24m AND h <= 22; towers stay single-mass hips) get a perimeter roof RING with a visible patio opening (16 tris/roof): this fixed the first rollout's AABB-spanning megahip/flat-deck, which was visually rejected as an industrial shed. Collision containment: a ring falls back to flat when another parcel pokes through its inner-slope band, and a hip is suppressed when its base would emerge <3m above a containing parcel's flat slab (it read as a detached floating pyramid on block #315: inner parcels h=10.1 over a 9.7 slab). Towers (h>22) always hip: the 28% flat mix no longer applies to them (it had flattened block #315's 24.2m tower, a regression vs the documented rule). AABB-only model; tile path sees only same-tile neighbors. Root cause of the floating look: block-perimeter parcels render as AABB boxes whose flat top slab spans the courtyard where inner buildings stand; full footprint-aware massing remains the open fix. Roofs render in BOTH the procedural seed (js/buildings.js hipRoofs) and the phase-3 tile renderer (js/madrid-tile-world.js section 4b); decisions come from the shared pure module js/madrid-roofs.js pinned by tests/madrid-roofs.test.cjs. NOTE: harness renders before 62606c5 manually RECREATED roof rules and did not demonstrate tile-path integration; current harness (block-roof.html) imports the shared decision module but still recreates the instancing, so full-map visual validation remains outstanding. Grounded in Tiny-Madrid illustrated references (user-chosen); harness-verified (block-roof.html). FULL-MAP VISUAL VALIDATION OUTSTANDING.
+
+## Fachadas: paleta Madrid 4 tonos + menos hollín NYC (2026-10-28)
+`MADRID_FACADE_OPTS` grows from 3 to 4 tiers: caliza clara (0xe7ddc6), ladrillo (0xa45538), revoco ocre claro
+(0xe0ba7f), revoco salmón (0xdc9a7c); the tile renderer now builds facades from ALL tiers (was slice(0,3), so
+salmón never shipped). NYC soot/streak weathering is reduced for Madrid facades (`uMadrid` gates
+`sootDirt` from 0.36 to 0.13): the NYC grime was fighting the light sunny Tiny-Madrid references the user chose.
+Harness caveat corrected: earlier palette judgment used a dimmer hand-rolled lighting rig; block-roof.html now
+mirrors the game's golden preset (hemi 0x9abbe6/0xc88a62 @1.48, sun 0xffca92 @5.8, dir -0.44/0.58/-0.68) before
+pixel sign-off. FULL-MAP VISUAL VALIDATION STILL OUTSTANDING (harness = real modules on block #315 + one
+clearly-separated synthetic patio block, not the full map).
+
+## Bug de factoría en la ruta de teselas (2026-10-28, encontrado por el harness real)
+`madrid-tile-world.js` indexaba FACADE_DEFS por tier: las entradas 3+ son factorías NYC curtain-wall
+(cristal oscuro) que ignoran la paleta Madrid, así que toda parcela con tier 3 (salmón, ~25% del roll de 4
+tiers) renderizaba como torre de cristal oscura en la ciudad real. El harness de recreación nunca lo mostró
+porque construía materiales directamente con createPreWarBuildingMaterial; lo cazó block-tilepath.html (la
+ruta real). Ahora TODAS las tiers Madrid usan la factoría pre-war (mampostería). Medianeras Madrid aclaradas
+(revoco claro 0xb3a48c-0xcbbfa7 en vez del ladrillo común oscuro NYC, gated por uMadrid). Verificación de
+escena completa SIGUE PENDIENTE.
+
+## Integración de las ondas de paridad y fachadas/tejados (29-10-2026)
+
+Esta sección fija el estado integrado; las cifras y restricciones anteriores describen sus respectivas fases.
+
+- `tools/madrid/tiles.json`: 85 celdas, **19 ready / 66 pending / 0 failed**, **11 581 657 B** de datos listos
+  (incluido `blocksBytes` de la semilla), **24 km²** listos. Versión 1, fecha 2026-10-29. En las entradas compartidas
+  gana origin, incluidos k1j-1/k3j-1/k3j0/k4j0. k0j2/k1j2/k1j3/k2j2/k2j3/k3j2/k3j3 conservan los módulos y la
+  procedencia PBF de paridad. Ningún módulo `js/geodata/tile-k*.js` se reescribió durante la resolución.
+- `madrid-tile-world.js` y `madrid-parcel-geometry.js`: extrusión por **contorno real y huecos IDEAM** de paridad.
+  `partyWallHeights` de origin alimenta franjas de medianera sobre las paredes reales, sin reintroducir cajas.
+  El muestreo mantiene sus reglas y ahora consulta un índice espacial de vecinos. Las decisiones `roofDecision`
+  y la paleta terracota/pizarra de origin se conservan; cada faldón se recorta a la triangulación del contorno,
+  incluidos sus patios, antes de agruparlo. Los AABB sólo alimentan decisiones y colisionadores.
+- `madrid-tiles.js` y `tsl-materials.js`: todas las paletas `MADRID_FACADE_OPTS` usan **pre-war, madrid:true**.
+  Los contornos usan proyección de mundo y atributos por pared para entrada, trasera y medianera. Se conserva
+  el worker, las reservas de memoria, cancelación, reintentos y callbacks de crecimiento de grafo/mapa de paridad,
+  junto al prefetch por velocidad de origin. El cálculo inicial de velocidad evita infinitos/NaN.
+- `landmarks.js`: arquitectura de origin, materiales por nombre y `OPEN_SPACE` como pavimento a +0,12 m sin
+  colisión. Las extrusiones genéricas elegibles vienen de `landmarkExtrusions` y conservan la altura medida;
+  nunca sustituyen un procedural activo ni una malla del manifiesto.
+- `monument-sites.js`, `monuments.js` y `monument-mesh.js`: los **diez módulos** de `monumentos.json` tienen
+  prioridad reservada antes del batching estático. No se generan cajas ni procedurales de landmarks para esos
+  nombres, aunque la malla esté temporalmente descargada. El Alcalá procedural y sus colisionadores duplicados
+  se han eliminado. **Fuente de Cibeles** pertenece al loader; **Palacio de Cibeles**, edificio distinto sin
+  módulo propio, conserva el procedural de origin y no recibe además una extrusión genérica. En esta revisión
+  `monument-mesh.js` no contenía una función de retirada de cajas: la exclusión ocurre antes de emitir geometría,
+  evitando buscar después volúmenes ya mezclados en buffers compartidos.
+- `tools/madrid/build.mjs`: propiedad por centro geográfico de origin, conservación de huecos y exclusión de
+  parcelas ya entregadas por propietarios antiguos de paridad. No se regeneraron datos durante este merge.
+  `measure.mjs` conserva CPU/native-GPU/baseline de paridad y `CHROME_PATH` de origin; ahora verifica también
+  los tejados recortados y las franjas de medianera. Se mantiene la unión de pruebas de ambas ondas; la expectativa
+  PBF enumera las siete exclusivas, ya que las compartidas usan el pipeline de origin.
+
+Comprobación Chromium sin renderer: carga de las 18 teselas adicionales correcta; pico de 12 teselas / 8 814 741 B
+residentes, 152 429 942 B de buffers geométricos (excluye semilla, texturas, heap JS y GPU), cero mallas tras descarga.
+El mapa/grafo vuelve de 12 teselas / 5 209 vías a la semilla / 2 796 vías. Raycasts verifican patios y entrantes
+abiertos con tejados hip/ring en ambas orientaciones, y cuatro vértices de medianera en su arista y altura esperadas.
+Cero errores de página o peticiones fallidas. La compilación y dibujo de una escena sintética de materiales Madrid
+con Three r187dev y backend WebGL también termina sin errores. Estas comprobaciones no certifican FPS ni el aspecto
+final del mapa completo.
+
+Pendiente del propietario: validar visualmente continuidad en costuras, medianeras (vecindad limitada a cada tesela),
+encuentros de los faldones recortados y paleta, y ausencia de solapes visibles entre monumentos y edificación vecina.
+La semilla conserva el sistema procedural de manzanas de origin; el recorte exacto descrito arriba corresponde a las
+parcelas de teselas. Falta validar WebGPU en el dispositivo del propietario y los costes de compilación/frames.
+
+Verificación final del merge: `node --test tests/*.test.cjs tests/*.test.mjs` → **169/169**, cero fallos,
+cero omitidas; `node -e "import('./js/city-config.js')"` correcto. Se verificó además que permanecen todos los
+nombres de pruebas de ambos padres, que las entradas del manifiesto respetan la precedencia acordada y que los
+18 ficheros `tile-k*.js` tienen exactamente los mismos SHA-256 que al comenzar esta resolución.

@@ -46,11 +46,24 @@ async function initApp() {
     loadingStatus.textContent = `Initializing Three.js r${THREE.REVISION} WebGPURenderer & TSL Shaders...`;
   }
 
-  // 1. Initialize Three.js WebGPURenderer with 32-bit float reversedDepthBuffer
+  // 1. Initialize Three.js WebGPURenderer with 32-bit float reversedDepthBuffer.
+  // ?webgl forces the WebGL2 backend (lighter on devices/headless captures where WebGPU is heavy).
+  const bootParams = new URLSearchParams(window.location.search);
+  // ?capture keeps the drawing buffer readable for visual verification. three's WebGL2 backend hardcodes its
+  // context attributes, so the canvas+context must be supplied with preserveDrawingBuffer set; capture implies
+  // the WebGL2 backend (a WebGPU canvas cannot be read back this way).
+  const captureFrame = bootParams.has('capture');
+  const canvas = document.createElement('canvas');
+  const captureCtx = captureFrame
+    ? canvas.getContext('webgl2', { antialias: true, alpha: true, depth: true, stencil: false, preserveDrawingBuffer: true })
+    : null;
   const renderer = new THREE.WebGPURenderer({
+    canvas,
+    context: captureCtx || undefined,
     antialias: true,
     powerPreference: 'high-performance',
-    reversedDepthBuffer: true
+    reversedDepthBuffer: true,
+    forceWebGL: bootParams.has('webgl') || captureFrame
   });
   renderer.setPixelRatio(1.0);
   renderer.setSize(window.innerWidth, window.innerHeight);
@@ -120,6 +133,33 @@ async function initApp() {
       controllerManager.setMode(Object.hasOwn(controllerManager.entities, saved.activeMode) ? saved.activeMode : 'car');
     }
   } catch { /* Missing or unavailable storage does not prevent playing. */ }
+
+  // Debug-only scripted camera: ?debug&at=x,z,heading,y[,mode] teleports after boot
+  // (headless captures where no input is possible). No effect on normal visits.
+  try {
+    const at = new URLSearchParams(window.location.search).get('at');
+    if (at && new URLSearchParams(window.location.search).has('debug')) {
+      const [ax, az, ah, ay, amode] = at.split(',');
+      const px = Number(ax), pz = Number(az), ph = Number(ah ?? 0), py = Number(ay ?? 30);
+      if ([px, pz, ph, py].every(Number.isFinite)) {
+        setTimeout(() => {
+          controllerManager.setMode(amode || 'helicopter');
+          controllerManager.teleportActiveTo(px, pz, ph, py);
+        }, 3000);
+      }
+      if (new URLSearchParams(window.location.search).has('shot')) {
+        let n = 0;
+        const iv = setInterval(() => {
+          n += 1;
+          if (n > 30) { clearInterval(iv); return; }
+          requestAnimationFrame(() => {
+            const c = document.querySelector('canvas');
+            if (c) c.toBlob((b) => { if (b) fetch(`/__shot?name=ingame-${String(n).padStart(2, '0')}`, { method: 'POST', body: b }); }, 'image/jpeg', 0.85);
+          });
+        }, 20000);
+      }
+    }
+  } catch { /* scripted camera is best-effort */ }
 
   function savePlayerState() {
     try {
