@@ -161,6 +161,7 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     sidewalk: materials?.sidewalk || createSidewalkMaterial(),
     water: materials?.water || createWaterMaterial(),
     lawn: materials?.lawn || createParkLawnMaterial(false),
+    dirt: materials?.dirt || new THREE.MeshStandardNodeMaterial({ color: 0xb59a6e, roughness: 1, metalness: 0 }),
     stone: new THREE.MeshStandardNodeMaterial({ color: 0xc9c2b4, roughness: 0.88, metalness: 0.02 }),
     landmark: new THREE.MeshStandardNodeMaterial({ color: 0xcfc8b8, roughness: 0.85, metalness: 0.03 }),
     // Named monuments get their own material (caliza blanca / granito berroqueno), not one blanket tone.
@@ -199,6 +200,29 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     }
 
     // 2. Parks & gardens: real OSM landuse, clipped to the core by the builder; the channel is cut out of them too.
+    if (globalThis.__LAWNDEBUG === true && mats.lawn) mats.lawn = new THREE.MeshBasicMaterial({ color: 0xff2244 }); // diagnostic: flat red lawn
+    // 1c. Park floor underlay: the OSM grass rings leave the park's real path network uncovered and the
+    // dark street slab read through as black wedges (diagnosed 2026-10-29 via lawndebug toggle: the wedges
+    // are NOT lawn faces). One light dirt plane per park ring at y=0.05 under the lawn (0.10), water cut out.
+    const dirtGeos = [];
+    for (const park of tile.parks || []) {
+      for (const flat of park.rings || []) {
+        const ring = toPts(flat);
+        if (ring.length < 3) continue;
+        const bb = bboxOf(ring);
+        const holes = waterBoxes.filter((w) => w.bb.x1 > bb.x0 && w.bb.x0 < bb.x1 && w.bb.z1 > bb.z0 && w.bb.z0 < bb.z1).map((w) => w.ring);
+        dirtGeos.push(createFlatPolygonMesh(ring, 0.05, mats.dirt, true, holes.length ? holes : null).geometry);
+      }
+    }
+    if (dirtGeos.length) {
+      const merged = mergeGeometries(dirtGeos, false);
+      for (const g of dirtGeos) g.dispose();
+      const mesh = new THREE.Mesh(merged, mats.dirt);
+      mesh.name = 'TileParkFloor';
+      mesh.receiveShadow = true;
+      group.add(mesh);
+    }
+
     const lawnGeos = [];
     for (const park of tile.parks || []) {
       for (const flat of park.rings || []) {

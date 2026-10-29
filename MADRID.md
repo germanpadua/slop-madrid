@@ -680,3 +680,16 @@ estrechas y alargadas PERSISTEN sin agua: causa NO confirmada (hipotesis: sliver
 cesped con winding/normales malas; NO son arboles, NO son agua). La mota oscura del suelo es textura
 preexistente (ya registrada). El harness no renderiza shadow maps: el A/B castShadow de arboles fue
 pixel-identico; achaque de sombras no juzgable aqui.
+
+## Suelo de parque (underlay de tierra) - causa de las cuñas oscuras CONFIRMADA (2026-10-29)
+Test discriminante lawndebug=1 (cesped a rojo plano): las cuñas oscuras NO se tiñeron - no son caras
+de cesped (descartada la hipotesis de slivers de triangulacion). Son HUECOS DE COBERTURA: los rings de
+cesped OSM no cubren la red de caminos del parque, y la losa de asfalto oscuro de la calle se veia a
+traves. Fix: seccion 1c, un plano de tierra clara (0xb59a6e) por ring de parque a y=0.05 bajo el cesped
+(0.10), con el agua recordada igual que el cesped. Resultado en pixeles (k3j1 top): la red real de
+caminos y plazas del Retiro emerge en arena clara; el estanque sigue oscuro; k4j2 intacto.
+Coste medido: k3j1 69.674 -> 71.557 tris (+1.883); k4j2 155.422 -> 155.732 (+310). Un mesh extra por
+tesela (TileParkFloor), geometria eviction-safe como el resto.
+Limites honestos: caminos sin borde ni textura de sendero (plano continuo de tierra); quedan manchas
+oscuras fuera de los rings de parque (losa base, issue preexistente separada); el agua sigue leyendo
+casi negra en este harness.
