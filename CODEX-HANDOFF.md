@@ -69,3 +69,9 @@ Una primera recaptura Cibeles agotó timeout de arranque180 s sin diagnóstico s
 OSM descargado por la sesión anterior: `/tmp/madrid-paridad.osm.pbf`, `/tmp/madrid-osm-features.json`, pyosmium en `/tmp/madrid-osmium`; hashes/reproducción en handoff anterior. Fuentes pesadas IDEAM/Catastro para regenerar edificios/patios siguen sin `tools/data/madrid`.
 
 Diagnósticos heredados no publicados conservados en `/tmp/madrid-inherited-diagnostics/`; la evidencia útil del cielo se copió a docs. Los JPG/JSON históricos de paint-granvia se restauraron a su versión git tras archivar las modificaciones temporales. No se perdieron diagnósticos del trabajo recibido.
+
+## Avance posterior: plaza y topología
+
+Se corrigió el rectángulo histórico de Plaza de la Cibeles que tapaba92×89 m de calzadas: era AABB de calles abiertas con nombre, no geometría peatonal. build.mjs marca futuros fallback name-bounds/renderSurface=false y no los incorpora a plazasMadrid; landmarks respeta esa marca y omite solo la compatibilidad histórica de Cibeles sin superficie explícita. Evidencia inspeccionada con Iris Xe en docs/validation/2026-10-29-cibeles-plaza/, suite192/192. La fuente sigue plana; la corrección revela calzada, no completa el conjunto.
+
+Nuevo extractor reproducible tools/madrid/extract-landmark-topology.py recupera relaciones/roles/nodos originales desde PBF. Banco de España: relación2614014, outer4487661 y seis inner; el generador actual los descarta. No abrirlos a ciegas: hay patios y lucernarios cubiertos. Palacio Cibeles: way16322055; Galería de Cristal tiene cubierta real. La extracción queda en /tmp/madrid-landmark-topology.json si se conserva esta máquina. No se han cambiado aún renderer ni datos de edificios con esos interiores.
