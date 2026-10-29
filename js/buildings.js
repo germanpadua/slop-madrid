@@ -361,7 +361,21 @@ function buildCityBlocks(scene) {
   const chance = (p) => rand() < p;
   const pick = (items) => items[Math.floor(rand() * items.length)];
   // Weighted pick from [[value, weight], ...]
+  // Madrid centro is mostly revoco (ochre, salmon) and limestone with brick as one tier among them. The seed tables
+  // lean 50-60% on facade 1 (red brick, and 5 maps to it too), so for Madrid the brick weight is halved and 70% of
+  // the freed weight goes to salmon revoco (3). Only numeric facade tables are touched (row-kind tables hold names).
+  // A procedural style choice, not a per-building survey. The random draw count is unchanged, so layouts stay put.
+  const BRICK = GEO.frame?.madrid ? new Set([1, 5]) : null;
+  function madridMats(table) {
+    if (!BRICK || !table.every((e) => typeof e[0] === 'number') || !table.some((e) => BRICK.has(e[0]))) return table;
+    let freed = 0;
+    const out = table.map(([m, w]) => { if (!BRICK.has(m)) return [m, w]; freed += w * 0.5; return [m, w * 0.5]; });
+    const i = out.findIndex(([m]) => m === 3);
+    if (i >= 0) out[i] = [3, out[i][1] + freed * 0.7]; else out.push([3, freed * 0.7]);
+    return out;
+  }
   function pickW(table) {
+    table = madridMats(table);
     let total = 0;
     for (const e of table) total += e[1];
     let r = rand() * total;
