@@ -1,0 +1,156 @@
+{
+ "version": 1,
+ "generated": "2026-10-29T07:15:21Z",
+ "crs": "EPSG:25830",
+ "frame": "Puerta del Sol, 1 unit = 1 m, x east, z south",
+ "source": "Ayuntamiento de Madrid, Modelado 3D del municipio (IDEAM / ArcGIS SceneServer, i3s)",
+ "license": "© Ayuntamiento de Madrid — reutilización con atribución (datos.madrid.es, condiciones generales)",
+ "attribution": "Geometría: © Ayuntamiento de Madrid (Modelado 3D). Colores estilizados, no material original.",
+ "budgetBytes": 250880,
+ "totals": {
+  "monuments": 4,
+  "bytes": 698871,
+  "triangles": 51058
+ },
+ "monuments": [
+  {
+   "id": "alcala",
+   "name": "Puerta de Alcalá",
+   "label": "Puerta de Alcalá",
+   "service": "P_Alcala_st",
+   "origin": [
+    1263.399727526764,
+    0.0,
+    -377.2581181191229
+   ],
+   "bounds": [
+    1263.399727526764,
+    -377.2581181191229,
+    1296.699727526764,
+    -315.0581181191229
+   ],
+   "height": 24.8,
+   "triangles": 16888,
+   "vertices": 7475,
+   "indexBits": 16,
+   "cell": 0.745,
+   "rawTriangles": 126229,
+   "clippedTriangles": 126229,
+   "bytes": 225670,
+   "module": "js/monumentos/m-alcala.js",
+   "elapsed": 9.9,
+   "md5": "8031c6f96dd21e65ad86b480ec17c5d6",
+   "tile": "fase2"
+  },
+  {
+   "id": "banco",
+   "name": "Banco de España",
+   "label": "Banco de España",
+   "service": "MODELADO_3D_MADRID",
+   "origin": [
+    687.315649962693,
+    0.0,
+    -238.79975242260844
+   ],
+   "bounds": [
+    687.315649962693,
+    -238.79975242260844,
+    838.015649962693,
+    -73.89975242260843
+   ],
+   "height": 40.7,
+   "triangles": 9813,
+   "vertices": 4172,
+   "indexBits": 16,
+   "cell": 0.18,
+   "rawTriangles": 87190,
+   "clippedTriangles": 10460,
+   "bytes": 129437,
+   "module": "js/monumentos/m-banco.js",
+   "elapsed": 0.3,
+   "md5": "bf8e29064f7cdc525059f2805b759511",
+   "tile": "fase2"
+  },
+  {
+   "id": "cibeles",
+   "name": "Fuente de Cibeles",
+   "label": "Cibeles (plaza y fuente)",
+   "service": "Conjunto_Fuente_Cibeles_sin_textura",
+   "origin": [
+    895.2239983965294,
+    0.0,
+    -291.98015148798004
+   ],
+   "bounds": [
+    895.2239983965294,
+    -291.98015148798004,
+    925.1239983965294,
+    -262.08015148798006
+   ],
+   "height": 7.4,
+   "triangles": 15841,
+   "vertices": 8490,
+   "indexBits": 16,
+   "cell": 0.244,
+   "rawTriangles": 212733,
+   "clippedTriangles": 212733,
+   "bytes": 229534,
+   "module": "js/monumentos/m-cibeles.js",
+   "elapsed": 8.0,
+   "md5": "1e7a4678a29c1e6459ecbc947ee73c7c",
+   "tile": "fase2"
+  },
+  {
+   "id": "palacio",
+   "name": "Palacio Real y Catedral de la Almudena",
+   "label": "Palacio Real + Almudena",
+   "service": "MODELADO_3D_MADRID",
+   "origin": [
+    -990.6043454029714,
+    0.0,
+    -266.89974547643214
+   ],
+   "bounds": [
+    -990.6043454029714,
+    -266.89974547643214,
+    -813.7043454029714,
+    165.70025452356788
+   ],
+   "height": 77.9,
+   "triangles": 8516,
+   "vertices": 3764,
+   "indexBits": 16,
+   "cell": 0.18,
+   "rawTriangles": 73594,
+   "clippedTriangles": 9056,
+   "bytes": 114230,
+   "module": "js/monumentos/m-palacio.js",
+   "elapsed": 0.4,
+   "md5": "11632d556f6dce9075e737f5c00025ea",
+   "tile": "fase2"
+  }
+ ],
+ "missing": [
+  {
+   "id": "neptuno",
+   "name": "Fuente de Neptuno",
+   "reason": "El MODELADO_3D_MADRID es solo edificación: la fuente no tiene geometría en el servicio dedicado (0 triángulos en su recinto). No hay SceneServer municipal de la fuente de Neptuno."
+  },
+  {
+   "id": "debod",
+   "name": "Templo de Debod",
+   "reason": "Sin malla en el MODELADO_3D_MADRID (0 triángulos en el recinto) ni en los servicios 2023 del parque; no hay SceneServer municipal del templo."
+  },
+  {
+   "id": "atocha",
+   "name": "Estación de Atocha (fachada histórica y reloj)",
+   "reason": "El MODELADO_3D_MADRID no modela la fachada de 1892 con el reloj: en su recinto solo hay naves, el invernadero y un anexo alto sin relación con la fachada. El único servicio dedicado de la zona (SG_INNOVACION_ATOCHA_CARLOSV) es una nube de puntos, no una malla. Se deja fuera antes que publicar una torre que no existe."
+  },
+  {
+   "id": "plazaespana",
+   "name": "Monumento a Cervantes (Plaza de España)",
+   "reason": "El MODELADO_3D_MADRID no contiene el monumento (0 triángulos en su recinto); no hay servicio municipal del conjunto escultórico."
+  }
+ ],
+ "failures": {}
+}
