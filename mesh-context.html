@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>mesh-context</title>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.webgpu.js",
+  "three/webgpu": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.webgpu.js",
+  "three/tsl": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.tsl.js",
+  "three/addons/": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/jsm/"
+} }
+</script></head>
+<body style="margin:0">
+<script type="module">
+// mesh-context.html — BOUNDED local-composition check for gated mesh monuments.
+// Builds the real procedural surroundings (grid/roads/ground, landmarks, center blocks)
+// WITHOUT tiles/traffic/postFX/full lighting so headless SwiftShader frames stay capturable.
+// This validates local composition/placement only - NOT full-app integration or performance.
+import * as THREE from 'three/webgpu';
+import { buildCityGrid } from './js/city-grid.js';
+import { buildLandmarks } from './js/landmarks.js';
+import { buildCityBlocks } from './js/buildings.js';
+import { loadMeshMonuments } from './js/monument-meshes.js';
+window.__ctx = { ready: false, errors: [] };
+window.onerror = (m) => { window.__ctx.errors.push(String(m)); };
+window.addEventListener('unhandledrejection', (e) => { window.__ctx.errors.push('rej:' + String(e.reason && e.reason.message || e.reason)); });
+const canvas = document.createElement('canvas');
+canvas.width = 960; canvas.height = 540;
+document.body.appendChild(canvas);
+const ctx = canvas.getContext('webgl2', { antialias: true, alpha: true, depth: true, stencil: false, preserveDrawingBuffer: true });
+const renderer = new THREE.WebGPURenderer({ canvas, context: ctx, antialias: true, forceWebGL: true });
+renderer.setSize(960, 540);
+await renderer.init();
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xebd1b5);
+scene.add(new THREE.HemisphereLight(0x9abbe6, 0xc88a62, 1.48));
+const sun = new THREE.DirectionalLight(0xffca92, 5.8);
+sun.position.set(-440, 580, -680);
+scene.add(sun);
+buildCityGrid(scene);
+buildLandmarks(scene);
+buildCityBlocks(scene);
+loadMeshMonuments(scene);
+window.__ctx = { ready: true, errors: window.__ctx.errors, renderer, scene, THREE };
+</script></body></html>
