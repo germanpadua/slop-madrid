@@ -192,7 +192,7 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       deck.name = 'TileDeck';
       group.add(deck);
     }
-    for (const ring of water) {
+    if (globalThis.__NOWATER !== true) for (const ring of water) {
       const plane = createFlatPolygonMesh(ring, -0.45, mats.water, true);
       plane.name = 'TileWater';
       group.add(plane);
@@ -392,9 +392,9 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       const P = pabs[pi];
       const cx = (P.x0 + P.x1) / 2, cz = (P.z0 + P.z1) / 2;
       const tierRoll = hash(cx, cz, P.index);
-      const tier = flatFacade
-        ? (tierRoll < 0.5 ? 2 : tierRoll < 0.75 ? 3 : tierRoll < 0.9 ? 0 : 1) // Warsaw-coherent: light revoco dominant, ladrillo rare
-        : Math.floor(tierRoll * facades.length) % facades.length;
+      // Light-dominant tier weights on BOTH paths (recovered user steering: ocre claro dominant,
+      // salmon/caliza support, ladrillo rare ~10%). Was uniform 25/25/25/25 on the default path.
+      const tier = tierRoll < 0.5 ? 2 : tierRoll < 0.75 ? 3 : tierRoll < 0.9 ? 0 : 1;
       const tone = hash(cz, cx, 3);
       const shop = WALL_KINDS.shop;
       if (globalThis.__MERGED === true) { mergedZone.push(P); continue; } // merged-zone probe owns this parcel's massing

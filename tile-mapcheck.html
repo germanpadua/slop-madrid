@@ -22,6 +22,8 @@ window.__mc = { ready: false, errors: [] };
 window.onerror = (m) => { window.__mc.errors.push(String(m)); };
 window.addEventListener('unhandledrejection', (e) => { window.__mc.errors.push('rej:' + String(e.reason && e.reason.message || e.reason)); });
 const TILEID = (location.search.match(/tile=([a-z0-9-]+)/i) || [])[1] || 'k3j0';
+if (location.search.includes('flatfacade=1')) globalThis.__FLATFACADE = true;
+if (location.search.includes('nowater=1')) globalThis.__NOWATER = true;
 const canvas = document.createElement('canvas');
 canvas.width = 960; canvas.height = 540;
 const ctx = canvas.getContext('webgl2', { antialias: true, alpha: true, depth: true, stencil: false, preserveDrawingBuffer: true });

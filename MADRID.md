@@ -661,3 +661,22 @@ intacto, cuña verde con árboles), k4j1 top/oblique.
 Límites honestos: árboles de 20 tris sin LOD ni detalle de cerca; sin caminos/parterres dentro de los
 parques (sigue siendo césped + árboles); la alineación con especies/posiciones reales no existe (scatter
 sintético); el follow-up abierto para detalle de cerca es un tree field compartido streaming-aware.
+
+## Pesos de paleta light-dominant en el path por defecto (2026-10-29)
+El tier de fachada en la ruta de teselas era uniforme 25/25/25/25 en el path por defecto (los pesos
+light-dominant solo existian en el probe flatfacade, que sigue gated por perder bajos comerciales y
+balcones). Recuperado el steering original del usuario en el path por defecto: ocre claro 50% /
+salmon 25% / caliza 15% / ladrillo 10% (mismos pesos del probe; decision estetica delegada, mia).
+A/B pixeles en oblicuo k4j2 y k3j0: la ciudad se lee visiblemente mas clara y calida, ladrillo como
+acento. OJO al leer los frames: los "antes" son del lote de validacion, previos a la arboleda - el
+delta de arboles quedo aislado en su propio informe; aqui solo se juzga el color de fachada.
+
+## Poligonos oscuros sobre el cesped en vista cenital (diagnostico, 2026-10-29)
+Los poligonos oscuros grandes sobre el cesped del Retiro en vista top son PRE-EXISTENTES (par de
+crops antes/despues de la arboleda pixel-identicos salvo los arboles). Test discriminante con toggle
+nowater=1 (harness): el estanque y las balsas pequenas se convierten en huecos beige - CONFIRMADO que
+esos poligonos son los planos de agua renderizados casi negros en este harness. Las cuñas oscuras
+estrechas y alargadas PERSISTEN sin agua: causa NO confirmada (hipotesis: slivers de triangulacion del
+cesped con winding/normales malas; NO son arboles, NO son agua). La mota oscura del suelo es textura
+preexistente (ya registrada). El harness no renderiza shadow maps: el A/B castShadow de arboles fue
+pixel-identico; achaque de sombras no juzgable aqui.
