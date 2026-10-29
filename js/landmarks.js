@@ -1,10 +1,12 @@
 import * as THREE from 'three/webgpu';
 import { LANDMARK_SITES } from './city-config.js';
 import { batchStaticGroupMeshes } from './city-grid.js';
+import { landmarkExtrusions } from './monument-sites.js';
 
 // js/landmarks.js
 // Madrid phase: the real OSM landmark footprints (GEO.landmarks) extruded to their tagged heights,
-// replacing the hand-modelled NYC landmark set. i3s realistic meshes layer on top (see MADRID.md).
+// replacing the hand-modelled NYC landmark set. The eight monument sites of the brief are owned by
+// js/monumentos.js (real i3s meshes) and are skipped here (see js/monument-sites.js and MADRID.md).
 
 function buildLandmarks(scene) {
   const group = new THREE.Group();
@@ -18,12 +20,8 @@ function buildLandmarks(scene) {
   {
     const stoneMat = new THREE.MeshStandardNodeMaterial({ color: 0xbfae94, roughness: 0.74, metalness: 0.05 });
     const slateMat = new THREE.MeshStandardNodeMaterial({ color: 0x4d4a46, roughness: 0.62, metalness: 0.08 });
-    const GOLD = { 'Palacio de Cibeles': 1, 'Banco de España': 1, 'Palacio del Congreso de los Diputados': 1, 'Teatro Real': 1, 'Casa de la Panadería': 1, 'Palacio de Linares': 1, 'Círculo de Bellas Artes': 1 };
-    for (const [name, lm] of Object.entries(LANDMARK_SITES)) {
-      if (!lm.ring || lm.ring.length < 6 || lm.w < 12) continue; // points & slivers stay out (map/teleports still use them)
-      // Real height (IDEAM parcel) where known; the 160 m ceiling only guards the extruder — the tallest hit in this
-      // box is Torre de Madrid (142 m)
-      const H = Math.max(9, Math.min(lm.h || 0, 160) || (lm.w > 80 ? 24 : 14));
+    const GOLD = { 'Palacio de Cibeles': 1, 'Palacio del Congreso de los Diputados': 1, 'Teatro Real': 1, 'Casa de la Panadería': 1, 'Palacio de Linares': 1, 'Círculo de Bellas Artes': 1 };
+    for (const { name, lm, H } of landmarkExtrusions(LANDMARK_SITES)) {
       const g = new THREE.Group();
       const n = lm.ring.length / 2;
       const shape = new THREE.Shape();
