@@ -33,6 +33,8 @@ import {
   getBroadwayX,
   EAST_RIVER_BRIDGES
 } from './city-config.js';
+import { OPEN_SPACE } from './monument-sites.js';
+import { buildLandmarkReserves, clipRectByRings } from './landmark-reserve.js';
 import {
   createPreWarBuildingMaterial,
   createCurtainWallMaterial,
@@ -2089,51 +2091,22 @@ function buildCityBlocks(scene) {
   }
 
   // ============================================================================
-  // LANDMARK LOTS: the footprints landmarks.js builds on (real OpenStreetMap outlines + a margin; Seagram's plaza out
-  // to Park Ave) stay clear of the generic buildings, which fill the rest of their blocks
+  // LANDMARK LOTS: the footprints landmarks.js builds on stay clear of the generic buildings, which
+  // fill the rest of their blocks. Madrid: the reserves are the REAL OSM rings (js/landmark-reserve.js,
+  // polygon clipping) — the NYC name list missed every Madrid lookup and left the seed massing straight
+  // through the landmark volumes (white slabs burying facades near Cibeles).
   // ============================================================================
-  const LANDMARK_RESERVE = [
-    ['Empire State Building'], ['Chrysler Building'], ['One Vanderbilt'], ['Grand Central Terminal'], ['MetLife Building'],
-    ['Stephen A. Schwarzman Building'], ['One Times Square'], ['30 Rockefeller Plaza'], ['Citigroup Center'],
-    ['Seagram Building', { x0: avenueX('park') + 20 }], ['Flatiron Building'], ['One World Trade Center'], ['New York Stock Exchange']
-  ].map(([name, o]) => {
-    const t = LANDMARK_SITES[name];
-    if (!t) return null;
-    return { x0: t.x - t.w / 2 - 3, x1: t.x + t.w / 2 + 3, z0: t.z - t.d / 2 - 3, z1: t.z + t.d / 2 + 3, ...(o || {}) };
-  }).filter(Boolean);
+  const LANDMARK_RESERVE_RINGS = buildLandmarkReserves(LANDMARK_SITES, OPEN_SPACE);
   const hitR = (a, x0, x1, z0, z1) => a.x0 < x1 && a.x1 > x0 && a.z0 < z1 && a.z1 > z0;
-  // [x0, x1, z0, z1] minus the reserved rects, as up to four slabs per hole (strips across the full depth first). In a
-  // frontage frame the reserves are their bounds in the frame
+  const toWorldCentre = (cx, cz) => (xf ? [xf.px + (cx - xf.px) * xf.cs - (cz - xf.pz) * xf.sn, xf.pz + (cx - xf.px) * xf.sn + (cz - xf.pz) * xf.cs] : [cx, cz]);
+  // [x0, x1, z0, z1] minus the reserved landmark rings (quadtree clip in this block's local frame)
   function minusReserves(r) {
-    let reserves = LANDMARK_RESERVE;
-    if (xf) {
-      reserves = LANDMARK_RESERVE.map((h) => {
-        const pts = [[h.x0, h.z0], [h.x1, h.z0], [h.x1, h.z1], [h.x0, h.z1]].map(([x, z]) => [
-          xf.px + (x - xf.px) * xf.cs - (z - xf.pz) * xf.sn,
-          xf.pz + (x - xf.px) * xf.sn + (z - xf.pz) * xf.cs
-        ]);
-        return { x0: Math.min(...pts.map((p) => p[0])), x1: Math.max(...pts.map((p) => p[0])), z0: Math.min(...pts.map((p) => p[1])), z1: Math.max(...pts.map((p) => p[1])) };
-      });
-    }
-    let parts = [r];
-    for (const h of reserves) {
-      const next = [];
-      for (const [x0, x1, z0, z1] of parts) {
-        if (!hitR(h, x0, x1, z0, z1)) { next.push([x0, x1, z0, z1]); continue; }
-        if (h.x0 > x0) next.push([x0, h.x0, z0, z1]);
-        if (h.x1 < x1) next.push([h.x1, x1, z0, z1]);
-        const mx0 = Math.max(x0, h.x0), mx1 = Math.min(x1, h.x1);
-        if (h.z0 > z0) next.push([mx0, mx1, z0, h.z0]);
-        if (h.z1 < z1) next.push([mx0, mx1, h.z1, z1]);
-      }
-      parts = next;
-    }
-    return parts;
+    return clipRectByRings(r, LANDMARK_RESERVE_RINGS, toWorldCentre);
   }
   function overlapsParkOrLandmark(minX, maxX, minZ, maxZ) {
     const cp = CENTRAL_PARK_BOUNDS;
     if (maxX > cp.minX && minX < cp.maxX && maxZ > cp.minZ && minZ < cp.maxZ) return true;
-    return LANDMARK_RESERVE.some((h) => hitR(h, minX, maxX, minZ, maxZ));
+    return LANDMARK_RESERVE_RINGS.some((h) => hitR(h.bb, minX, maxX, minZ, maxZ));
   }
 
   // ============================================================================
