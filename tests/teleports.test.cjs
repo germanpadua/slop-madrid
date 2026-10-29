@@ -42,6 +42,7 @@ test('preset and map teleports share arrival resets and mark the resolved landin
   const landed = { x: -305.7, z: 5210 };
   let map;
   const environment = {
+    activeMadrid: null,
     TELEPORT_LOCATIONS,
     controllerManager: {
       teleportActiveTo: (...args) => { calls.push(['teleport', ...args]); return landed; }

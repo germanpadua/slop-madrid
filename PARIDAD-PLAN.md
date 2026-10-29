@@ -9,7 +9,7 @@ Prohibido push/deploy/merge a main. Auditoría detallada y checklists: `MADRID-P
 | A1. Ingesta escalable | **hecho** | `pbf.py`: PBF diario verificado, osmium smart por core, caché IDEAM paginada por envolvente (el servicio no tiene campo distrito); procedencia y md5 por tesela |
 | A2. Cobertura | **avance entregado; resto pendiente** | 18/85 listas, 67 pendientes, 23 km² de cores. Diez vecinas conectan semilla, Chamberí, Salamanca y Arganzuela; módulos fase3/semilla preservados |
 | B1. Worker y presupuesto | **hecho** | Worker de módulo terminable por tesela, reservas en vuelo, semilla completa, cancelación y admisión directa; reemplazo de residentes lejanos por celdas cercanas sin subir topes |
-| B2. Mundo activo y mapa | pendiente | Modelo activo de datos, mapa/cache/búsqueda con alta/baja; grafo emitido por tesela, unión sin intersecciones ficticias |
+| B2. Mundo activo y mapa | **avance entregado** | Alta/baja real de capas, calles, búsqueda, límites y aceras; grafo activo y rutas por vértices reales. Simulación de tráfico todavía usa semilla (B3) |
 | B3. Tráfico y LOD | pendiente | Adaptar red/simulación, LOD0; preservar movimiento cercano y no resetear todos los actores en cada carga |
 | C. Muestras de acabado fiel | pendiente | Huella exacta de teselas y vegetación con fuente; noche monumentos y localización de textos. No fabricar arquitectura |
 | D. Medir y cerrar | pendiente | Suite completa antes de cada commit de cierre, verify hashes, harness CPU, presupuesto y limitaciones; GPU/FPS los valida propietario |

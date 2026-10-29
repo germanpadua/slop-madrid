@@ -157,6 +157,32 @@ test('a normal map tap teleports once and releases capture', () => {
   assert.equal(h.map.isPanning, false);
 });
 
+test('tile changes invalidate both map caches and route along the active polyline instead of a grid elbow', () => {
+  const { map } = mapHarness();
+  let routed = 0;
+  const model = {
+    version: 1,
+    snapshot: () => ({ tiles: [{ id: 'fase2' }, { id: 'east', core: [[100, 0, 200, 100]] }] }),
+    clamp: () => ({ x: 150, z: 50 }),
+    route: () => { routed++; return [{ x: 0, z: 0 }, { x: 50, z: 30 }, { x: 100, z: 0 }]; }
+  };
+  map.miniCache = {}; map.fullStaticKey = 'stale';
+  map.setActiveData(model);
+  assert.equal(map.miniCache, null);
+  assert.equal(map.fullStaticKey, null);
+  assert.deepEqual({ ...map.clampToManhattan({ x: 9999, z: 9999 }) }, { x: 150, z: 50 });
+  const lines = [];
+  const ctx = { beginPath() {}, moveTo(x, y) { lines.push([x, y]); }, lineTo(x, y) { lines.push([x, y]); }, stroke() {} };
+  const view = { toX: (x) => x * 2, toY: (z) => z * 2 };
+  map.drawActiveRoute(ctx, view, { x: 0, z: 0 }, { x: 100, z: 0 }, 3);
+  assert.deepEqual(lines, [[0, 0], [100, 60], [200, 0]]);
+  map.drawActiveRoute(ctx, view, { x: 0, z: 0 }, { x: 100, z: 0 }, 3);
+  assert.equal(routed, 1, 'the stationary radar and full map share a cached route');
+  model.version++;
+  map.drawActiveRoute(ctx, view, { x: 0, z: 0 }, { x: 100, z: 0 }, 3);
+  assert.equal(routed, 2, 'a new resident graph invalidates the route');
+});
+
 for (const interruption of ['pointercancel', 'lostpointercapture', 'blur', 'hidden', 'close']) {
   test(`${interruption} cancels a map tap without teleporting or leaving a drag active`, () => {
     const h = mapHarness();

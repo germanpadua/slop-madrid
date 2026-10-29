@@ -19,6 +19,10 @@ const toPts = (flat) => {
   return out;
 };
 const CUT_Z = GEO.frame.cutZ;
+let activeMadridData = null;
+function clampToMadridGround(x, z, margin = 8) {
+  return activeMadridData?.clamp(x, z, margin) || null;
+}
 // NYC-authored content (street furniture, park trees, subway entrances) has no place in Madrid: park it far
 // north of the phase box, out of sight beyond the detail cut
 const PARKED_Z = CUT_Z - 3000;
@@ -143,6 +147,10 @@ const SHORE = (() => {
 
 /** West / east bound of the phase box at a given z */
 function getIslandBoundsAtZ(z) {
+  if (activeMadridData) {
+    const spans = activeMadridData.snapshot().cores.filter((r) => z >= r[1] && z <= r[3]);
+    if (spans.length) return { westX: Math.min(...spans.map((r) => r[0])), eastX: Math.max(...spans.map((r) => r[2])) };
+  }
   const f = (z - SHORE.z0) / SHORE.step;
   const k = Math.max(0, Math.min(SHORE.n - 2, Math.floor(f)));
   const t = Math.max(0, Math.min(1, f - k));
@@ -260,6 +268,8 @@ const GRAN_VIA_CORRIDOR = (() => {
 // Nearest-road index (labels, sidewalk tests): uniform grid of road segments
 const ROAD_CELL = 64;
 const ROAD_GRID = new Map();
+function indexRoads() {
+ROAD_GRID.clear();
 for (const r of ROADS) {
   for (let i = 0; i + 1 < r.pts.length; i++) {
     const a = r.pts[i];
@@ -273,6 +283,18 @@ for (const r of ROADS) {
       ROAD_GRID.get(k).push(seg);
     }
   }
+}
+}
+indexRoads();
+function setActiveMadridData(data) {
+  activeMadridData = data;
+  const snapshot = data.snapshot();
+  ROADS.splice(0, ROADS.length, ...snapshot.roads);
+  indexRoads();
+  Object.assign(ISLAND_BOUNDS, snapshot.bounds);
+  const added = snapshot.tiles.filter((t) => t.id !== 'fase2').flatMap((t) => t.blocks || []);
+  BLOCKS.splice(0, BLOCKS.length, ...SEED_BLOCKS, ...added.map((b, i) => decodeBlock(b, SEED_BLOCKS.length + i)));
+  indexBlocks();
 }
 /** Nearest roads to (x, z) within `radius`: [{ road, dist }] sorted by distance (one entry per road name) */
 function nearestRoads(x, z, radius = 60) {
@@ -299,7 +321,7 @@ function nearestRoads(x, z, radius = 60) {
 // Blocks: every real curb island (merged building parcel slab) with its lot rectangles
 //   poly: curb outline [{x, z}], rects: [[x0, x1, z0, z1], ...], park: park share, parkName, rect, frames
 // ---------------------------------------------------------------------------------------------------------------------
-const BLOCKS = GEO.blocks.map(([flat, rects, park, parkName, isRect, frames], id) => {
+const decodeBlock = ([flat, rects, park, parkName, isRect, frames], id) => {
   const poly = toPts(flat);
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, a = 0, cx = 0, cz = 0;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -317,10 +339,14 @@ const BLOCKS = GEO.blocks.map(([flat, rects, park, parkName, isRect, frames], id
     cz: a ? cz / (6 * a) : (minZ + maxZ) / 2,
     median: Math.min(maxX - minX, maxZ - minZ) < 9
   };
-});
+};
+const BLOCKS = GEO.blocks.map(decodeBlock);
+const SEED_BLOCKS = BLOCKS.slice();
 // Spatial index of the blocks (64 m cells)
 const BLOCK_CELL = 64;
 const BLOCK_GRID = new Map();
+function indexBlocks() {
+BLOCK_GRID.clear();
 for (const b of BLOCKS) {
   for (let ix = Math.floor(b.minX / BLOCK_CELL); ix <= Math.floor(b.maxX / BLOCK_CELL); ix++) {
     for (let iz = Math.floor(b.minZ / BLOCK_CELL); iz <= Math.floor(b.maxZ / BLOCK_CELL); iz++) {
@@ -330,6 +356,8 @@ for (const b of BLOCKS) {
     }
   }
 }
+}
+indexBlocks();
 function pointInPoly(poly, x, z) {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -527,6 +555,8 @@ function walkSignal(time, isAvenue) {
 }
 
 export {
+  setActiveMadridData,
+  clampToMadridGround,
   AVENUES,
   ALL_AVENUES,
   CENTRAL_PARK_BOUNDS,

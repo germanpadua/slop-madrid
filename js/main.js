@@ -3,7 +3,9 @@ import { pass, mrt, output, normalView, positionView, metalness, roughness, vec2
 import { ssr } from 'three/addons/tsl/display/SSRNode.js';
 import { createPostProcessing } from './post-processing.js';
 import { ClusteredLighting } from 'three/addons/lighting/ClusteredLighting.js';
-import { getLocationLabel, isTypingInField, ROADS, NYC_LANDMARKS, TELEPORT_LOCATIONS } from './city-config.js';
+import { getLocationLabel, isTypingInField, ROADS, NYC_LANDMARKS, TELEPORT_LOCATIONS, setActiveMadridData } from './city-config.js';
+import { GEO } from './madrid-geodata.js';
+import { createActiveMadridData } from './madrid-active-data.js';
 import { buildCityGrid, cityMaterials } from './city-grid.js';
 import { buildBoroughs } from './boroughs.js';
 import { buildLandmarks } from './landmarks.js';
@@ -134,14 +136,26 @@ async function initApp() {
   //     almendra are imported on demand around the camera and evicted past the memory budget (js/madrid-tiles.js).
   //     Pending tiles show the "out of map" floor, never empty city ground.
   const tileWorld = createTileWorld(scene, { colliders: allColliders, materials: cityMaterials });
+  let activeMadrid = null;
+  let mapSystem = null;
+  const activeChanged = () => {
+    if (activeMadrid) {
+      setActiveMadridData(activeMadrid);
+      mapSystem?.setActiveData(activeMadrid);
+    }
+    controllerManager.refreshColliders();
+  };
   let tileStreamer = null;
   try {
     tileStreamer = await createTileStreamer({
       world: tileWorld,
       manifestUrl: new URL('../tools/madrid/tiles.json', import.meta.url).href,
       baseUrl: new URL('..', import.meta.url).href,
-      onStatus: () => controllerManager.refreshColliders()
+      onTileAdded: (tile) => { activeMadrid?.set(tile); activeChanged(); },
+      onTileRemoved: (id) => { activeMadrid?.remove(id); activeChanged(); }
     });
+    activeMadrid = createActiveMadridData({ ...GEO, core: tileStreamer.tiles.find((t) => t.id === SEED_TILE_ID).core });
+    setActiveMadridData(activeMadrid);
     const ring = tileStreamer.manifest?.almendra?.ring;
     if (ring && ring.length > 2) {
       const xs = ring.map((p) => p[0]), zs = ring.map((p) => p[1]);
@@ -177,7 +191,7 @@ async function initApp() {
   // Opt-in diagnostics (?debug): the measurement harness (tools/madrid/measure.mjs) reads the streamer, renderer
   // stats and the controller from the page. Nothing is exposed on a normal visit.
   if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug')) {
-    window.__madrid = { renderer, scene, tileStreamer, tileWorld, monumentLoader, controllerManager, cameraSystem };
+    window.__madrid = { renderer, scene, tileStreamer, tileWorld, monumentLoader, controllerManager, cameraSystem, activeMadrid };
   }
 
   const touchControls = new TouchControls(controllerManager);
@@ -443,7 +457,6 @@ async function initApp() {
   });
 
   // Where you are: the place's name over its street corner, drawn as a pair of Madrid street-name plaques
-  const roadNames = new Set(ROADS.map((r) => r.name));
   const placeNames = new Set(NYC_LANDMARKS.map((l) => l.name));
   let locationText = '';
   function renderLocation(label) {
@@ -455,7 +468,7 @@ async function initApp() {
     if (split >= 0) {
       place = label.slice(0, split);
       streets = label.slice(split + 3);
-    } else if (placeNames.has(label) || (!label.includes(' & ') && !roadNames.has(label))) {
+    } else if (placeNames.has(label) || (!label.includes(' & ') && !ROADS.some((r) => r.name === label))) {
       place = label;
       streets = '';
     }
@@ -501,7 +514,7 @@ async function initApp() {
     return destination;
   }
 
-  const mapSystem = new NYCMapSystem({
+  mapSystem = new NYCMapSystem({
     controllerManager,
     cameraSystem,
     trafficSystem,
@@ -517,6 +530,7 @@ async function initApp() {
     },
     onTeleport: teleportTo
   });
+  if (activeMadrid) mapSystem.setActiveData(activeMadrid);
 
   teleportButtons.forEach((btn) => {
     btn.addEventListener('click', () => {

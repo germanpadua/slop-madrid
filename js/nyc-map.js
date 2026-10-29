@@ -195,6 +195,8 @@ class TiledLayer {
   }
 }
 
+let ACTIVE_TILES = [];
+let ACTIVE_MODEL = null;
 let LAYERS = null;
 function mapLayers() {
   if (LAYERS) return LAYERS;
@@ -265,6 +267,16 @@ function mapLayers() {
     return { path, width: br.width || 25 };
   });
 
+  L.tileBuildings = [new TiledLayer(), new TiledLayer(), new TiledLayer()];
+  for (const tile of ACTIVE_TILES) {
+    for (const [x0, z0, x1, z1] of tile.core || []) L.manhattan.rect(x0, z0, x1 - x0, z1 - z0);
+    for (const flat of tile.water || []) addRing(L.water, flat);
+    for (const park of tile.parks || []) for (const ring of park.rings || []) L.parkLand.ring(ring);
+    for (const [ring] of tile.blocks || []) L.blocks.ring(ring);
+    for (const p of tile.parcels || []) L.tileBuildings[p.h > 95 ? 2 : p.h > 45 ? 1 : 0].ring(p.ring);
+    for (const lm of Object.values(tile.landmarks || {})) if (lm.ring) addRing(L.landmarks, lm.ring);
+  }
+
   LAYERS = L;
   return L;
 }
@@ -290,6 +302,8 @@ function footprintLayers(all) {
 // never slide while the map pans), with the direction of the street there (never upside down: vertical names read
 // upwards)
 const ROAD_LABELS = [];
+function rebuildRoadLabels() {
+ROAD_LABELS.length = 0;
 for (const r of ROADS) {
   const text = LABEL_ALIAS[r.name] || r.name;
   if (!text || /^Unnamed/.test(text)) continue;
@@ -333,7 +347,9 @@ for (const r of ROADS) {
     ...boundsOf(r.pts)
   });
 }
-const ROAD_NAME_COUNT = new Set(ROAD_LABELS.map((l) => l.text)).size;
+}
+rebuildRoadLabels();
+let ROAD_NAME_COUNT = new Set(ROAD_LABELS.map((l) => l.text)).size;
 
 /** A map viewport: centre (cx, cz) in world metres, s pixels per metre, w x h CSS pixels on a canvas of pixel ratio dpr */
 class MapView {
@@ -732,9 +748,39 @@ class NYCMapSystem {
 
   // Teleports land inside the phase-1 frame extent at that latitude
   clampToManhattan(p) {
+    if (ACTIVE_MODEL) return ACTIVE_MODEL.clamp(p.x, p.z, 12);
     const z = Math.max(ISLAND_BOUNDS.minZ + 25, Math.min(ISLAND_BOUNDS.maxZ - 25, p.z));
     const shore = getIslandBoundsAtZ(z);
     return { x: Math.max(shore.westX + 12, Math.min(shore.eastX - 12, p.x)), z };
+  }
+
+  setActiveData(model) {
+    ACTIVE_MODEL = model;
+    ACTIVE_TILES = model.snapshot().tiles.filter((t) => t.id !== 'fase2');
+    LAYERS = null;
+    rebuildRoadLabels();
+    ROAD_NAME_COUNT = new Set(ROAD_LABELS.map((l) => l.text)).size;
+    this.miniCache = null;
+    this.fullStaticKey = null;
+    this.routeCache = null;
+    if (this.elSearchInput) {
+      this.elSearchInput.placeholder = `Search ${ROAD_NAME_COUNT} streets & landmarks…`;
+      if (this.elSearchInput.value) this.search(this.elSearchInput.value);
+    }
+  }
+
+  drawActiveRoute(ctx, view, from, to, width) {
+    if (!ACTIVE_MODEL) return;
+    const key = `${ACTIVE_MODEL.version}|${Math.round(from.x / 20)}|${Math.round(from.z / 20)}|${to.x}|${to.z}`;
+    if (this.routeCache?.key !== key) this.routeCache = { key, points: ACTIVE_MODEL.route(from, to) };
+    const points = this.routeCache.points;
+    if (points.length < 2) return;
+    ctx.beginPath();
+    ctx.moveTo(view.toX(points[0].x), view.toY(points[0].z));
+    for (const p of points.slice(1)) ctx.lineTo(view.toX(p.x), view.toY(p.z));
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.strokeStyle = MAP.halo; ctx.lineWidth = width + 3; ctx.stroke();
+    ctx.strokeStyle = MAP.route; ctx.lineWidth = width; ctx.stroke();
   }
 
   textWidth(ctx, text) {
@@ -781,7 +827,7 @@ class NYCMapSystem {
     ctx.strokeStyle = MAP.shore;
     ctx.lineWidth = px(isMinimap ? 1.6 : 2.0);
     ctx.stroke(L.manhattan);
-    if (MADRID_WATER && MADRID_WATER.length) {
+    if ((MADRID_WATER && MADRID_WATER.length) || ACTIVE_TILES.length) {
       ctx.fillStyle = MAP.water;
       ctx.fill(L.water);
       if (!isMinimap) {
@@ -839,6 +885,13 @@ class NYCMapSystem {
           ctx.lineWidth = px(0.8);
           for (let i = 0; i < 3; i++) fp.tones[i].each(v, (p) => ctx.stroke(p));
         }
+      }
+    }
+
+    if (s >= 0.18) {
+      for (let i = 0; i < 3; i++) {
+        ctx.fillStyle = MAP.buildings[i];
+        L.tileBuildings[i].each(v, (p) => ctx.fill(p));
       }
     }
 
@@ -1048,7 +1101,7 @@ class NYCMapSystem {
     if (this.waypoint) {
       const wx = toX(this.waypoint.x);
       const wy = toY(this.waypoint.z);
-      drawRoute(ctx, 0, 0, wx, wy, 3);
+      this.drawActiveRoute(ctx, v, { x: px, z: pz }, this.waypoint, 3);
       drawWaypoint(ctx, wx, wy, 4.5);
     }
 
@@ -1138,7 +1191,7 @@ class NYCMapSystem {
     if (this.waypoint) {
       const wx = toX(this.waypoint.x);
       const wy = toY(this.waypoint.z);
-      drawRoute(ctx, toX(ent.position.x), toY(ent.position.z), wx, wy, 4);
+      this.drawActiveRoute(ctx, v, ent.position, this.waypoint, 4);
       drawWaypoint(ctx, wx, wy, 7);
     }
 

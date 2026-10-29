@@ -161,3 +161,30 @@ Inspección B1 (`http://localhost:8000/?debug=1`):
 - [ ] Network muestra módulos con md5; Performance sitúa su importación en un worker, con la geometría aún en main.
 - [ ] En `window.__madrid.tileStreamer.status()`, `bytes + reservedBytes` nunca supera 12 MiB; cargadas + inFlight ≤12.
 - [ ] Ir y volver a Chamberí con caché fría y luego caliente: sin crecimiento de módulos de tesela en main ni tormenta de reintentos.
+
+### B2 — mundo activo y mapa entregados; simulación pendiente
+
+`madrid-active-data.js` mantiene sólo semilla + teselas residentes. Al entrar/salir una celda se actualizan el
+índice de calles, los bloques consultables, los límites de movimiento, las capas de mapa (suelo, agua, parques,
+manzanas, huellas), las etiquetas y búsqueda. Se invalidan las cachés del radar y del mapa completo. Los límites
+de teletransporte/pie/coche no confunden la caja envolvente del ámbito con suelo activo: se ajustan a cores listos.
+
+Las diez celdas nuevas exportan `roadGraph` (IDs de intersección compartidos al generar con PBF). El modelo activo
+une vértices coincidentes, deduplica segmentos y conserva curvas y sentidos. GPS usa Dijkstra por esa red y no
+dibuja un codo ortogonal atravesando manzanas; si no existe ruta devuelve vacío. En los siete módulos antiguos
+sin roadGraph usa vértices de `roads`, sin crear intersecciones por mero cruce 2D. **Quedan por modelar explícitamente
+acceso peatonal, restricciones de giro y niveles de puentes/túneles**: esta red aún no equivale a un router de coche
+validado. La semilla antigua ya perdió identidad OSM al generar: no se le atribuye topología perfecta.
+
+**El tráfico y los peatones todavía simulan la red de semilla.** No se conecta una reconstrucción completa de
+`road-network` a cada carga: hay arrays de ocupación, conectores, actores y rutas peatonales que requieren migración
+incremental para no resetear actores cercanos. Ese trabajo es B3 pendiente, no se declara resuelto por tener un
+grafo activo para el mapa. Tampoco hay LOD0 ni horizonte completo.
+
+Inspección B2 (`http://localhost:8000/?debug=1`):
+
+- [ ] Abrir M al norte de la semilla: las calles nuevas se buscan y sus polígonos aparecen con los edificios.
+- [ ] Seleccionar waypoint en la misma red: trazado siguiendo curvas reales; sin conexión, sólo marcador.
+- [ ] Alejarse hasta expulsar la celda y volver: capas y búsqueda se actualizan, no quedan huellas fantasma.
+- [ ] Caminar sobre acera en Chamberí: pies a altura de acera y movimiento permitido en las celdas activas.
+- [ ] Fuera de semilla habrá poca o ninguna población simulada: limitación conocida, no fallo de carga de geometría.
