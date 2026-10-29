@@ -6,11 +6,11 @@ Objetivo abierto: acercar Madrid al acabado de TinyWarsaw, manteniendo datos ofi
 |---|---|---|
 | 0. Investigación directa | Hecho con límites | NYC y módulos TinyWarsaw descargados, despliegue contrastado; faltan recorridos visuales de referentes |
 | E0. Instrumentación | Hecho al validar harness | Contar compilaciones desde navegación y bytes de atributos únicos de escena; JSON reproducible |
-| A. Fachadas y patios | Pendiente | Falta WIP referido madrid-facades.js; revisar alternativa local y patios k3j0, 3 manzanas con cámaras idénticas y veredicto individual |
-| B. Vida fuera de semilla | Pendiente | Altas/bajas grafo y agentes, pruebas borde/descarga, paseo continuo sin teletransporte |
-| C. Calle con fuente | Pendiente | Inventario árboles/señales OSM, instanciado por tesela, densidad y memoria antes/después |
+| A. Fachadas y patios | Parcial: A0/A1 hechos; revisión amplia pendiente | Falta WIP referido madrid-facades.js; revisar alternativa local y patios k3j0, 3 manzanas con cámaras idénticas y veredicto individual |
+| B. Vida fuera de semilla | B0/B1 hechos; B2 worker/agentes pendiente | Altas/bajas grafo y agentes, pruebas borde/descarga, paseo continuo sin teletransporte |
+| C. Calle con fuente | C0 árboles hecho; señales/mobiliario pendientes | Inventario árboles/señales OSM, instanciado por tesela, densidad y memoria antes/después |
 | E1. LOD centro/móvil | Pendiente | Conservar patios/siluetas, bajar draws/tris, repetir misma cámara; FPS real del propietario |
-| D. Cobertura | Bloqueado por fuentes/base divergentes | Reconciliar 19/85 frente a 12 ready locales y recuperar fuentes autorizadas antes de generar las restantes |
+| D. Cobertura | OSM recuperado; alturas/base divergente pendientes | Reconciliar 19/85 frente a 12 ready locales y recuperar fuentes autorizadas antes de generar las restantes |
 
 Orden: primero diagnóstico visual y contadores para evitar añadir detalle a ciegas; después agentes y detalle de calle para vida; después LOD del centro antes de multiplicar superficie. TinyWarsaw sugiere también terreno adaptativo, geometría precalculada, niveles regionales y revelado temprano: todavía no implementados aquí. No subir presupuesto sin medición.
 
@@ -91,7 +91,7 @@ Checklist C0: http://localhost:8080/?debug=1, maqueta desde Sol: copas en plazas
 
 Siguiente acción: ensamblar grafo residente por IDs OSM y permisos de circulación, conectar al motor conservando población y validando bordes/retirada. El propietario autoriza GPU local, WebGPU y Blender para comprobaciones. Prueba WebGPU separada en curso; WebGL2 sigue predeterminado hasta tener evidencia de estabilidad. Blender no aparece en PATH; no bloquea estas verificaciones de navegador.
 
-WebGPU comprobado en GPU local: backend real WebGPU, arranque 32623 ms, sin pérdida de dispositivo, pero passed=false por GPUValidationError de binding de buffers de tamaño cero. Informe webgpu.json en evidencia C0/B0. WebGL2 permanece predeterminado. Siguiente diagnóstico: meshes instanciados vacíos enviados a compile/render, sin ocultar errores ni declarar paridad de backend.
+WebGPU comprobado en Chromium local (posteriormente identificado como adaptador software): backend real WebGPU, arranque 32623 ms, sin pérdida de dispositivo, pero passed=false por GPUValidationError de binding de buffers de tamaño cero. Informe webgpu.json en evidencia C0/B0. WebGL2 permanece predeterminado. Siguiente diagnóstico: meshes instanciados vacíos enviados a compile/render, sin ocultar errores ni declarar paridad de backend.
 
 ## E2 — pools vacíos y adaptador WebGPU (corrección hecha, WebGPU hardware sin verificar)
 
@@ -114,3 +114,8 @@ Seis pruebas nuevas: continuidad entre celdas y orden de carga, retirada de aris
 Rollback B1: retirar ensamblador y opciones de buildRoadNetwork junto con sus pruebas/benchmark; C0 y visual no dependen todavía de él.
 
 Checklist B1: no hay cambio visual de tráfico que aprobar aún; http://localhost:8080/?debug=1 conserva la simulación anterior. La siguiente integración debe demostrar coches/peatones fuera de semilla, continuidad al cargar, retirada segura al descargar y ausencia de rutas sobre edificios o vías excluidas. Mantener esa validación pendiente.
+
+
+## Traspaso y pausa solicitados por el propietario
+
+El propietario termina la sesión y solicita instrucciones para otros agentes. Se actualizan CODEX-HANDOFF.md y CONTINUE-PROMPT.md con el estado de feat/paridad, commits, fuentes temporales, comandos, restricciones y plan técnico B2. Último código: 5462959. No hay implementación de worker/migración comenzada ni cambios de código a medias. Objetivo general incompleto; pausa de sesión, no cierre por éxito. Reanudar desde B2. La documentación de bloques anteriores es cronológica: la tabla inicial y este handoff expresan el estado vigente.
