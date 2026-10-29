@@ -64,6 +64,7 @@ page.on('requestfailed', (r) => failed.push(`${r.url()} ${r.failure()?.errorText
 
 if (process.env.GL_PROFILE) await page.addInitScript(() => {
   globalThis.__glProfile = [];
+  globalThis.__glTotals = {};
   const methods = ['compileShader', 'linkProgram', 'getProgramParameter', 'getShaderParameter', 'bufferData', 'drawElementsInstanced', 'drawElements'];
   for (const name of methods) {
     const original = WebGL2RenderingContext.prototype[name];
@@ -72,6 +73,10 @@ if (process.env.GL_PROFILE) await page.addInitScript(() => {
       try { return original.apply(this, args); }
       finally {
         const ms = performance.now() - start;
+        const total = globalThis.__glTotals[name] ||= { calls: 0, cpuMs: 0, maxCpuMs: 0 };
+        total.calls++;
+        total.cpuMs += ms;
+        total.maxCpuMs = Math.max(total.maxCpuMs, ms);
         if (ms > 2) {
           globalThis.__glProfile.push({ name, parameter: typeof args[1] === 'number' ? args[1] : null, at: performance.now(), ms });
           if (globalThis.__glProfile.length > 512) globalThis.__glProfile.shift();
@@ -180,6 +185,31 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
   const routeFrames = (window.__madrid.frameSamples || []).filter((s) => s.at >= routeStart);
   const intervals = routeFrames.map((s) => s.intervalMs).sort((a, b) => a - b);
   return {
+    // Totals include boot; glProfile below contains only slow calls during the route.
+    glTotalsSinceNavigation: globalThis.__glTotals || null,
+    geometryStorage: (() => {
+      const geometries = new Set(), arrays = new Set();
+      let attributeBytes = 0;
+      const add = attribute => {
+        const array = attribute?.isInterleavedBufferAttribute ? attribute.data.array : attribute?.array;
+        if (!array || arrays.has(array)) return;
+        arrays.add(array);
+        attributeBytes += array.byteLength;
+      };
+      sceneOf.traverse(object => {
+        const geometry = object.geometry;
+        if (geometry && !geometries.has(geometry)) {
+          geometries.add(geometry);
+          Object.values(geometry.attributes).forEach(add);
+          add(geometry.index);
+          Object.values(geometry.morphAttributes).flat().forEach(add);
+        }
+        add(object.instanceMatrix);
+        add(object.instanceColor);
+      });
+      // CPU typed-array payload, including hidden geometry; excludes textures and driver allocations.
+      return { attributeBytes, geometries: geometries.size, uniqueArrays: arrays.size };
+    })(),
     glProfile: (globalThis.__glProfile || []).filter(s => s.at >= routeStart),
     frameLatency: { samples: intervals.length, routeMs: performance.now() - routeStart,
       maxIntervalMs: intervals.at(-1) || 0,

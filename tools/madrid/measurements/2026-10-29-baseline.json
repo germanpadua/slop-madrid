@@ -1,0 +1,919 @@
+{
+  "passed": true,
+  "gpu": {
+    "devices": [
+      {
+        "vendorId": 32902,
+        "deviceId": 42912,
+        "vendorString": "",
+        "deviceString": "",
+        "driverVendor": "Mesa",
+        "driverVersion": "26.0.8"
+      },
+      {
+        "vendorId": 4318,
+        "deviceId": 10272,
+        "vendorString": "",
+        "deviceString": "",
+        "driverVendor": "Mesa",
+        "driverVersion": "26.0.8"
+      }
+    ],
+    "auxAttributes": {
+      "amdSwitchable": false,
+      "canSupportThreadedTextureMailbox": false,
+      "directRenderingVersion": "",
+      "displayType": "ANGLE_OPENGL",
+      "glExtensions": "GL_AMD_performance_monitor GL_ANGLE_blob_cache GL_ANGLE_client_arrays GL_ANGLE_clip_cull_distance GL_ANGLE_compressed_texture_etc GL_ANGLE_depth_texture GL_ANGLE_framebuffer_blit GL_ANGLE_framebuffer_multisample GL_ANGLE_get_serialized_context_string GL_ANGLE_get_tex_level_parameter GL_ANGLE_instanced_arrays GL_ANGLE_memory_size GL_ANGLE_program_binary_readiness_query GL_ANGLE_program_cache_control GL_ANGLE_renderability_validation GL_ANGLE_request_extension GL_ANGLE_robust_client_memory GL_ANGLE_shader_pixel_local_storage GL_ANGLE_shader_pixel_local_storage_coherent GL_ANGLE_stencil_texturing GL_ANGLE_texture_compression_dxt3 GL_ANGLE_texture_compression_dxt5 GL_ANGLE_texture_multisample GL_ANGLE_translated_shader_source GL_ARM_rgba8 GL_CHROMIUM_bind_generates_resource GL_CHROMIUM_bind_uniform_location GL_CHROMIUM_copy_texture GL_CHROMIUM_lose_context GL_EXT_blend_func_extended GL_EXT_blend_minmax GL_EXT_clear_texture GL_EXT_clip_control GL_EXT_clip_cull_distance GL_EXT_color_buffer_float GL_EXT_color_buffer_half_float GL_EXT_compressed_ETC1_RGB8_sub_texture GL_EXT_conservative_depth GL_EXT_debug_label GL_EXT_debug_marker GL_EXT_depth_clamp GL_EXT_discard_framebuffer GL_EXT_disjoint_timer_query GL_EXT_draw_buffers GL_EXT_draw_buffers_indexed GL_EXT_float_blend GL_EXT_frag_depth GL_EXT_instanced_arrays GL_EXT_map_buffer_range GL_EXT_memory_object GL_EXT_memory_object_fd GL_EXT_occlusion_query_boolean GL_EXT_polygon_offset_clamp GL_EXT_read_format_bgra GL_EXT_render_snorm GL_EXT_robustness GL_EXT_sRGB GL_EXT_sRGB_write_control GL_EXT_semaphore GL_EXT_semaphore_fd GL_EXT_shader_framebuffer_fetch GL_EXT_shader_framebuffer_fetch_non_coherent GL_EXT_shadow_samplers GL_EXT_texture_border_clamp GL_EXT_texture_compression_bptc GL_EXT_texture_compression_dxt1 GL_EXT_texture_compression_rgtc GL_EXT_texture_compression_s3tc_srgb GL_EXT_texture_filter_anisotropic GL_EXT_texture_format_BGRA8888 GL_EXT_texture_mirror_clamp_to_edge GL_EXT_texture_norm16 GL_EXT_texture_rg GL_EXT_texture_sRGB_R8 GL_EXT_texture_sRGB_decode GL_EXT_texture_shadow_lod GL_EXT_texture_storage GL_EXT_texture_type_2_10_10_10_REV GL_EXT_unpack_subimage GL_KHR_blend_equation_advanced GL_KHR_blend_equation_advanced_coherent GL_KHR_debug GL_KHR_parallel_shader_compile GL_KHR_robustness GL_KHR_texture_compression_astc_ldr GL_KHR_texture_compression_astc_sliced_3d GL_MESA_framebuffer_flip_y GL_NV_fence GL_NV_framebuffer_blit GL_NV_pack_subimage GL_NV_pixel_buffer_object GL_NV_read_depth GL_NV_read_stencil GL_NV_shader_noperspective_interpolation GL_OES_EGL_image GL_OES_EGL_image_external GL_OES_EGL_image_external_essl3 GL_OES_EGL_sync GL_OES_compressed_ETC1_RGB8_texture GL_OES_depth24 GL_OES_draw_buffers_indexed GL_OES_element_index_uint GL_OES_fbo_render_mipmap GL_OES_get_program_binary GL_OES_mapbuffer GL_OES_packed_depth_stencil GL_OES_required_internalformat GL_OES_rgb8_rgba8 GL_OES_sample_variables GL_OES_shader_multisample_interpolation GL_OES_standard_derivatives GL_OES_surfaceless_context GL_OES_texture_3D GL_OES_texture_border_clamp GL_OES_texture_float GL_OES_texture_float_linear GL_OES_texture_half_float GL_OES_texture_half_float_linear GL_OES_texture_npot GL_OES_texture_stencil8 GL_OES_texture_storage_multisample_2d_array GL_OES_vertex_array_object ",
+      "glImplementationParts": "(gl=egl-angle,angle=opengl)",
+      "glRenderer": "ANGLE (Intel, Mesa Intel(R) Iris(R) Xe Graphics (RPL-P), OpenGL ES 3.2 Mesa 26.0.8-1ubuntu0.3)",
+      "glResetNotificationStrategy": 33362,
+      "glVendor": "Google Inc. (Intel)",
+      "glVersion": "OpenGL ES 3.0 (ANGLE 2.1.28646 git hash: a6bc9eff8444)",
+      "glWsExtensions": "EGL_EXT_create_context_robustness EGL_KHR_create_context EGL_KHR_image_base EGL_KHR_gl_colorspace EGL_KHR_gl_texture_2D_image EGL_KHR_gl_texture_cubemap_image EGL_KHR_gl_texture_3D_image EGL_KHR_gl_renderbuffer_image EGL_KHR_get_all_proc_addresses EGL_KHR_fence_sync EGL_KHR_wait_sync EGL_ANGLE_create_context_webgl_compatibility EGL_CHROMIUM_create_context_bind_generates_resource EGL_KHR_swap_buffers_with_damage EGL_EXT_pixel_format_float EGL_KHR_surfaceless_context EGL_ANGLE_display_texture_share_group EGL_ANGLE_display_semaphore_share_group EGL_ANGLE_create_context_client_arrays EGL_ANGLE_program_cache_control EGL_ANGLE_robust_resource_initialization EGL_ANGLE_create_context_extensions_enabled EGL_ANDROID_blob_cache EGL_ANDROID_recordable EGL_ANDROID_native_fence_sync EGL_ANGLE_create_context_backwards_compatible EGL_KHR_no_config_context EGL_KHR_create_context_no_error EGL_EXT_image_dma_buf_import EGL_EXT_image_dma_buf_import_modifiers EGL_KHR_reusable_sync EGL_ANGLE_external_context_and_surface EGL_EXT_buffer_age EGL_ANGLE_context_virtualization EGL_ANGLE_memory_usage_report EGL_ANGLE_create_context_passthrough_shaders ",
+      "glWsVendor": "Google Inc. (Intel)",
+      "glWsVersion": "1.5 (ANGLE 2.1.28646 git hash: a6bc9eff8444)",
+      "hardwareSupportsVulkan": false,
+      "inProcessGpu": false,
+      "initializationTime": 1.078635,
+      "isAsan": false,
+      "isClangCoverage": false,
+      "jpegDecodeAcceleratorSupported": false,
+      "maxMsaaSamples": "16",
+      "optimus": true,
+      "passthroughCmdDecoder": true,
+      "pixelShaderVersion": "3.00",
+      "processCrashCount": 0,
+      "sandboxed": false,
+      "skiaBackendType": "GaneshGL",
+      "subpixelFontRendering": true,
+      "targetCpuBits": 64,
+      "vertexShaderVersion": "3.00",
+      "visibilityCallbackCallCount": 0
+    },
+    "featureStatus": {
+      "2d_canvas": "enabled",
+      "direct_rendering_display_compositor": "disabled_off_ok",
+      "gpu_compositing": "enabled",
+      "multiple_raster_threads": "enabled_on",
+      "opengl": "enabled_on",
+      "rasterization": "enabled",
+      "raw_draw": "disabled_off_ok",
+      "skia_graphite": "disabled_off",
+      "trees_in_viz": "disabled_off",
+      "video_decode": "enabled",
+      "video_encode": "disabled_software",
+      "vulkan": "disabled_off",
+      "webgl": "enabled",
+      "webgpu": "enabled",
+      "webgpu_on_vk_via_gl_interop": "enabled",
+      "webnn": "disabled_off"
+    },
+    "driverBugWorkarounds": [
+      "enable_webgl_timer_query_extensions",
+      "exit_on_context_lost",
+      "msaa_is_slow",
+      "rely_on_implicit_sync_for_swap_buffers",
+      "disabled_extension_GL_KHR_blend_equation_advanced",
+      "disabled_extension_GL_KHR_blend_equation_advanced_coherent"
+    ],
+    "videoDecoding": [],
+    "videoEncoding": []
+  },
+  "contextLost": false,
+  "graphicsErrors": [],
+  "screenshotError": null,
+  "detailComparison": null,
+  "bootMs": 18508,
+  "stress": false,
+  "init": "[init] renderer 468ms, lighting 428ms, cityGrid 1048ms, landmarks 33ms, blocks 601ms, streetDetails 648ms, traffic 388ms, roadPaint 78ms, tiles 160ms, controllers 3ms, culling 172ms, ui 40ms, postFX 518ms, compile 8599ms, warmup 4589ms, firstFrame 0ms, gpu 0ms",
+  "glProfile": [],
+  "frameLatency": {
+    "samples": 110,
+    "routeMs": 3019.4000000059605,
+    "maxIntervalMs": 150,
+    "p95IntervalMs": 33.400000000001455,
+    "maxRenderMs": 35.79999999701977
+  },
+  "placeSamples": [],
+  "routeFrames": [
+    {
+      "at": 18716.39999999106,
+      "intervalMs": 150,
+      "renderMs": 35.29999999701977
+    },
+    {
+      "at": 18809.79999999702,
+      "intervalMs": 133.3000000000029,
+      "renderMs": 18.400000005960464
+    },
+    {
+      "at": 18831.09999999404,
+      "intervalMs": 16.69999999999709,
+      "renderMs": 15.400000005960464
+    },
+    {
+      "at": 18857.59999999404,
+      "intervalMs": 33.30000000000291,
+      "renderMs": 15.200000002980232
+    },
+    {
+      "at": 18904.59999999404,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 16.599999994039536
+    },
+    {
+      "at": 18930.5,
+      "intervalMs": 33.39999999999782,
+      "renderMs": 16.30000001192093
+    },
+    {
+      "at": 18956.39999999106,
+      "intervalMs": 33.30000000000291,
+      "renderMs": 15.899999991059303
+    },
+    {
+      "at": 18982.59999999404,
+      "intervalMs": 16.69999999999709,
+      "renderMs": 15.900000005960464
+    },
+    {
+      "at": 19010.09999999404,
+      "intervalMs": 33.30000000000291,
+      "renderMs": 16.700000002980232
+    },
+    {
+      "at": 19036.09999999404,
+      "intervalMs": 16.599999999998545,
+      "renderMs": 16
+    },
+    {
+      "at": 19060.5,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 14.700000002980232
+    },
+    {
+      "at": 19088.79999999702,
+      "intervalMs": 33.39999999999782,
+      "renderMs": 15.700000002980232
+    },
+    {
+      "at": 19111.5,
+      "intervalMs": 16.600000000002183,
+      "renderMs": 13.600000008940697
+    },
+    {
+      "at": 19168.79999999702,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 14.299999997019768
+    },
+    {
+      "at": 19189.19999998808,
+      "intervalMs": 33.39999999999782,
+      "renderMs": 14.699999988079071
+    },
+    {
+      "at": 19206.29999999702,
+      "intervalMs": 33.30000000000291,
+      "renderMs": 14.600000008940697
+    },
+    {
+      "at": 19224.5,
+      "intervalMs": 16.69999999999709,
+      "renderMs": 14.400000005960464
+    },
+    {
+      "at": 19252.69999998808,
+      "intervalMs": 16.600000000002183,
+      "renderMs": 16.399999991059303
+    },
+    {
+      "at": 19276.59999999404,
+      "intervalMs": 33.39999999999782,
+      "renderMs": 14.799999997019768
+    },
+    {
+      "at": 19305.19999998808,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 15
+    },
+    {
+      "at": 19332.29999999702,
+      "intervalMs": 16.599999999998545,
+      "renderMs": 15.799999997019768
+    },
+    {
+      "at": 19358.19999998808,
+      "intervalMs": 33.30000000000291,
+      "renderMs": 14.799999997019768
+    },
+    {
+      "at": 19390.09999999404,
+      "intervalMs": 16.69999999999709,
+      "renderMs": 18.400000005960464
+    },
+    {
+      "at": 19411.79999999702,
+      "intervalMs": 33.30000000000291,
+      "renderMs": 14.200000002980232
+    },
+    {
+      "at": 19438.19999998808,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 15.099999994039536
+    },
+    {
+      "at": 19461.19999998808,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 12.799999997019768
+    },
+    {
+      "at": 19493.39999999106,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 15.599999994039536
+    },
+    {
+      "at": 19516.19999998808,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 14.299999997019768
+    },
+    {
+      "at": 19542,
+      "intervalMs": 33.39999999999782,
+      "renderMs": 14.200000002980232
+    },
+    {
+      "at": 19566.89999999106,
+      "intervalMs": 16.600000000002183,
+      "renderMs": 13.399999991059303
+    },
+    {
+      "at": 19595.5,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 14.200000002980232
+    },
+    {
+      "at": 19621.89999999106,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 13.5
+    },
+    {
+      "at": 19647.5,
+      "intervalMs": 16.799999999999272,
+      "renderMs": 14.300000011920929
+    },
+    {
+      "at": 19676,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 16.400000005960464
+    },
+    {
+      "at": 19700,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 13.900000005960464
+    },
+    {
+      "at": 19725.59999999404,
+      "intervalMs": 33.20000000000073,
+      "renderMs": 13.900000005960464
+    },
+    {
+      "at": 19751.69999998808,
+      "intervalMs": 16.799999999999272,
+      "renderMs": 14.399999991059303
+    },
+    {
+      "at": 19777.09999999404,
+      "intervalMs": 33.20000000000073,
+      "renderMs": 14.700000002980232
+    },
+    {
+      "at": 19802.79999999702,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 16
+    },
+    {
+      "at": 19828.5,
+      "intervalMs": 33.39999999999782,
+      "renderMs": 14.5
+    },
+    {
+      "at": 19855.5,
+      "intervalMs": 33.30000000000291,
+      "renderMs": 13.600000008940697
+    },
+    {
+      "at": 19878.59999999404,
+      "intervalMs": 16.69999999999709,
+      "renderMs": 14.099999994039536
+    },
+    {
+      "at": 19903.59999999404,
+      "intervalMs": 33.30000000000291,
+      "renderMs": 13.700000002980232
+    },
+    {
+      "at": 19952.39999999106,
+      "intervalMs": 16.69999999999709,
+      "renderMs": 35.79999999701977
+    },
+    {
+      "at": 19969,
+      "intervalMs": 33.20000000000073,
+      "renderMs": 15.100000008940697
+    },
+    {
+      "at": 19985.09999999404,
+      "intervalMs": 16.799999999999272,
+      "renderMs": 13.299999997019768
+    },
+    {
+      "at": 20013.69999998808,
+      "intervalMs": 33.20000000000073,
+      "renderMs": 16.799999997019768
+    },
+    {
+      "at": 20037.89999999106,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 15.299999997019768
+    },
+    {
+      "at": 20061.89999999106,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 13.700000002980232
+    },
+    {
+      "at": 20092.09999999404,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 17.400000005960464
+    },
+    {
+      "at": 20115.79999999702,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 15.5
+    },
+    {
+      "at": 20141.09999999404,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 15
+    },
+    {
+      "at": 20212.39999999106,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 16.899999991059303
+    },
+    {
+      "at": 20227.69999998808,
+      "intervalMs": 66.59999999999854,
+      "renderMs": 13.599999994039536
+    },
+    {
+      "at": 20243,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 13.300000011920929
+    },
+    {
+      "at": 20257.09999999404,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 12.700000002980232
+    },
+    {
+      "at": 20271.79999999702,
+      "intervalMs": 16.69999999999709,
+      "renderMs": 13.200000002980232
+    },
+    {
+      "at": 20300.5,
+      "intervalMs": 16.600000000002183,
+      "renderMs": 18
+    },
+    {
+      "at": 20327.79999999702,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 19.799999997019768
+    },
+    {
+      "at": 20356.09999999404,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 21.400000005960464
+    },
+    {
+      "at": 20380,
+      "intervalMs": 33.39999999999782,
+      "renderMs": 18.700000002980232
+    },
+    {
+      "at": 20405.5,
+      "intervalMs": 16.600000000002183,
+      "renderMs": 18.200000002980232
+    },
+    {
+      "at": 20431.89999999106,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 19.200000002980232
+    },
+    {
+      "at": 20462.89999999106,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 22.099999994039536
+    },
+    {
+      "at": 20486.59999999404,
+      "intervalMs": 16.599999999998545,
+      "renderMs": 19.599999994039536
+    },
+    {
+      "at": 20511.89999999106,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 19.200000002980232
+    },
+    {
+      "at": 20539.09999999404,
+      "intervalMs": 16.599999999998545,
+      "renderMs": 21.299999997019768
+    },
+    {
+      "at": 20562.5,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 19.100000008940697
+    },
+    {
+      "at": 20589.09999999404,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 20.299999997019768
+    },
+    {
+      "at": 20614.29999999702,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 19.600000008940697
+    },
+    {
+      "at": 20639.5,
+      "intervalMs": 16.599999999998545,
+      "renderMs": 19
+    },
+    {
+      "at": 20666.39999999106,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 20
+    },
+    {
+      "at": 20692.5,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 18.80000001192093
+    },
+    {
+      "at": 20714.59999999404,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 17.400000005960464
+    },
+    {
+      "at": 20746,
+      "intervalMs": 33.19999999999709,
+      "renderMs": 21.700000002980232
+    },
+    {
+      "at": 20769.79999999702,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 19.799999997019768
+    },
+    {
+      "at": 20798.5,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 20.80000001192093
+    },
+    {
+      "at": 20822.19999998808,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 18.799999997019768
+    },
+    {
+      "at": 20848.29999999702,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 19.200000002980232
+    },
+    {
+      "at": 20876.39999999106,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 21.5
+    },
+    {
+      "at": 20898.29999999702,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 17.900000005960464
+    },
+    {
+      "at": 20928.39999999106,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 20.899999991059303
+    },
+    {
+      "at": 20947.29999999702,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 15.799999997019768
+    },
+    {
+      "at": 20976.79999999702,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 20.100000008940697
+    },
+    {
+      "at": 21003.09999999404,
+      "intervalMs": 16.599999999998545,
+      "renderMs": 19.899999991059303
+    },
+    {
+      "at": 21029.29999999702,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 19.600000008940697
+    },
+    {
+      "at": 21056.39999999106,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 20.599999994039536
+    },
+    {
+      "at": 21078.79999999702,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 16.5
+    },
+    {
+      "at": 21108.19999998808,
+      "intervalMs": 16.599999999998545,
+      "renderMs": 20.299999997019768
+    },
+    {
+      "at": 21136.29999999702,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 20.200000002980232
+    },
+    {
+      "at": 21161.69999998808,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 18.899999991059303
+    },
+    {
+      "at": 21189.19999998808,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 20.299999997019768
+    },
+    {
+      "at": 21212,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 17.600000008940697
+    },
+    {
+      "at": 21239,
+      "intervalMs": 16.599999999998545,
+      "renderMs": 19.200000002980232
+    },
+    {
+      "at": 21270.79999999702,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 23
+    },
+    {
+      "at": 21292.5,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 18
+    },
+    {
+      "at": 21319.69999998808,
+      "intervalMs": 16.599999999998545,
+      "renderMs": 19.19999998807907
+    },
+    {
+      "at": 21345.19999998808,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 19.099999994039536
+    },
+    {
+      "at": 21372.89999999106,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 21.200000002980232
+    },
+    {
+      "at": 21396.59999999404,
+      "intervalMs": 33.19999999999709,
+      "renderMs": 18.799999997019768
+    },
+    {
+      "at": 21422.29999999702,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 19.100000008940697
+    },
+    {
+      "at": 21448,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 19.100000008940697
+    },
+    {
+      "at": 21472.79999999702,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 18.600000008940697
+    },
+    {
+      "at": 21500.39999999106,
+      "intervalMs": 33.400000000001455,
+      "renderMs": 20.200000002980232
+    },
+    {
+      "at": 21535.5,
+      "intervalMs": 33.20000000000073,
+      "renderMs": 29.200000002980232
+    },
+    {
+      "at": 21566.89999999106,
+      "intervalMs": 16.799999999999272,
+      "renderMs": 28.599999994039536
+    },
+    {
+      "at": 21598.69999998808,
+      "intervalMs": 33.20000000000073,
+      "renderMs": 29
+    },
+    {
+      "at": 21623.89999999106,
+      "intervalMs": 33.39999999999782,
+      "renderMs": 22.599999994039536
+    },
+    {
+      "at": 21642.89999999106,
+      "intervalMs": 33.29999999999927,
+      "renderMs": 17.099999994039536
+    },
+    {
+      "at": 21673.5,
+      "intervalMs": 16.700000000000728,
+      "renderMs": 27.200000002980232
+    }
+  ],
+  "streaming": {
+    "loaded": [
+      "fase2",
+      "k0j-1",
+      "k1j-1",
+      "k2j-1",
+      "k3j1",
+      "k3j0"
+    ],
+    "bytes": 2186040,
+    "failures": 0,
+    "available": 12,
+    "pending": [],
+    "timings": [
+      {
+        "id": "k0j-1",
+        "importMs": 1423.5999999940395,
+        "prepareMs": 5463,
+        "workerMs": 1447.7999999970198,
+        "buildMs": 53.5
+      },
+      {
+        "id": "k1j-1",
+        "importMs": 1426.7000000029802,
+        "prepareMs": 7070.5,
+        "workerMs": 1830.3999999910593,
+        "buildMs": 42.8999999910593
+      },
+      {
+        "id": "k2j-1",
+        "importMs": 1427.2000000029802,
+        "prepareMs": 12551.5,
+        "workerMs": 2782.699999988079,
+        "buildMs": 55.5
+      },
+      {
+        "id": "k3j1",
+        "importMs": 4588.899999991059,
+        "prepareMs": 472,
+        "workerMs": 459,
+        "buildMs": 12.100000008940697
+      },
+      {
+        "id": "k3j0",
+        "importMs": 4588.800000011921,
+        "prepareMs": 1486.0999999940395,
+        "workerMs": 987.5,
+        "buildMs": 39.5
+      }
+    ]
+  },
+  "shaderWarmupHidden": true,
+  "backend": "WebGL2",
+  "tileStats": [
+    {
+      "id": "k0j-1",
+      "meshes": 14,
+      "instances": 4197,
+      "sharedFacades": 4,
+      "unsharedFacades": 0,
+      "deckMinY": -0.6000000238418579,
+      "deckMaxY": 2.3841858265427618e-8,
+      "colliders": 1665,
+      "kinds": [
+        "TileDeck",
+        "TileWater",
+        "TileParks",
+        "",
+        "TileBuildings0",
+        "TileBuildings1",
+        "TileBuildings2",
+        "TileBuildings3",
+        "TileHipRoofs",
+        "TileBridge"
+      ]
+    },
+    {
+      "id": "k1j-1",
+      "meshes": 17,
+      "instances": 6157,
+      "sharedFacades": 4,
+      "unsharedFacades": 0,
+      "deckMinY": -0.6000000238418579,
+      "deckMaxY": 2.3841858265427618e-8,
+      "colliders": 2261,
+      "kinds": [
+        "TileDeck",
+        "TileWater",
+        "TileParks",
+        "",
+        "TileBuildings0",
+        "TileBuildings1",
+        "TileBuildings2",
+        "TileBuildings3",
+        "TileHipRoofs",
+        "TileBridge"
+      ]
+    },
+    {
+      "id": "k2j-1",
+      "meshes": 12,
+      "instances": 9845,
+      "sharedFacades": 4,
+      "unsharedFacades": 0,
+      "deckMinY": -0.6000000238418579,
+      "deckMaxY": 2.3841858265427618e-8,
+      "colliders": 3779,
+      "kinds": [
+        "TileDeck",
+        "TileWater",
+        "TileParks",
+        "",
+        "TileBuildings0",
+        "TileBuildings1",
+        "TileBuildings2",
+        "TileBuildings3",
+        "TileHipRoofs",
+        "TileBridge"
+      ]
+    },
+    {
+      "id": "k3j1",
+      "meshes": 16,
+      "instances": 1154,
+      "sharedFacades": 4,
+      "unsharedFacades": 0,
+      "deckMinY": -0.6000000238418579,
+      "deckMaxY": 2.3841858265427618e-8,
+      "colliders": 476,
+      "kinds": [
+        "TileDeck",
+        "TileWater",
+        "TileParks",
+        "",
+        "TileBuildings0",
+        "TileBuildings1",
+        "TileBuildings2",
+        "TileBuildings3",
+        "TileHipRoofs"
+      ]
+    },
+    {
+      "id": "k3j0",
+      "meshes": 119,
+      "instances": 3142,
+      "sharedFacades": 4,
+      "unsharedFacades": 0,
+      "deckMinY": -0.6000000238418579,
+      "deckMaxY": 2.3841858265427618e-8,
+      "colliders": 1158,
+      "kinds": [
+        "TileDeck",
+        "TileWater",
+        "TileParks",
+        "",
+        "TileHybridCap",
+        "TileHybridWell",
+        "TileBuildings0",
+        "TileBuildings1",
+        "TileBuildings2",
+        "TileBuildings3",
+        "TileMedianeraOverlay",
+        "TileHipRoofs"
+      ]
+    }
+  ],
+  "tiles": {
+    "loaded": [
+      "fase2",
+      "k0j-1",
+      "k1j-1",
+      "k2j-1"
+    ],
+    "bytes": 1861711,
+    "failures": 0,
+    "available": 12,
+    "pending": [
+      "k3j1",
+      "k3j0"
+    ],
+    "timings": [
+      {
+        "id": "k0j-1",
+        "importMs": 1423.5999999940395,
+        "prepareMs": 5463,
+        "workerMs": 1447.7999999970198,
+        "buildMs": 53.5
+      },
+      {
+        "id": "k1j-1",
+        "importMs": 1426.7000000029802,
+        "prepareMs": 7070.5,
+        "workerMs": 1830.3999999910593,
+        "buildMs": 42.8999999910593
+      },
+      {
+        "id": "k2j-1",
+        "importMs": 1427.2000000029802,
+        "prepareMs": 12551.5,
+        "workerMs": 2782.699999988079,
+        "buildMs": 55.5
+      }
+    ]
+  },
+  "after": {
+    "loaded": [
+      "fase2",
+      "k0j-1",
+      "k1j-1",
+      "k2j-1"
+    ],
+    "bytes": 1861711,
+    "failures": 0,
+    "available": 12,
+    "pending": [
+      "k3j1",
+      "k3j0"
+    ],
+    "timings": [
+      {
+        "id": "k0j-1",
+        "importMs": 1423.5999999940395,
+        "prepareMs": 5463,
+        "workerMs": 1447.7999999970198,
+        "buildMs": 53.5
+      },
+      {
+        "id": "k1j-1",
+        "importMs": 1426.7000000029802,
+        "prepareMs": 7070.5,
+        "workerMs": 1830.3999999910593,
+        "buildMs": 42.8999999910593
+      },
+      {
+        "id": "k2j-1",
+        "importMs": 1427.2000000029802,
+        "prepareMs": 12551.5,
+        "workerMs": 2782.699999988079,
+        "buildMs": 55.5
+      }
+    ]
+  },
+  "tileMs": [],
+  "fps": 36.53514016211933,
+  "frames": 110,
+  "legacyBoroughs": false,
+  "fireEscapeInstances": 0,
+  "drawCalls": 711,
+  "triangles": 4289107,
+  "residentBytes": 1447308,
+  "meshes": 178,
+  "loaded": [
+    "k0j-1",
+    "k1j-1",
+    "k2j-1",
+    "k3j1",
+    "k3j0"
+  ],
+  "pageErrors": [],
+  "failedRequests": [],
+  "tileLog": [
+    "[madrid-tiles] +k0j-1 6940ms 287174 B (2 resident)",
+    "[madrid-tiles] +k1j-1 8540ms 340592 B (3 resident)",
+    "[madrid-tiles] +k2j-1 14034ms 495213 B (4 resident)",
+    "[madrid-tiles] +k3j1 5073ms 121670 B (5 resident)",
+    "[madrid-tiles] +k3j0 6114ms 202659 B (6 resident)"
+  ],
+  "consoleErrors": []
+}
