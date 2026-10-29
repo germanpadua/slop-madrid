@@ -458,7 +458,7 @@ for (const e of els) {
   landmarks[name] = { ring: flat(big), cx: r1((bb.x0 + bb.x1) / 2), cz: r1((bb.z0 + bb.z1) / 2), w: r1(bb.x1 - bb.x0), d: r1(bb.z1 - bb.z0), h: h ? Math.round(h * 10) / 10 : undefined, hSrc: h ? 'OSM' : undefined, building: t.building ? 1 : 0 };
 }
 // The big squares we name teleports after (OSM splits them across many open/fragmented ways):
-// merge every fragment of the same name into one footprint (union bbox + outer hull ring)
+// bounds locate the name only: open road fragments do not establish a paved surface
 const PLAZA_NAMES = ['Plaza de la Cibeles', 'Plaza de Callao', 'Plaza de la Puerta del Sol', 'Plaza Mayor', 'Plaza de la Villa',
   'Plaza de la Independencia', 'Plaza de España', 'Plaza de Oriente', 'Plaza de la Armería', 'Glorieta del Emperador Carlos V'];
 const plazaFragments = new Map();
@@ -478,7 +478,7 @@ for (const [name, frags] of plazaFragments) {
   for (const f of frags) for (const [x, z] of f) { bb.x0 = Math.min(bb.x0, x); bb.x1 = Math.max(bb.x1, x); bb.z0 = Math.min(bb.z0, z); bb.z1 = Math.max(bb.z1, z); }
   const area = (bb.x1 - bb.x0) * (bb.z1 - bb.z0);
   if (area < 400) continue;
-  landmarks[name] = { ring: flat([[bb.x0, bb.z0], [bb.x1, bb.z0], [bb.x1, bb.z1], [bb.x0, bb.z1]]), cx: r1((bb.x0 + bb.x1) / 2), cz: r1((bb.z0 + bb.z1) / 2), w: r1(bb.x1 - bb.x0), d: r1(bb.z1 - bb.z0) };
+  landmarks[name] = { geometrySource: 'name-bounds', renderSurface: false, ring: flat([[bb.x0, bb.z0], [bb.x1, bb.z0], [bb.x1, bb.z1], [bb.x0, bb.z1]]), cx: r1((bb.x0 + bb.x1) / 2), cz: r1((bb.z0 + bb.z1) / 2), w: r1(bb.x1 - bb.x0), d: r1(bb.z1 - bb.z0) };
 }
 // Named building footprints (ways): Teatro Real, Palacio de Cibeles, Casa de la Panadería, Círculo de Bellas Artes...
 for (const e of els) {
@@ -805,7 +805,7 @@ const GEO = {
   water: waterClipped.map(flat),
   plazasMadrid: [
     ...plazas.map((p) => ({ name: p.name, ring: flat(p.ring) })),
-    ...PLAZA_NAMES.filter((n) => landmarks[n] && landmarks[n].ring.length > 6).map((n) => ({ name: n, ring: landmarks[n].ring })),
+    ...PLAZA_NAMES.filter((n) => landmarks[n] && landmarks[n].renderSurface !== false && landmarks[n].ring.length > 6).map((n) => ({ name: n, ring: landmarks[n].ring })),
   ],
   centralPark: { bounds: { minX: 1, maxX: 2, minZ: 1, maxZ: 2 }, outline: [], water: [], lawns: [], drives: [], paths: [], sites: [] },
   piers: [],

@@ -157,6 +157,11 @@ function buildLandmarks(scene) {
     };
     for (const [name, lm] of Object.entries(LANDMARK_SITES)) {
       if (!lm.ring || lm.ring.length < 6 || lm.w < 12) continue; // points & slivers stay out (map/teleports still use them)
+      // The legacy Cibeles rectangle is a union of named ROAD bounds, not a pedestrian area.
+      // Keep the location for maps/teleports; only explicit surface provenance may restore paving.
+      // Source audit: docs/validation/2026-10-29-cibeles-plaza/.
+      if (lm.renderSurface === false || (name === 'Plaza de la Cibeles' &&
+          lm.renderSurface !== true && !lm.building && lm.ring.length === 8)) continue;
       // Real height (IDEAM parcel) where known; the 160 m ceiling only guards the extruder — the tallest hit in this
       // box is Torre de Madrid (142 m)
       const H = Math.max(9, Math.min(lm.h || 0, 160) || (lm.w > 80 ? 24 : 14));
