@@ -1,0 +1,76 @@
+{
+  "glRenderer": "ANGLE (Intel, Mesa Intel(R) Iris(R) Xe Graphics (RPL-P), OpenGL ES 3.2)",
+  "framesAfterTeleport": 201,
+  "place": "granvia",
+  "target": {
+    "x": 28,
+    "z": -374,
+    "heading": -1.68
+  },
+  "mode": "person",
+  "entity": {
+    "x": 28,
+    "y": 0,
+    "z": -374
+  },
+  "camera": {
+    "x": 32.3,
+    "y": 2.3,
+    "z": -373.5
+  },
+  "occluders": [
+    {
+      "ndc": {
+        "x": 0,
+        "y": 0.6
+      },
+      "name": "",
+      "parentChain": [
+        "Mesh",
+        "Scene"
+      ],
+      "distance": 109037.8,
+      "point": {
+        "x": -100000,
+        "y": 41984.6,
+        "z": -11341.1
+      },
+      "material": {
+        "name": "",
+        "type": "NodeMaterial"
+      },
+      "geometry": "BoxGeometry"
+    },
+    {
+      "ndc": {
+        "x": -0.4,
+        "y": 0.75
+      },
+      "name": "",
+      "parentChain": [
+        "Mesh",
+        "Scene"
+      ],
+      "distance": 114447.3,
+      "point": {
+        "x": -100000,
+        "y": 48507.7,
+        "z": 26810.1
+      },
+      "material": {
+        "name": "",
+        "type": "NodeMaterial"
+      },
+      "geometry": "BoxGeometry"
+    }
+  ],
+  "roadPaintStats": {
+    "rebuildMs": 18.2,
+    "vertices": 54332,
+    "triangles": 27166
+  },
+  "roadStats": {
+    "routingNodes": 1857,
+    "routingEdges": 2884
+  }
+}

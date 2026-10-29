@@ -19,6 +19,7 @@ const timeout = Number(arg('--timeout', '90')) * 1000;
 const shot = arg('--shot', null);
 const extra = arg('--params', '');
 const after = Number(arg('--after', '3000'));
+const failRoadWorker = args.includes('--fail-road-worker');
 
 const server = http.createServer((req, res) => {
   const url = decodeURIComponent(req.url.split('?')[0]);
@@ -36,7 +37,8 @@ const browser = await chromium.launch({
     ? ['--enable-unsafe-webgpu', '--ignore-gpu-blocklist', '--use-angle=gl']
     : ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=swiftshader', '--enable-webgpu-developer-features']
 });
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+const page = await browser.newPage({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 720 } });
+if (failRoadWorker) await page.route('**/js/madrid-road-worker.js', (route) => route.abort());
 const logs = [];
 const errors = [];
 page.on('console', (m) => { logs.push(`[${m.type()}] ${m.text()}`); if (/error|warn/.test(m.type())) console.error('[console]', m.text()); });
@@ -123,6 +125,8 @@ const state = await page.evaluate(() => {
   };
 });
 if (shot) { try { await page.screenshot({ path: shot, timeout: 30000 }); } catch (e) { console.error('[screenshot]', e.message); } }
-console.log(JSON.stringify({ booted, elapsedMs: elapsed, errors, state, tailLogs: logs.slice(-40) }, null, 2));
+const fallbackPassed = !failRoadWorker || (state.roadStats?.mode === 'main-fallback' && state.network?.edges > 300 && state.network?.paintEdges > 0);
+if (!booted || !fallbackPassed) process.exitCode = 1;
+console.log(JSON.stringify({ booted, failRoadWorker, fallbackPassed, elapsedMs: elapsed, errors, state, tailLogs: logs.slice(-40) }, null, 2));
 await browser.close();
 server.close();

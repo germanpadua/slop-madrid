@@ -1,0 +1,173 @@
+{
+  "booted": true,
+  "elapsedMs": 11464,
+  "errors": [],
+  "state": {
+    "hasApi": true,
+    "overlayHidden": true,
+    "status": "Compiling Shaders & Render Pipelines... 100%",
+    "loadingHidden": true,
+    "init": [],
+    "roadStats": {
+      "graphNodes": 3526,
+      "graphLinks": 4447,
+      "graphSignals": 686,
+      "routingNodes": 1857,
+      "routingEdges": 2884,
+      "assembledMs": 19,
+      "layoutMs": 82,
+      "timings": {
+        "snapshotMs": 0.5,
+        "workerMs": 144.4,
+        "applyMs": 5.3,
+        "queriesMs": 1.7,
+        "decodeMs": 2.5,
+        "blockLookupMs": 1.1
+      }
+    },
+    "network": {
+      "nodes": 1857,
+      "edges": 2884,
+      "paintEdges": 4581,
+      "signals": 396
+    },
+    "roadPaintStats": {
+      "rebuildMs": 10.5,
+      "vertices": 50196,
+      "triangles": 25098
+    },
+    "seedNetwork": {
+      "nodes": 6,
+      "edges": 6,
+      "sample": [
+        {
+          "from": 0,
+          "to": 2,
+          "axis": "st",
+          "len": 101.30307026646771,
+          "lanes": [
+            1.8,
+            5.4
+          ]
+        },
+        {
+          "from": 2,
+          "to": 5,
+          "axis": "st",
+          "len": 254,
+          "lanes": [
+            1.8,
+            5.4
+          ]
+        },
+        {
+          "from": 1,
+          "to": 3,
+          "axis": "st",
+          "len": 192.99999999999994,
+          "lanes": [
+            1.8,
+            5.4
+          ]
+        },
+        {
+          "from": 4,
+          "to": 1,
+          "axis": "st",
+          "len": 105.10000000000002,
+          "lanes": [
+            1.8,
+            5.4
+          ]
+        },
+        {
+          "from": 3,
+          "to": 0,
+          "axis": "st",
+          "len": 10,
+          "lanes": [
+            0
+          ]
+        },
+        {
+          "from": 5,
+          "to": 4,
+          "axis": "ave",
+          "len": 12.824120887168931,
+          "lanes": [
+            1.8
+          ]
+        }
+      ]
+    },
+    "seedInputs": {
+      "sidewalks": 4319,
+      "sidewalkSample": [
+        {
+          "minX": 17.6,
+          "maxX": 50.4,
+          "minZ": 299.6,
+          "maxZ": 380.4
+        },
+        {
+          "minX": 5.6,
+          "maxX": 26.4,
+          "minZ": 311.6,
+          "maxZ": 476.4
+        },
+        {
+          "minX": 41.6,
+          "maxX": 74.4,
+          "minZ": 311.6,
+          "maxZ": 356.4
+        }
+      ],
+      "footprints": 2,
+      "signals": 23
+    },
+    "cars": 200,
+    "carsPlaced": 117,
+    "peds": 340,
+    "pedsPlaced": 111,
+    "tiles": [
+      "k0j-1",
+      "k1j-1",
+      "k2j-1",
+      "k3j1",
+      "k3j0"
+    ],
+    "renderedFrames": 2,
+    "tileReach": {
+      "reached": 1857,
+      "nodes": 1857,
+      "tiles": {
+        "k0j-1": 39,
+        "k1j-1": 42,
+        "k2j-1": 36,
+        "k3j1": 48,
+        "k3j0": 56
+      }
+    },
+    "staleActors": {
+      "cars": 0,
+      "peds": 0
+    }
+  },
+  "tailLogs": [
+    "[warning] [city-config] no Madrid avenue \"5\"",
+    "[warning] [city-config] no Madrid avenue \"park\"",
+    "[info] [streetDetails] 19557 trees (12614 street trees)",
+    "[info] [roads] avenues Avenida del Manzanares x=-1642.0 half=9.6 free=0.7km | Calle 30 x=-1630.0 half=9.6 free=2.1km | Paseo de la Virgen del Puerto x=-1425.0 half=10.6 free=1.5km | Calle de Linneo x=-1425.0 half=10.6 free=0.2km | Paseo de los Melancólicos x=-1413.0 half=10.6 free=0.6km | Calle de Mazarredo x=-1245.0 half=4.6 free=0.1km | Calle de Santa María la Real de Nieva x=-1192.0 half=5.6 free=0.1km | Calle Profesor Martín Almagro Basch x=-1095.0 half=10.6 free=0.4km | Paseo Imperial x=-1091.0 half=6.6 free=0.5km | Calle de Valliciergo x=-991.0 half=6.6 free=0.1km | Ronda de Segovia x=-978.0 half=7.6 free=0.6km | Calle Luisa Fernanda x=-939.0 half=12.6 free=0.1km | Calle de San Buenaventura x=-924.0 half=13.6 free=0.0km | Calle de Ventura Rodríguez x=-893.0 half=4.6 free=0.1km | Calle de Martín de los Heros x=-892.0 half=7.6 free=0.2km | Plaza de San Francisco x=-861.0 half=16.6 free=0.1km | Calle de Bailén x=-823.0 half=8.6 free=0.8km | Calle de San Isidro Labrador x=-796.0 half=7.6 free=0.0km | Calle de la Princesa x=-780.0 half=7.6 free=0.1km | Calle del Duque de Osuna x=-683.0 half=8.6 free=0.1km | Calle Costanilla de San Andrés x=-674.0 half=7.6 free=0.1km | Calle de Tabernillas x=-655.0 half=6.6 free=0.0km | Calle de la Encarnación x=-652.0 half=5.6 free=0.0km | Paseo de los Olmos x=-638.0 half=7.6 free=0.3km | Plaza de la Encarnación x=-604.0 half=9.6 free=0.0km | Calle de Santa Clara x=-600.0 half=5.6 free=0.0km | Calle de los Señores de Luzón x=-598.0 half=7.6 free=0.0km | Calle del Maestro Guerrero x=-573.0 half=6.6 free=0.0km | Costanilla de San Pedro x=-572.0 half=13.6 free=0.0km | Calle del Humilladero x=-572.0 half=7.6 free=0.1km | Calle del Doctor Carracido x=-568.0 half=13.6 free=0.0km | Plaza de la Villa x=-563.0 half=12.6 free=0.1km | Calle del Cordón x=-563.0 half=12.6 free=0.0km | Calle de Fomento x=-547.0 half=18.6 free=0.1km | Calle Doctor Letamendi x=-528.0 half=5.6 free=0.0km | Calle de la Arganzuela x=-521.0 half=6.6 free=0.0km | Calle del Bastero x=-498.0 half=7.6 free=0.0km | Calle Conde de Miranda x=-474.0 half=7.6 free=0.0km | Calle de Campomanes x=-469.0 half=14.6 free=0.0km | Travesía del Almendro x=-458.0 half=7.6 free=0.0km | Calle de Isabel La Católica x=-458.0 half=13.6 free=0.1km | Travesía de Bringas x=-428.0 half=9.6 free=0.1km | Plaza del Comandante Las Morenas x=-422.0 half=9.6 free=0.1km | Calle de las Fuentes x=-408.0 half=9.6 free=0.0km | Plaza de Herradores x=-408.0 half=9.6 free=0.0km | Calle de Carlos Arniches x=-396.0 half=13.6 free=0.1km | Calle de los Donados x=-392.0 half=9.6 free=0.0km | Calle del Gasómetro x=-389.0 half=6.6 free=0.1km | Costanilla de los Ángeles x=-378.0 half=7.6 free=0.0km | Calle de Grafal x=-368.0 half=13.6 free=0.0km | Calle de las Veneras x=-337.0 half=12.6 free=0.0km | Calle de los Estudios x=-309.0 half=4.6 free=0.0km | Calle de los Trujillos x=-307.0 half=6.6 free=0.0km | Calle Ribera de Curtidores x=-302.0 half=11.6 free=0.6km | Ribera de Curtidores x=-265.0 half=12.6 free=0.2km | Calle de Felipe III x=-261.0 half=4.6 free=0.0km | Calle de los Libreros x=-248.0 half=7.6 free=0.0km | Calle de El Salvador x=-223.0 half=10.6 free=0.0km | Calle de Peña de Francia x=-202.0 half=7.6 free=0.0km | Plaza de Santa Cruz x=-179.0 half=8.6 free=0.0km | Travesía del Arenal x=-171.0 half=12.6 free=0.0km | Calle Soria x=-161.0 half=10.6 free=0.1km | Calle Tahona de las Descalzas x=-154.0 half=5.6 free=0.0km | Calle de Miguel Moya x=-151.0 half=8.6 free=0.0km | Calle de Esparteros x=-125.0 half=8.6 free=0.0km | Calle de San Roque x=-92.0 half=7.6 free=0.0km | Calle del Conde de Romanones x=-84.0 half=11.6 free=0.0km | Calle de Concepción Arenal x=-78.0 half=7.6 free=0.0km | Calle de la Paz x=-27.0 half=8.6 free=0.1km | Calle de la Madera x=-18.0 half=7.6 free=0.0km | Calle del Carmen x=-16.0 half=5.6 free=0.0km | Calle del Mesón de Paredes x=-6.0 half=11.6 free=0.3km | Calle del Doctor Cortezo x=1.0 half=4.6 free=0.0km | Calle de Carretas x=33.0 half=6.6 free=0.1km | Calle de Embajadores x=49.0 half=6.6 free=0.2km | Plaza del Carmen x=50.0 half=13.6 free=0.1km | Calle de Martín de Vargas x=58.0 half=5.6 free=0.1km | Calle del Molino de Viento x=66.0 half=7.6 free=0.0km | Calle Gonzalo Jiménez de Quesada x=70.0 half=5.6 free=0.0km | Calle de las Tres Cruces x=74.0 half=13.6 free=0.0km | Calle de Luis Vélez de Guevara x=112.0 half=13.6 free=0.0km | Calle de Espoz y Mina x=128.0 half=7.6 free=0.0km | Pasaje de la Caja de Ahorros x=150.0 half=13.6 free=0.0km | Calle de la Cruz x=152.0 half=7.6 free=0.0km | Plaza de San Ildefonso x=157.0 half=14.6 free=0.0km | Calle de Valverde x=158.0 half=13.6 free=0.0km | Calle del Amparo x=178.0 half=7.6 free=0.1km | Calle de San Sebastián x=183.0 half=12.6 free=0.0km | Calle de Núñez de Arce x=212.0 half=7.6 free=0.0km | Calle de Valencia x=261.0 half=6.6 free=0.1km | Calle de Churruca x=271.0 half=4.6 free=0.0km | Calle del Príncipe x=302.0 half=13.6 free=0.1km | Calle de Sevilla x=324.0 half=11.6 free=0.1km | Calle de Santa Águeda x=330.0 half=9.6 free=0.0km | Calle de Bernardino Obregón x=334.0 half=7.6 free=0.2km | Calle de Echegaray x=356.0 half=19.6 free=0.0km | Calle de Zurita x=358.0 half=7.6 free=0.0km | Costanilla de los Capuchinos x=364.0 half=13.6 free=0.0km | Calle de la Virgen de los Peligros x=370.0 half=5.6 free=0.0km | Calle del Clavel x=370.0 half=7.6 free=0.0km | Calle de Buenavista x=394.0 half=7.6 free=0.0km | Calle del León x=404.0 half=7.6 free=0.0km | Calle Fray Luis de León x=439.0 half=4.6 free=0.2km | Calle de San Bartolomé x=442.0 half=7.6 free=0.0km | Calle de Cedaceros x=456.0 half=5.6 free=0.1km | Calle de Santa Catalina x=510.0 half=5.6 free=0.0km | Calle de San Eugenio x=520.0 half=5.6 free=0.0km | Calle de Hortaleza x=526.0 half=7.6 free=0.1km | Calle de los Hermanos Álvarez Quintero x=532.0 half=7.6 free=0.0km | Calle Santa Polonia x=536.0 half=7.6 free=0.0km | Calle de la Libertad x=560.0 half=5.6 free=0.0km | Calle del Marqués de Valdeiglesias x=565.0 half=4.6 free=0.1km | Calle de Floridablanca x=580.0 half=7.6 free=0.0km | Calle de San Agustín x=582.0 half=9.6 free=0.0km | Costanilla de las Trinitarias x=584.0 half=7.6 free=0.0km | Calle de Jovellanos x=598.0 half=7.6 free=0.0km | Calle Luis de Góngora x=604.0 half=9.6 free=0.0km | Costanilla de los Desamparados x=605.0 half=10.6 free=0.0km | Calle de Fernanflor x=643.0 half=10.6 free=0.0km | Calle del Marqués de Toca x=650.0 half=7.6 free=0.0km | Calle del Duque de Medinaceli x=666.0 half=5.6 free=0.0km | Calle de Santa Teresa x=675.0 half=6.6 free=0.0km | Calle de Fernando VI x=675.0 half=6.6 free=0.1km | Plaza de Jesús x=679.0 half=6.6 free=0.0km | Calle de Hospital x=697.0 half=10.6 free=0.0km | Calle de Campoamor x=708.0 half=9.6 free=0.0km | Calle Berenjena x=718.0 half=9.6 free=0.0km | Calle de Justiniano x=746.0 half=7.6 free=0.0km | Paseo de Santa María de la Cabeza x=750.0 half=7.6 free=0.1km | Calle del Maestro Tellería x=772.0 half=15.6 free=0.0km | Calle de la Alameda x=836.0 half=7.6 free=0.0km | Calle del General Castaños x=839.0 half=12.6 free=0.1km | Paseo de las Delicias x=868.0 half=11.6 free=0.5km | Calle de Tamayo y Baus x=911.0 half=6.6 free=0.0km | Calle García Gutiérrez x=935.0 half=4.6 free=0.1km | Pasaje de Tortosa x=944.0 half=7.6 free=0.0km | Paseo de Recoletos x=1012.0 half=13.6 free=0.3km | Calle de Pedro Muñoz Seca x=1115.0 half=6.6 free=0.1km | Calle Moreto x=1136.0 half=7.6 free=0.3km | Calle Doctor Velasco x=1205.0 half=10.6 free=0.1km | Calle de Alfonso XII x=1274.0 half=13.6 free=1.4km",
+    "[info] [roads] centreline streets: 2224 links not on the grid, 2458 straight runs",
+    "[info] [roads] centreline edges: 1696 with clear lanes, 1695 long enough, 2 connected",
+    "[warning] [.WebGL-0x370c001afa00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+    "[warning] [.WebGL-0x370c001afa00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+    "[log] [init] renderer 3228ms, lighting 72ms, cityGrid 443ms, landmarks 24ms, blocks 323ms, streetDetails 259ms, traffic 205ms, roadPaint 30ms, tiles 43ms, controllers 1ms, culling 80ms, ui 14ms, postFX 365ms, compile 3149ms, warmup 2688ms, firstFrame 0ms, gpu 0ms",
+    "[info] [madrid-tiles] +k0j-1 6340ms 502333 B (2 resident)",
+    "[info] [madrid-tiles] +k1j-1 6374ms 573052 B (3 resident)",
+    "[warning] [.WebGL-0x370c001afa00]GL Driver Message (OpenGL, Performance, GL_CLOSE_PATH_NV, High): GPU stall due to ReadPixels",
+    "[info] [madrid-tiles] +k2j-1 6720ms 692803 B (4 resident)",
+    "[info] [madrid-tiles] +k3j1 544ms 263712 B (5 resident)",
+    "[info] [madrid-tiles] +k3j0 1205ms 320101 B (6 resident)"
+  ]
+}

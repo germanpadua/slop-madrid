@@ -1,0 +1,442 @@
+{
+  "glRenderer": "ANGLE (Intel, Mesa Intel(R) Iris(R) Xe Graphics (RPL-P), OpenGL ES 3.2)",
+  "bootMs": 9951,
+  "steps": [
+    {
+      "label": "seed after boot",
+      "atMs": 15074,
+      "roadStats": {
+        "graphNodes": 3526,
+        "graphLinks": 4447,
+        "graphSignals": 686,
+        "routingNodes": 1857,
+        "routingEdges": 2884,
+        "assembledMs": 27,
+        "layoutMs": 111,
+        "timings": {
+          "snapshotMs": 0.2,
+          "workerMs": 183.5,
+          "applyMs": 5.2,
+          "queriesMs": 1.7,
+          "decodeMs": 2.5,
+          "blockLookupMs": 1
+        }
+      },
+      "nodes": 1857,
+      "edges": 2884,
+      "paintEdges": 4581,
+      "roadPaintStats": {
+        "rebuildMs": 16,
+        "vertices": 50196,
+        "triangles": 25098
+      },
+      "signals": 396,
+      "cars": 200,
+      "carsPlaced": 199,
+      "peds": 340,
+      "pedsPlaced": 340,
+      "tiles": [
+        "k1j-1",
+        "k0j-1",
+        "k2j-1",
+        "k3j1",
+        "k3j0"
+      ],
+      "frames": 180,
+      "simSanity": {
+        "carsPlaced": 199,
+        "badS": 0,
+        "pedsOnTrack": 340,
+        "laneEdges": 2884,
+        "laneOverhang": 0,
+        "maxLaneOverhang": 0
+      },
+      "continuity": {
+        "reachable": 1857,
+        "nodes": 1857,
+        "tileHops": {
+          "k1j-1": 42,
+          "k0j-1": 39,
+          "k2j-1": 36,
+          "k3j1": 48,
+          "k3j0": 56
+        },
+        "staleCars": 0,
+        "stalePeds": 0
+      }
+    },
+    {
+      "label": "at tile k1j-1",
+      "atMs": 33715,
+      "roadStats": {
+        "graphNodes": 4172,
+        "graphLinks": 5243,
+        "graphSignals": 810,
+        "routingNodes": 2215,
+        "routingEdges": 3431,
+        "assembledMs": 23,
+        "layoutMs": 340,
+        "timings": {
+          "snapshotMs": 0.5,
+          "workerMs": 414.6,
+          "applyMs": 5.3,
+          "queriesMs": 2.1,
+          "decodeMs": 2.5,
+          "blockLookupMs": 0.7
+        }
+      },
+      "nodes": 2215,
+      "edges": 3431,
+      "paintEdges": 5453,
+      "roadPaintStats": {
+        "rebuildMs": 13.1,
+        "vertices": 59772,
+        "triangles": 29886
+      },
+      "signals": 484,
+      "cars": 200,
+      "carsPlaced": 200,
+      "peds": 340,
+      "pedsPlaced": 337,
+      "tiles": [
+        "k1j-1",
+        "k0j-1",
+        "k2j-1",
+        "k3j1",
+        "k3j0",
+        "k4j0",
+        "k3j-1"
+      ],
+      "frames": 789,
+      "simSanity": {
+        "carsPlaced": 200,
+        "badS": 0,
+        "pedsOnTrack": 337,
+        "laneEdges": 3431,
+        "laneOverhang": 0,
+        "maxLaneOverhang": 0
+      },
+      "continuity": {
+        "reachable": 2215,
+        "nodes": 2215,
+        "tileHops": {
+          "k1j-1": 42,
+          "k0j-1": 39,
+          "k2j-1": 36,
+          "k3j1": 48,
+          "k3j0": 56,
+          "k4j0": 70,
+          "k3j-1": 44
+        },
+        "staleCars": 0,
+        "stalePeds": 0
+      }
+    },
+    {
+      "label": "at tile k0j-1",
+      "atMs": 36370,
+      "roadStats": {
+        "graphNodes": 3572,
+        "graphLinks": 4505,
+        "graphSignals": 677,
+        "routingNodes": 1880,
+        "routingEdges": 2933,
+        "assembledMs": 17,
+        "layoutMs": 100,
+        "timings": {
+          "snapshotMs": 0.1,
+          "workerMs": 173.7,
+          "applyMs": 7.4,
+          "queriesMs": 2.4,
+          "decodeMs": 4.6,
+          "blockLookupMs": 0.5
+        }
+      },
+      "nodes": 1880,
+      "edges": 2933,
+      "paintEdges": 4700,
+      "roadPaintStats": {
+        "rebuildMs": 9.9,
+        "vertices": 51420,
+        "triangles": 25710
+      },
+      "signals": 392,
+      "cars": 200,
+      "carsPlaced": 200,
+      "peds": 340,
+      "pedsPlaced": 336,
+      "tiles": [
+        "k1j-1",
+        "k0j-1",
+        "k2j-1",
+        "k3j-1"
+      ],
+      "frames": 893,
+      "simSanity": {
+        "carsPlaced": 200,
+        "badS": 0,
+        "pedsOnTrack": 336,
+        "laneEdges": 2933,
+        "laneOverhang": 0,
+        "maxLaneOverhang": 0
+      },
+      "continuity": {
+        "reachable": 1880,
+        "nodes": 1880,
+        "tileHops": {
+          "k1j-1": 42,
+          "k0j-1": 39,
+          "k2j-1": 36,
+          "k3j-1": 44
+        },
+        "staleCars": 0,
+        "stalePeds": 0
+      }
+    },
+    {
+      "label": "at tile k2j-1",
+      "atMs": 39000,
+      "roadStats": {
+        "graphNodes": 3977,
+        "graphLinks": 4983,
+        "graphSignals": 758,
+        "routingNodes": 1880,
+        "routingEdges": 2933,
+        "assembledMs": 18,
+        "layoutMs": 142,
+        "timings": {
+          "snapshotMs": 0.1,
+          "workerMs": 209,
+          "applyMs": 4.9,
+          "queriesMs": 1.4,
+          "decodeMs": 2.9,
+          "blockLookupMs": 0.6
+        }
+      },
+      "nodes": 1880,
+      "edges": 2933,
+      "paintEdges": 5202,
+      "roadPaintStats": {
+        "rebuildMs": 14.5,
+        "vertices": 56916,
+        "triangles": 28458
+      },
+      "signals": 392,
+      "cars": 200,
+      "carsPlaced": 200,
+      "peds": 340,
+      "pedsPlaced": 334,
+      "tiles": [
+        "k1j-1",
+        "k0j-1",
+        "k2j-1",
+        "k3j-1",
+        "k4j0",
+        "k3j0",
+        "k3j1"
+      ],
+      "frames": 980,
+      "simSanity": {
+        "carsPlaced": 200,
+        "badS": 0,
+        "pedsOnTrack": 334,
+        "laneEdges": 2933,
+        "laneOverhang": 0,
+        "maxLaneOverhang": 0
+      },
+      "continuity": {
+        "reachable": 1880,
+        "nodes": 1880,
+        "tileHops": {
+          "k1j-1": 42,
+          "k0j-1": 39,
+          "k2j-1": 36,
+          "k3j-1": 44,
+          "k4j0": 47,
+          "k3j0": 46,
+          "k3j1": 39
+        },
+        "staleCars": 0,
+        "stalePeds": 0
+      }
+    },
+    {
+      "label": "back at seed",
+      "atMs": 43006,
+      "roadStats": {
+        "graphNodes": 4870,
+        "graphLinks": 6058,
+        "graphSignals": 939,
+        "routingNodes": 2215,
+        "routingEdges": 3431,
+        "assembledMs": 23,
+        "layoutMs": 116,
+        "timings": {
+          "snapshotMs": 0.5,
+          "workerMs": 199.6,
+          "applyMs": 4.3,
+          "queriesMs": 1.7,
+          "decodeMs": 1.9,
+          "blockLookupMs": 0.7
+        }
+      },
+      "nodes": 2215,
+      "edges": 3431,
+      "paintEdges": 6233,
+      "roadPaintStats": {
+        "rebuildMs": 24.5,
+        "vertices": 68652,
+        "triangles": 34326
+      },
+      "signals": 484,
+      "cars": 200,
+      "carsPlaced": 200,
+      "peds": 340,
+      "pedsPlaced": 340,
+      "tiles": [
+        "k1j-1",
+        "k0j-1",
+        "k2j-1",
+        "k3j-1",
+        "k4j0",
+        "k3j0",
+        "k3j1",
+        "k0j3",
+        "k2j4"
+      ],
+      "frames": 1005,
+      "simSanity": {
+        "carsPlaced": 200,
+        "badS": 0,
+        "pedsOnTrack": 340,
+        "laneEdges": 3431,
+        "laneOverhang": 0,
+        "maxLaneOverhang": 0
+      },
+      "continuity": {
+        "reachable": 2215,
+        "nodes": 2215,
+        "tileHops": {
+          "k1j-1": 42,
+          "k0j-1": 39,
+          "k2j-1": 36,
+          "k3j-1": 44,
+          "k4j0": 70,
+          "k3j0": 56,
+          "k3j1": 48,
+          "k0j3": 29,
+          "k2j4": 33
+        },
+        "staleCars": 0,
+        "stalePeds": 0
+      }
+    }
+  ],
+  "shots": [
+    {
+      "name": "street-sol"
+    },
+    {
+      "name": "street-granvia"
+    },
+    {
+      "name": "street-cibeles"
+    },
+    {
+      "name": "tile-k1j-1"
+    },
+    {
+      "name": "tile-k0j-1"
+    }
+  ],
+  "evicted": {
+    "before": {},
+    "dropped": [
+      "k1j-1",
+      "k3j-1",
+      "k4j0",
+      "k3j0",
+      "k3j1",
+      "k2j4"
+    ],
+    "edgesBefore": 3431,
+    "edgesAfter": 2394,
+    "nodesInsideDropped": [
+      {
+        "id": "k1j-1",
+        "core": [
+          -841.3,
+          1454.6,
+          158.7,
+          2454.6
+        ],
+        "nodes": 0
+      },
+      {
+        "id": "k3j-1",
+        "core": [
+          1158.7,
+          1454.6,
+          2158.7,
+          2454.6
+        ],
+        "nodes": 0
+      },
+      {
+        "id": "k4j0",
+        "core": [
+          2158.7,
+          454.6,
+          3158.7,
+          1454.6
+        ],
+        "nodes": 0
+      },
+      {
+        "id": "k3j0",
+        "core": [
+          1408.7,
+          454.6,
+          2158.7,
+          1454.6
+        ],
+        "nodes": 0
+      },
+      {
+        "id": "k3j1",
+        "core": [
+          1408.7,
+          -545.4,
+          2158.7,
+          454.6
+        ],
+        "nodes": 0
+      },
+      {
+        "id": "k2j4",
+        "core": [
+          158.7,
+          -3545.4,
+          1158.7,
+          -2545.4
+        ],
+        "nodes": 0
+      }
+    ],
+    "reachable": 1571,
+    "nodes": 1571,
+    "tileHops": {
+      "k0j-1": 40,
+      "k0j3": 29,
+      "k2j-1": 36
+    },
+    "staleCars": 0,
+    "stalePeds": 0
+  },
+  "errors": [],
+  "warningLogs": [],
+  "page": {
+    "width": 1280,
+    "height": 720
+  }
+}

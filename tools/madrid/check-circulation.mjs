@@ -31,9 +31,11 @@ const port = server.address().port;
 
 const browser = await chromium.launch({
   executablePath: process.env.CHROME_PATH || undefined,
-  args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=swiftshader', '--enable-webgpu-developer-features']
+  args: process.env.HARDWARE_GPU
+    ? ['--enable-unsafe-webgpu', '--ignore-gpu-blocklist', '--use-angle=gl']
+    : ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=swiftshader', '--enable-webgpu-developer-features']
 });
-const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+const page = await browser.newPage({ ignoreHTTPSErrors: true, viewport: { width: 1280, height: 720 } });
 const logs = [];
 const errors = [];
 page.on('console', (m) => { logs.push('[' + m.type() + '] ' + m.text()); });
@@ -59,6 +61,7 @@ const result = await page.evaluate(async ({ shotTargets, outNames }) => {
     return {
       roadStats: api.roadStats,
       nodes: network.nodes.length, edges: network.edges.length,
+      paintEdges: network.paintEdges?.length || 0, roadPaintStats: api.roadPaintStats,
       signals: network.nodes.filter((n) => n.signal).length,
       cars: cars.length, carsPlaced: cars.filter((v) => v.edge).length,
       peds: peds.length, pedsPlaced: peds.filter((p) => p.placed).length,
@@ -144,7 +147,7 @@ const result = await page.evaluate(async ({ shotTargets, outNames }) => {
     shots.push(await capture('street-' + id));
   }
 
-  // Drive out across the seam: each mounted tile is reached, the network is rebuilt with it and
+  // Teleport across the seam: each mounted tile is reached, the network is rebuilt with it and
   // every actor still points at a live edge.
   const tileIds = tileWorld.ids();
   const targets = tileIds.slice(0, 3).map((id) => {
@@ -184,16 +187,27 @@ const result = await page.evaluate(async ({ shotTargets, outNames }) => {
     const inside = cores.map(({ id, core }) => ({ id, core,
       nodes: network.nodes.filter((n) => n.x >= core[0] && n.x <= core[2] && n.z >= core[1] && n.z <= core[3]).length
     }));
-    return { before, dropped, edgesBefore: beforeEviction.edgeCount, edgesAfter: network.edges.length, nodesInsideDropped: inside, ...continuity() };
+    return { before: [...before], dropped, edgesBefore: beforeEviction.edgeCount, edgesAfter: network.edges.length, nodesInsideDropped: inside, ...continuity() };
   })();
 
-  return { bootMs: null, steps, shots, evicted };
+  const gl = document.querySelector('canvas').getContext('webgl2');
+  const debugInfo = gl?.getExtension('WEBGL_debug_renderer_info');
+  const glRenderer = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : null;
+  return { glRenderer, bootMs: null, steps, shots, evicted };
 }, { shotTargets: [], outNames: [] });
 
 result.bootMs = bootMs;
 result.errors = errors;
 result.warningLogs = logs.filter((l) => /^\[error\]|madrid-roads|resident network/.test(l)).slice(-12);
 result.page = { width: 1280, height: 720 };
+result.passed = errors.length === 0 && result.warningLogs.length === 0 &&
+  result.steps.every((s) => s.carsPlaced > 0 && s.pedsPlaced > 0 && s.paintEdges > 0 &&
+    s.simSanity.badS === 0 && s.simSanity.laneOverhang === 0 &&
+    s.continuity.staleCars === 0 && s.continuity.stalePeds === 0 &&
+    Object.values(s.continuity.tileHops).every(Number.isFinite)) &&
+  result.evicted.dropped.length > 0 && result.evicted.nodesInsideDropped.every((tile) => tile.nodes === 0) &&
+  result.evicted.staleCars === 0 && result.evicted.stalePeds === 0;
+if (!result.passed) process.exitCode = 1;
 
 for (const shot of result.shots) {
   const file = path.join(outDir, shot.name + '.jpg');

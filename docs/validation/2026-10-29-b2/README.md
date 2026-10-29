@@ -27,7 +27,7 @@ conectarla a coches/peatones y retirar rutas al descargar teselas sin dejar agen
   (`window.__madrid.roadStats` para QA).
 - `js/road-paint.js` + `js/main.js`: las marcas de calzada siguen a la red viva. `createRoadPaint` adopta
   la malla de arranque y en cada swap cambia solo la geometría (un material, sin recompilar shader,
-  geometría anterior liberada, grupo único). El residente decodificado trae `paintEdges: []`, así que
+  geometría anterior liberada, grupo único). Históricamente el residente decodificado traía `paintEdges: []`, así que
   se pintan las aristas de routing y se reconstruye la bandera de curva desde los brazos.
 - `roadStats.timings`: `snapshotMs`, `workerMs` (ida y vuelta del worker), `applyMs` y su reparto en main
   (`queriesMs`, `decodeMs`, `blockLookupMs`), medidos en el mismo swap que mueve agentes.
@@ -112,9 +112,8 @@ veredicto; los landmark sin `ring` o con `h` dudoso siguen con la extrusión gen
 
 ## Riesgos y pendientes de este bloque
 
-- Caída a la red heredada rota (6/6) si el worker no arranca; no hay red de respaldo útil.
-- `buildRoadPaint` sigue pintando con la red heredada; las marcas de la semilla no se regeneran con el
-  grafo residente (la pintura de teselas es otra).
+- Resuelto después de esta evidencia: el fallo del worker activa la preparación del snapshot actual en main (`27e6f10`); puede causar una pausa. Ver ../2026-10-29-road-recovery/.
+- Resuelto después de esta evidencia: la pintura sigue el grafo residente y conserva sus aristas físicas (`27e6f10`). Ver ../2026-10-29-hardware-circulation/.
 - Reconstrucciones en ráfaga: `assembledMs + layoutMs` ~0,2–0,4 s en worker; la rehidratación+fit en
   main es O(aristas) y no se ha medido con GPU real ni móvil.
 - Peatones: densidad y calidad de rutas fuera de semilla sin veredicto visual con navegador real.
