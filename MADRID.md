@@ -702,3 +702,17 @@ cat 'park' solapan con los 287 de cesped interiores) -> zonas con DOS planos de 
 no verificada. Siguiente paso de ingenieria (no mas capturas): pase de dedup por contencion - si un
 ring esta contenido en otro, generar suelo/cesped solo para el apropiado (o desduplicar por union).
 Aparcar tras ese pase si no lo resuelve.
+
+RESULTADO DEL PASE DE DEDUP (2026-10-29, commit posterior): split semantico implementado - rings
+cat 'park' pintan SOLO suelo de tierra (la frontera del parque no pinta cesped: los huecos entre
+rings de cesped OSM quedan tierra, sin ocultar gaps); rings cat 'grass' pintan SOLO cesped;
+excepcion: ring 'park' sin ningun grass interior pinta cesped (parques urbanos pequenos siguen
+verdes - verificado en k4j2, cuña intacta); ring 'park' contenido en otro 'park' no pinta nada
+(638.403 m2 el gigante del Retiro; 268/287 grass dentro de un park; 5 pares park-park). Eliminada
+la duplicacion coplanar (316 pares). Las manchas oscuras residuales NO cambiaron con el dedup ->
+descartado z-fight por solape. DATO NUEVO: 14 paseos con nombre de 8 m cruzan el parque (Salon del
+Estanque, Paseo de Mexico, Fernan Nuñez...) y se renderizan como asfalto oscuro de calle - las
+manchas lineales oscuras son plausiblemente esos paseos (geometria legitima, look oscuro). Las
+manchas en bloque grandes quedan SIN causa probada (hipotesis: asfalto de plazas/cruce de paseos
+del road renderer). HILO APARCADO aqui por acotado; si se reabre: paseos dentro de parques en tono
+tierra/acera en vez de asfalto de calle.

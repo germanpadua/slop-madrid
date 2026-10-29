@@ -225,18 +225,34 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
 
     // 2. Parks & gardens: real OSM landuse, clipped to the core by the builder; the channel is cut out of them too.
     if (globalThis.__LAWNDEBUG === true && mats.lawn) mats.lawn = new THREE.MeshBasicMaterial({ color: 0xff2244 }); // diagnostic: flat red lawn
-    // 1c. Park floor underlay: the OSM grass rings leave the park's real path network uncovered and the
-    // dark street slab read through as black wedges (diagnosed 2026-10-29 via lawndebug toggle: the wedges
-    // are NOT lawn faces). One light dirt plane per park ring at y=0.05 under the lawn (0.10), water cut out.
-    const dirtGeos = [];
+    // 1c. Park floor underlay + SEMANTIC SPLIT (2026-10-29, containment dedup): cat 'park' rings are the
+    // park BOUNDARY - they paint the dirt floor (y=0.05) but NOT lawn, so the real path/plaza gaps between
+    // OSM grass rings stay dirt instead of being concealed under one blanket lawn. cat 'grass' rings paint
+    // lawn (y=0.10) and no dirt (the boundary's floor underlies them; 268/287 grass rings in k3j1 sit inside
+    // a park ring). Exception: a 'park' ring containing no grass ring (small urban parks/plazas mapped as a
+    // bare boundary) DOES paint lawn so city parks stay green. A 'park' ring fully contained in another
+    // 'park' ring paints nothing (the outer ring owns the floor; removes coplanar duplicates - 316 true
+    // polygon overlaps in k3j1, z-fight hypothesis for the residual dark patches).
+    const allParkRings = [];
     for (const park of tile.parks || []) {
       for (const flat of park.rings || []) {
         const ring = toPts(flat);
-        if (ring.length < 3) continue;
-        const bb = bboxOf(ring);
-        const holes = holesWithin(ring, bb, waterBoxes);
-        dirtGeos.push(createFlatPolygonMesh(ring, 0.05, mats.dirt, true, holes.length ? holes : null).geometry);
+        if (ring.length >= 3) allParkRings.push({ cat: park.cat, ring, bb: bboxOf(ring) });
       }
+    }
+    const containedIn = (r, cat) => allParkRings.some((o) => o !== r && (!cat || o.cat === cat)
+      && o.bb[0] <= r.bb[0] && o.bb[2] >= r.bb[2] && o.bb[1] <= r.bb[1] && o.bb[3] >= r.bb[3]
+      && r.ring.every((q) => pointInRingPts(o.ring, q.x, q.z)));
+    const dirtGeos = [];
+    for (const r of allParkRings) {
+      const hasInnerGrass = r.cat === 'park' && allParkRings.some((g) => g.cat === 'grass'
+        && g.bb[0] >= r.bb[0] && g.bb[2] <= r.bb[2] && g.bb[1] >= r.bb[1] && g.bb[3] <= r.bb[3]
+        && g.ring.every((q) => pointInRingPts(r.ring, q.x, q.z)));
+      r.paintsLawn = r.cat === 'grass' || !hasInnerGrass;
+      r.paintsDirt = r.cat === 'park' && !containedIn(r, 'park');
+      if (!r.paintsDirt) continue;
+      const holes = holesWithin(r.ring, r.bb, waterBoxes);
+      dirtGeos.push(createFlatPolygonMesh(r.ring, 0.05, mats.dirt, true, holes.length ? holes : null).geometry);
     }
     if (dirtGeos.length) {
       const merged = mergeGeometries(dirtGeos, false);
@@ -248,14 +264,10 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     }
 
     const lawnGeos = [];
-    for (const park of tile.parks || []) {
-      for (const flat of park.rings || []) {
-        const ring = toPts(flat);
-        if (ring.length < 3) continue;
-        const bb = bboxOf(ring);
-        const holes = holesWithin(ring, bb, waterBoxes);
-        lawnGeos.push(createFlatPolygonMesh(ring, 0.10, mats.lawn, true, holes.length ? holes : null).geometry);
-      }
+    for (const r of allParkRings) {
+      if (!r.paintsLawn) continue;
+      const holes = holesWithin(r.ring, r.bb, waterBoxes);
+      lawnGeos.push(createFlatPolygonMesh(r.ring, 0.10, mats.lawn, true, holes.length ? holes : null).geometry);
     }
     if (lawnGeos.length) {
       const merged = mergeGeometries(lawnGeos, false);
