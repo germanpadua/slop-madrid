@@ -7,7 +7,7 @@ Objetivo abierto: acercar Madrid al acabado de TinyWarsaw, manteniendo datos ofi
 | 0. Investigación directa | Hecho con límites | NYC y módulos TinyWarsaw descargados, despliegue contrastado; faltan recorridos visuales de referentes |
 | E0. Instrumentación | Hecho al validar harness | Contar compilaciones desde navegación y bytes de atributos únicos de escena; JSON reproducible |
 | A. Fachadas y patios | Parcial: A0/A1 hechos; revisión amplia pendiente | Falta WIP referido madrid-facades.js; revisar alternativa local y patios k3j0, 3 manzanas con cámaras idénticas y veredicto individual |
-| B. Vida fuera de semilla | B0/B1 hechos; B2 worker/agentes pendiente | Altas/bajas grafo y agentes, pruebas borde/descarga, paseo continuo sin teletransporte |
+| B. Vida fuera de semilla | B0/B1/B2 hechos; veredicto visual real pendiente | Altas/bajas grafo y agentes, pruebas borde/descarga, paseo continuo sin teletransporte |
 | C. Calle con fuente | C0 árboles hecho; señales/mobiliario pendientes | Inventario árboles/señales OSM, instanciado por tesela, densidad y memoria antes/después |
 | E1. LOD centro/móvil | Pendiente | Conservar patios/siluetas, bajar draws/tris, repetir misma cámara; FPS real del propietario |
 | D. Cobertura | OSM recuperado; alturas/base divergente pendientes | Reconciliar 19/85 frente a 12 ready locales y recuperar fuentes autorizadas antes de generar las restantes |
@@ -30,11 +30,19 @@ Bytes/entrada ready manifest: fase2 738732; k0j-1 287174; k0j3 450984; k1j-1 340
 
 Rollback E0: revertir instrumentación de tools/madrid/measure.mjs y sus informes; no cambia app ni fuentes. No se han modificado ni debilitado aserciones.
 
+## B2 — red de circulación residente (hecho)
+
+Commits locales `365293e` (puente worker↔main) y `7233bbc` (intercambio en caliente de tráfico/peatones). El worker reutilizado ensambla grafo+carriles de semilla y teselas montadas; `encodeRoadNetwork`/`decodeRoadNetwork` cruzan datos planos indexados (el grafo vivo es cíclico y su structured clone desbordaba la pila); `hydrateRoadNetwork` reconstruye curvas y `createGroundQueries` atiende walkable/onSidewalk/isRoadClear. `setNetwork` remapea coches/peatones por posición+rumbo y retira los que no tienen carril equivalente; nunca se reconstruyen poblaciones/mallas. El servicio versiona y debouncia (320 ms) y descarta respuestas obsoletas; el lookup de bloques combina semilla + teselas.
+
+Validación de la pasada (`docs/validation/2026-10-29-b2/README.md`): suite 179/179; recorrido seed→k1j-1→k0j-1→k2j-1→seed con 200 coches y 171 peatones, `staleCars=stalePeds=0` en todos los pasos, todos los nodos alcanzables desde Sol (27–70 saltos), 0 nodos en los núcleos de las 6 teselas descargadas y aristas 3431→2154; `badS=0`, `laneOverhang=0`; `routingNodes 1857/routingEdges 2884` con 5 teselas (assembledMs ~35–45, layoutMs 140–310). Hallazgo: la red heredada de la semilla ya estaba colapsada (6/6 aristas, también en `2e71da0` limpio) porque los rectángulos de manzana de Madrid no son aceras; la red residente es la que da coches en calle. Riesgo abierto: caída a red heredada sin worker y `buildRoadPaint` sin regenerar.
+
+Entorno: esta pasada no tuvo `/dev/dri` (llvmpipe/SwiftShader), así que no hay FPS de Iris Xe; la referencia desktop del handoff (18,5 s arranque, 711 draws, ~36,5 FPS) no se ha reproducido. El veredicto visual por calle/manzana sigue pendiente con GPU del propietario.
+
 ## Checklist del propietario por bloque
 
 - [ ] Investigación: abrir https://tinywarsaw.app/preview/ y https://mrdoob.github.io/slop-newyork/; comparar calle y vista aérea, especialmente continuidad de detalle.
 - [ ] A: servir `python3 -m http.server 8080`, abrir http://localhost:8080/?debug=1; Sol/Cibeles y maqueta k3j0. Ver balcones, zócalos y patios sin tapas; acercarse/alejarse. Pendiente capturas por manzana.
-- [ ] B: en esa URL, paseo continuo desde semilla a k3j0/k3j1: deberían circular coches y cruzar peatones sin cortes ni agentes sobre edificios. Función aún pendiente.
+- [ ] B: en esa URL, paseo continuo desde semilla a k3j0/k3j1: deberían circular coches y cruzar peatones sin cortes ni agentes sobre edificios. Implementado y validado por datos en esta sesión (`docs/validation/2026-10-29-b2/`); falta repetirlo andando con GPU real y revisar marcas de calzada (`buildRoadPaint` aún usa la red heredada).
 - [ ] C: árboles/señales alineados con fuente; ninguna duplicación al volver a tesela. Pendiente.
 - [ ] E: misma ruta en móvil físico; informar GPU/dispositivo, FPS y pausas. No se ha elevado presupuesto ni activado proxy experimental.
 - [ ] D: mapa continuo de almendra sin huecos fuera de cobertura. Pendiente datos.

@@ -2,7 +2,7 @@
 
 ## Arranque obligatorio
 
-Repositorio real de esta sesión: `/home/germanpadua/proyectos/slop-madrid/slop-madrid` (subcarpeta del workspace). Verificar `pwd`, `git status --short`, `git branch --show-current`, `git log -8 --oneline` antes de editar. Rama **feat/paridad**. Último commit de implementación **5462959**; el commit que contiene este handoff es posterior. No quedan cambios de implementación a medio editar al escribirlo.
+Repositorio real de esta sesión: `/home/germanpadua/proyectos/slop-madrid/slop-madrid` (subcarpeta del workspace). Verificar `pwd`, `git status --short`, `git branch --show-current`, `git log -8 --oneline` antes de editar. Rama **feat/paridad**. Último commit de implementación **7233bbc** (B2); el commit que contiene este handoff es posterior. No quedan cambios de implementación a medio editar al escribirlo.
 
 Leer `PARIDAD-PLAN.md` y `MADRID-PARIDAD.md`: son el estado y la auditoría. `PRODUCT.md`, `MADRID.md`, `MADRID-PROGRESS.md` y `docs/validation/` aportan contexto histórico. El anterior handoff de wip/madrid-experience se conserva en `git show f40e310:CODEX-HANDOFF.md`; sus autorizaciones de push y rama ya NO aplican.
 
@@ -32,31 +32,38 @@ La misión mencionaba feat/paridad con 19/85 teselas y 176 tests. Este checkout 
 | 885344a | 10831 árboles con punto OSM real; streetFeatures con nodos originales de vías/señales y permisos/niveles |
 | 6747522 | No crear pools de aceras rectangulares con capacidad cero; gate de buffers vacíos y adapterInfo WebGPU |
 | 5462959 | Ensamblador de grafo residente por IDs OSM y opciones de preparación de carriles fuera de semilla |
+| 365293e | Puente worker↔main: worker de red/carriles, datos planos indexados, rehidratación de consultas/curvas, señales por ID y lookups de bloque residentes |
+| 7233bbc | Intercambio de red en caliente: setNetwork en tráfico y peatones, remapeo por posición+rumbo, retirada de agentes sin carril, servicio residente conectado a main y streaming |
 
 Capturas y mediciones: `docs/validation/2026-10-29-{revoco,roofs,streets,empty-storage,resident-graph}/`; baseline en `tools/madrid/measurements/`. Árboles: figuras low-poly ilustrativas; si faltan height/diameter_crown usan símbolo de 7 m / diámetro 4,4 m, posiciones de fuente a 1 cm. No son volúmenes ni especies medidos.
 
-## Lo próximo: conectar tráfico y peatones (B2)
+## B2 hecho: red residente en worker y agentes migrados
 
-**B1 NO está conectado a la app. Los agentes todavía usan la red inicial.** El ensamblador y el constructor de carriles ya están probados, pero no hay worker de rutas ni API de migración de población implementados.
+**La app ya circula sobre el grafo residente (OSM, semilla+teselas montadas).** Arquitectura final:
 
-Puntos de integración:
+- `js/madrid-road-worker.js` + `js/madrid-road-preparer.js`: un Module Worker reutilizado ensambla el grafo residente y los carriles con `buildRoadNetwork(..., { roadGraph, sourceOnly: true, coverage })`. El servicio versiona/debouncia peticiones y descarta respuestas obsoletas.
+- El grafo vivo es cíclico; structured clone desbordaba la pila. `road-network.js` expone `encodeRoadNetwork`/`decodeRoadNetwork` (datos planos indexados) y `hydrateRoadNetwork` reconstruye adyacencia, brazos, movimientos y curvas en main. `createGroundQueries` es la fábrica compartida de walkable/onSidewalk/isRoadClear.
+- `js/madrid-road-network.js`: snapshot = vías (solo tags de circulación) + cobertura; lookup de bloques de teselas combinado con `seedBlockAt`; el worker NO recibe bordillos (ver hallazgo).
+- `js/traffic.js`/`js/pedestrian-system.js`: `setNetwork(next, blockAt)` reinicializa contadores, rehace rutas peatonales y remapea por posición+rumbo (`js/madrid-road-matching.js`); los agentes sin carril equivalente se retiran y reaparecen. Nunca se reconstruyen poblaciones/mallas.
+- `js/main.js`: servicio creado tras el streamer, refresco en `onStatus`, red aplicada al tráfico; `window.__madrid.roadStats` para QA.
 
-- `js/madrid-resident-road-graph.js`: `buildResidentRoadGraph(featureSets)` devuelve nodes/links/names/osmNodeIds/signals en contrato del grafo. Usa IDs, nunca cruces por proximidad. Respeta acceso/sentidos/roundabout. Excluye bridge/tunnel/layer sin perfil vertical. Preserva señales y bucles cerrados con anclas de fuente.
-- `js/road-network.js`: `buildRoadNetwork(sidewalks, obstacles, signals, { roadGraph, coverage, sourceOnly: true })`. El modo nuevo evita rejilla heredada y admite cobertura fuera de semilla. El modo por defecto sigue anterior.
-- `tileWorld.residentStreetFeatures()` devuelve Map de fuente de semilla y teselas montadas. Se elimina al descargar. `tileWorld.ids()` solo periféricas. Cobertura real y metadata están en manifiesto/streamer.
-- `js/main.js`: crea tráfico antes del streamer; `onStatus` del streamer solo refresca colisionadores y registra LOD. Hay que conectar actualización de grafo aquí, agrupando ráfagas y descartando resultados worker obsoletos.
-- `js/traffic.js`: mantiene `const network` y `const {nodes,edges,connector,curvePoint}`; inicializa contadores de nodos y ocupación de aristas al construir. No existe setter. No reconstruir toda la población/mallas por cada tesela. Conservar coches sobre aristas equivalentes y retirar/reubicar solo rutas inválidas; manejar v.move/v.conn/v.commit, ocupación, touchedNodes/touchedEdges y caché nearEdges.
-- `js/pedestrian-system.js`: `const pedRoutes = createPedestrianRoutes(network, blockAt)` y `blockAt` de city-config solo conoce bloques de semilla. Necesita bloques/aceras residentes y invalidación de tracks/caches al retirar geometría; no basta ampliar red de coches.
+Validación (detalle y JSON en `docs/validation/2026-10-29-b2/`): suite **179/179**. Recorrido de teletransporte seed→k1j-1→k0j-1→k2j-1→seed con **200 coches y 171 peatones colocados**, `staleCars=stalePeds=0` en todos los pasos, todos los nodos vivos alcanzables desde Sol (saltos finitos 27–70) y 0 nodos dentro del núcleo de las 6 teselas descargadas; aristas 3431→2154 al descargar. `badS=0`, `laneOverhang=0`.
 
-Arquitectura considerada, **todavía no ejecutada**:
+**Hallazgo importante:** la red heredada de la semilla ya estaba colapsada antes de B2 (6 nodos/6 aristas en el arranque; reproducido en worktree de `2e71da0` limpio). Los rectángulos de manzana de Madrid no son aceras y bloquean casi todos los carriles. El intercambio a la red residente es lo que hace que haya coches; queda como riesgo la caída a la red heredada si el worker falla. `buildRoadPaint` sigue usando la red heredada (marcas de semilla no regeneradas).
 
-1. Sacar consultas espaciales del inicio de buildRoadNetwork a una fábrica reutilizable (walkable/onSidewalk/isRoadClear/blocked). El worker puede devolver nodos/aristas cíclicos por structured clone, pero **no funciones**.
-2. Separar/exportar fábrica de connector (actual cierre con Map de curvas, utiliza IDs de aristas) y curvePoint. Rehidratar funciones en main y reconstruir consultas de ocupación/cobertura; no reutilizar cache de curvas tras renumerar aristas.
-3. Worker de preparación de red: ensamblar grafo + carriles fuera del hilo de animación, con versión de snapshot y descarte de resultados viejos. Verificar memoria: importar road-network en worker arrastra city-config y geodata de semilla; no asumir que no cuesta heap.
-4. Migración estable de agentes/red, bloques residentes y rutas peatonales. No dejar referencias hacia nodos/aristas descargados. Durante descarga, desactivar inmediatamente rutas inválidas mientras llega snapshot nuevo.
-5. Recorrido continuo desde semilla a periferia y ciclo descarga/recarga con agentes observados. Medir pausas/FPS con GPU real y revisar cruces/edificios.
+Coste medido (CPU, software GL): con 5 teselas residentes `graphNodes 3526, graphSignals 686, routingNodes 1857, routingEdges 2884, assembledMs ~35-45, layoutMs 140-310`. Benchmark 12 teselas: 2559 nodos/3992 aristas. Es coste de preparación, **no FPS**. Script: `node tools/madrid/benchmark-road-graph.mjs` o lista de IDs.
 
-Datos reales completos sin obstáculos/aceras: benchmark 5437 nodos/6772 enlaces de fuente, 1039 señales; 2559 nodos/3992 aristas de circulación. 128 ms ensamblado + 767 ms carriles en una muestra CPU. Es coste mínimo, **no FPS ni validación de colisiones**. No meter ~0,9 s síncronos en onStatus. Script: `node tools/madrid/benchmark-road-graph.mjs` o una lista de IDs como primer argumento.
+## Lo próximo: calle con fuente, comparación visual y LOD
+
+1. **B2 restante / calle**: veredicto visual con navegador real (GPU del propietario): paseo continuo seed→k3j0/k3j1 sin teletransporte, semáforos OSM visibles y sincronizados, aparcados/mobiliario con fuente, cruces protegidos durante descarga. Revisar `buildRoadPaint` con el grafo residente.
+2. **A**: veredicto por tres manzanas con cámaras iguales; patios (incluidos los 17 de k3j0 del handoff anterior), cubiertas y siluetas de monumentos. No confundir paseo de Sol con todo el centro.
+3. **C**: inventario árboles/señales OSM ya empaquetado; falta instanciado por tesela, densidad y memoria antes/después.
+4. **E1**: LOD geométrico centro/móvil; medir buffers/draws/compilación y FPS móvil físico. `?detail=geometry`/`?detail=distance` siguen optativos.
+5. **D**: reconciliar la línea de 19 teselas y ampliar cobertura con fuentes; ojo a patios y presupuesto 12 MiB/12 teselas.
+6. **Residuos visuales**: taxis amarillos/liveries NYC, monotonía de fachadas, plazas vacías; terreno/dosel TinyWarsaw no intentados.
+7. **Comparación amplia con TinyWarsaw** en navegador (calle y aéreo), no solo bundle.
+
+Entorno de esta sesión: sin `/dev/dri` dentro del sandbox → WebGL2 llvmpipe/software; las capturas de calle son a 1–3 FPS y las mediciones de FPS NO representan Iris Xe. Ver `docs/validation/2026-10-29-b2/README.md`.
 
 ## Pruebas y navegador
 
@@ -69,7 +76,17 @@ git diff --check
 python3 -m http.server 8080 --bind 127.0.0.1
 ```
 
-Última suite verificada: **170/170**. Nuevas pruebas cubren propiedad/procedencia de árboles y tramos, continuidad de nodos, accesos/sentidos/niveles, cruces geométricos que NO se unen, bucles, preparación fuera de semilla y persistencia de cubiertas. No prueban todavía agentes en periferia ni paridad final.
+Última suite verificada: **179/179**. Nuevas pruebas cubren propiedad/procedencia de árboles y tramos, continuidad de nodos, accesos/sentidos/niveles, cruces geométricos que NO se unen, bucles, preparación fuera de semilla, persistencia de cubiertas, encoding plano worker↔main, curvas rehidratadas, consultas de suelo, lookup de bloques residentes y snapshot del servicio. `tests/madrid-road-network.test.cjs` (9) cubre el puente y el servicio. No prueban agentes con navegador real ni paridad final.
+
+QA visual/circulación de B2 (levantan su servidor efímero; rutas de esta máquina):
+
+```sh
+PLAYWRIGHT_MODULE=/home/germanpadua/.npm/_npx/ad9a3fdbcad992c6/node_modules/playwright-core/index.mjs CHROME_PATH=/home/germanpadua/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome node tools/madrid/check-circulation.mjs --timeout 240000
+PLAYWRIGHT_MODULE=... CHROME_PATH=... node tools/madrid/debug-boot.mjs --timeout 1 --after 7000
+PLAYWRIGHT_MODULE=... CHROME_PATH=... node tools/madrid/inspect-scene.mjs --place sol --grid 3
+```
+
+`check-circulation.mjs` escribe `docs/validation/2026-10-29-b2/{circulation.json,*.jpg}`. `inspect-scene.mjs` explica qué objetos/malla/material hay en pantalla (útil para QA de defectos visuales). \`debug-boot.mjs\` da un diagnóstico rápido de arranque sin esperar minutos.
 
 Rutas de esta máquina, comprobar antes de reutilizar:
 
@@ -81,7 +98,7 @@ El harness levanta su servidor efímero. `--check-street-lifecycle` retira y rec
 
 ### GPU: no repetir una conclusión equivocada
 
-WebGL2 usa físicamente **Intel Iris Xe (RPL-P), ANGLE OpenGL ES/Mesa 26.0.8** según glRenderer. WebGPU con flags actuales obtiene **Google SwiftShader, isFallbackAdapter=true**; con ANGLE Vulkan no obtiene adaptador. **SystemInfo enumera GPUs, pero NO identifica el adaptador WebGPU seleccionado.** Las mediciones WebGPU de esta sesión NO representan rendimiento de la GPU física.
+WebGL2 en la sesión de B2 **NO pudo usar Iris Xe**: dentro del sandbox no existe `/dev/dri` y Chromium cae a **llvmpipe (Mesa 26.0.8, software)**; WebGPU obtiene **SwiftShader/isFallbackAdapter=true**. La sesión anterior (handoff 5462959) sí midió Iris Xe vía WebGL2; esas cifras (18,5 s arranque, 711 draws, 4,29 M triángulos, ~36,5 FPS de muestra) siguen siendo la referencia desktop y no se han reproducido aquí. No atribuir a B2 un cambio de FPS medido sobre software.
 
 Tras arreglo de aceras: cero GPUValidationError, pero solo 4 frames observados y pausas de 11–23 s en software; el gate completo WebGPU sigue fallando. Mantener WebGL2 predeterminado; probar WebGPU hardware en navegador físico aparte. No ocultar validaciones ni llamar a esto soporte WebGPU completo.
 
@@ -112,7 +129,7 @@ Fuentes IDEAM/Catastro pesadas de reconstrucción de edificios aún no están di
 
 ## Pendiente antes de declarar compartible
 
-- B2 y calle: agentes fuera de semilla, semáforos visibles y sincronizados con fuente, aparcados/mobiliario con datos, continuidad en bordes.
+- B2: red residente conectada y validada por datos (agentes fuera de semilla, 0 agentes obsoletos, continuidad seed↔teselas, descarga retira rutas). Falta veredicto visual real con GPU del propietario, semáforos visibles/sincronizados, aparcados/mobiliario con datos y `buildRoadPaint` sobre el grafo residente.
 - A: veredicto por tres manzanas con cámaras iguales; patios (incluidos los 17 de k3j0 del handoff anterior), cubiertas y siluetas de monumentos. No confundir paseo de Sol con todo el centro.
 - E: LOD geométrico del centro y niveles regionales/far; medir buffers/draws/compilación y FPS móvil físico. Experimentos ?detail=geometry y ?detail=distance siguen optativos, no activar por una muestra.
 - D: reconciliar la otra línea de 19 teselas y ampliar cobertura con fuentes; evitar regresiones de patios y presupuesto.
