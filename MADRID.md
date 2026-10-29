@@ -690,6 +690,15 @@ traves. Fix: seccion 1c, un plano de tierra clara (0xb59a6e) por ring de parque 
 caminos y plazas del Retiro emerge en arena clara; el estanque sigue oscuro; k4j2 intacto.
 Coste medido: k3j1 69.674 -> 71.557 tris (+1.883); k4j2 155.422 -> 155.732 (+310). Un mesh extra por
 tesela (TileParkFloor), geometria eviction-safe como el resto.
-Limites honestos: caminos sin borde ni textura de sendero (plano continuo de tierra); quedan manchas
-oscuras fuera de los rings de parque (losa base, issue preexistente separada); el agua sigue leyendo
-casi negra en este harness.
+Limites honestos: caminos sin borde ni textura de sendero (plano continuo de tierra); el agua sigue
+leyendo casi negra en este harness.
+
+ESTADO DEL DIAGNOSTICO DE MANCHAS OSCURAS RESTANTES (acotado, no cerrado): tras el fix de huecos
+earcut (commit siguiente), el cesped queda coherente y los spikes desaparecen; persisten manchas
+oscuras con mota DENTRO del parque que NO son cesped (lawndebug) NI suelo de parque visible. Dato:
+316 pares de rings con solape poligonal real (patron grass-dentro-de-park: los 8 rings grandes de
+cat 'park' solapan con los 287 de cesped interiores) -> zonas con DOS planos de tierra coplanares
+(y=0.05) y dos de cesped (y=0.10). Hipotesis principal: z-fighting en las zonas coplanares; causa
+no verificada. Siguiente paso de ingenieria (no mas capturas): pase de dedup por contencion - si un
+ring esta contenido en otro, generar suelo/cesped solo para el apropiado (o desduplicar por union).
+Aparcar tras ese pase si no lo resuelve.
