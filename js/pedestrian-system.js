@@ -1,4 +1,4 @@
-import { blockAt } from './city-config.js';
+import { blockAt as seedBlockAt } from './city-config.js';
 import { createPedestrianRoutes } from './pedestrian-routes.js';
 import { PersonCrowd, PersonRig } from './pedestrians.js';
 
@@ -11,7 +11,10 @@ const PED_SPAWN_DISTANCE = 150;
 const PED_AVOID_INTERVAL = 0.12;
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
 
-function createPedestrianSystem(network, { player, nearEdges, nearSignals, mayCross, walkOn, visible, nearView }) {
+function createPedestrianSystem(initialNetwork, { player, nearEdges, nearSignals, mayCross, walkOn, visible, nearView,
+  blockAt: blockAtOption = seedBlockAt }) {
+  let network = initialNetwork;
+  let blockAt = blockAtOption;
   let clock = 0;
   let focusX = 0, focusZ = 140;
   let hasView = false;
@@ -81,7 +84,7 @@ function createPedestrianSystem(network, { player, nearEdges, nearSignals, mayCr
   }
 
   const KERB = 1.6; // how far along a crosswalk track pedestrians wait to cross (the curb is 2 m along)
-  const pedRoutes = createPedestrianRoutes(network, blockAt);
+  let pedRoutes = createPedestrianRoutes(network, blockAt);
   const track = { ax: 0, az: 0, ux: 0, uz: 1, len: 1, node: null, side: 0, line: 0, route: null };
 
   function sidewalkTrack(e) {
@@ -495,7 +498,89 @@ function createPedestrianSystem(network, { player, nearEdges, nearSignals, mayCr
     pedCrowd.end();
   }
 
-  return { peds, meshes: pedCrowd.meshes, update };
+  // Match a walking pedestrian onto the equivalent track of a new network. Identity is geometric
+  // (position + heading) because the track objects are rebuilt with the resident graph; a pedestrian
+  // with no equivalent track is retired and respawns near the focus instead of keeping stale edges.
+  function nearestWalkEdge(x, z, ux, uz, margin = 5.6) {
+    let best = null, bestScore = Infinity;
+    for (const e of network.edges) {
+      const alignment = e.dx * ux + e.dz * uz;
+      if (alignment < 0.55) continue;
+      const s = clamp((x - e.sx) * e.dx + (z - e.sz) * e.dz, 0, e.len);
+      const lateral = Math.hypot(x - (e.sx + e.dx * s), z - (e.sz + e.dz * s));
+      if (lateral > e.half + margin) continue;
+      const score = lateral + (1 - alignment) * 6;
+      if (score < bestScore) { bestScore = score; best = e; }
+    }
+    return best;
+  }
+  function rematchSidewalk(p) {
+    const e = nearestWalkEdge(p.x, p.z, p.ux * p.dir, p.uz * p.dir);
+    if (!e) return false;
+    const choices = pedRoutes.along(e);
+    if (!choices.length) return false;
+    const off = (p.x - e.sx) * e.rx + (p.z - e.sz) * e.rz;
+    let track = null, bestScore = Infinity;
+    for (const t of choices) {
+      if (t.ux * p.ux + t.uz * p.uz < 0.7) continue;
+      const score = Math.abs((t.ax - e.sx) * e.rx + (t.az - e.sz) * e.rz - off);
+      if (score < bestScore) { bestScore = score; track = t; }
+    }
+    if (!track || bestScore > 3.2) return false;
+    Object.assign(p, track);
+    p.route = track;
+    p.t = clamp((p.x - track.ax) * track.ux + (p.z - track.az) * track.uz, 0.05, track.len - 0.05);
+    p.v = Math.min(p.v, p.speed);
+    p.rig.placed = false;
+    return true;
+  }
+  function rematchCrossing(p) {
+    const old = p.node;
+    if (!old) return false;
+    let node = null, best = 4.5;
+    for (const n of network.nodes) {
+      if (!n.signal || Math.abs(n.x - old.x) > 4.5 || Math.abs(n.z - old.z) > 4.5) continue;
+      const d = Math.hypot(n.x - old.x, n.z - old.z);
+      if (d < best) { best = d; node = n; }
+    }
+    if (!node) return false;
+    let track = null, bestScore = Infinity;
+    for (const t of pedRoutes.across(node)) {
+      if (t.side !== p.side) continue;
+      const score = Math.abs(t.line - p.line);
+      if (score < bestScore) { bestScore = score; track = t; }
+    }
+    if (!track || bestScore > 1.6) return false;
+    Object.assign(p, track);
+    p.route = track;
+    p.t = clamp((p.x - track.ax) * track.ux + (p.z - track.az) * track.uz, 0.05, track.len - 0.05);
+    p.waiting = false;
+    p.rig.placed = false;
+    return true;
+  }
+  // Swap the walking graph when the resident routing network changes: keep everyone with an
+  // equivalent track, retire the rest. Counters and caches belong to the old graph, never kept.
+  function setNetwork(next, nextBlockAt) {
+    network = next;
+    if (nextBlockAt) blockAt = nextBlockAt;
+    pedRoutes = createPedestrianRoutes(network, blockAt);
+    for (const n of network.nodes) { n.walkers = []; n.curb = []; }
+    curbNodes.length = 0;
+    walkedNodes.length = 0;
+    for (const p of peds) {
+      if (!p.placed) continue;
+      if (p.conversation) endConversation(p.conversation);
+      p.nextRoute = null;
+      p.nextLeg = 0;
+      p.pause = 0;
+      p.avoidUntil = 0;
+      p.resumeDir = 0;
+      const matched = p.node ? rematchCrossing(p) : rematchSidewalk(p);
+      if (!matched) { p.placed = false; p.route = null; p.node = null; p.rig.placed = false; }
+    }
+  }
+
+  return { peds, meshes: pedCrowd.meshes, update, setNetwork };
 }
 
 export { createPedestrianSystem };

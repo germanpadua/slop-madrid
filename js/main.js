@@ -23,6 +23,7 @@ import { createTileWorld, createOutOfMapFloor } from './madrid-tile-world.js';
 import { createTileStreamer } from './madrid-tiles.js';
 import { createTilePreparer } from './madrid-tile-preparer.js';
 import { createMadridDistanceDetail } from './madrid-distance-detail.js';
+import { createResidentRoadService } from './madrid-road-network.js';
 
 // js/main.js
 // Main entry point for Madrid (centro) in Three.js WebGPURenderer & TSL (three.js dev, see index.html)
@@ -180,15 +181,18 @@ async function initApp() {
   const tileCompileProbes = tileWorld.createCompileProbes();
   let tileStreamer = null;
   let distanceDetail = null;
+  let roadService = null;
+  let roadStats = null;
   const tilePreparer = createTilePreparer({ distanceGeometry: bootParams.get('detail') === 'geometry' });
   window.addEventListener('pagehide', (event) => { if (!event.persisted) tilePreparer.dispose(); });
+  window.addEventListener('pagehide', (event) => { if (!event.persisted) roadService?.dispose(); });
   try {
     tileStreamer = await createTileStreamer({
       world: tileWorld,
       prepareTile: (tile) => tilePreparer.prepare(tile),
       manifestUrl: new URL('../tools/madrid/tiles.json', import.meta.url).href,
       baseUrl: new URL('..', import.meta.url).href,
-      onStatus: () => { controllerManager.refreshColliders(); distanceDetail?.register(scene); }
+      onStatus: () => { controllerManager.refreshColliders(); distanceDetail?.register(scene); roadService?.schedule(); }
     });
     const ring = tileStreamer.manifest?.almendra?.ring;
     if (ring && ring.length > 2) {
@@ -196,6 +200,20 @@ async function initApp() {
       createOutOfMapFloor(scene, [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)]);
     }
     tileStreamer.update(cameraSystem.currentPos.x, cameraSystem.currentPos.z);
+    // Circulation network: the seed geometry graph is live from boot; the resident source graph
+    // (seed + mounted tiles) replaces it as soon as the worker has laid it out, and every tile
+    // load/unload schedules a new one. Cars and pedestrians keep their equivalent edges/tracks.
+    roadService = createResidentRoadService({
+      tileWorld,
+      manifest: tileStreamer.manifest,
+      seedSidewalks: cityGrid.sidewalks,
+      onNetwork: (network, blockAt, stats) => {
+        trafficSystem.setNetwork(network, blockAt);
+        roadStats = stats;
+        if (window.__madrid) window.__madrid.roadStats = stats;
+      },
+      onError: (error) => console.warn('[madrid-roads] resident network unavailable:', error.message)
+    });
     markInit('tiles');
   } catch (err) {
     console.warn('[madrid-tiles] tile streaming disabled:', err.message);
@@ -204,7 +222,8 @@ async function initApp() {
   // Opt-in diagnostics (?debug): the measurement harness (tools/madrid/measure.mjs) reads the streamer, renderer
   // stats and the controller from the page. Nothing is exposed on a normal visit.
   if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug')) {
-    window.__madrid = { renderer, scene, tileStreamer, tileWorld, controllerManager, cameraSystem };
+    window.__madrid = { renderer, scene, tileStreamer, tileWorld, controllerManager, cameraSystem, trafficSystem,
+      roadService, roadStats, cityGrid, streetDetails };
   }
 
   const touchControls = new TouchControls(controllerManager);

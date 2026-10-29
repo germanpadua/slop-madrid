@@ -1,5 +1,6 @@
 import * as THREE from 'three/webgpu';
 import { buildRoadNetwork } from './road-network.js';
+import { matchLane } from './madrid-road-matching.js';
 import { createPedestrianSystem } from './pedestrian-system.js';
 import { signalPhase, walkSignal } from './city-config.js';
 import { cityUniforms, createContactShadowMaterial, createCarFlareMaterial } from './tsl-materials.js';
@@ -70,7 +71,7 @@ function createBusDestinationTexture() {
 
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
 
-function createTrafficSystem(scene, sidewalks, obstacles, signalIntersections) {
+function createTrafficSystem(scene, sidewalks, obstacles, signalIntersections, options = {}) {
   const group = new THREE.Group();
   group.name = 'ManhattanTrafficAndPedestrians';
   let collisionListener = null;
@@ -98,29 +99,40 @@ function createTrafficSystem(scene, sidewalks, obstacles, signalIntersections) {
   // =========================================================================
   // 0. ROAD NETWORK
   // =========================================================================
-  const network = buildRoadNetwork(sidewalks, obstacles, signalIntersections);
-  const { nodes, edges, connector, curvePoint } = network;
+  // The seed network is built synchronously from the geometry as before. The app may hand in a
+  // prepared resident network instead, and later swap in newer ones as tiles stream (setNetwork).
+  let network = options.network || buildRoadNetwork(sidewalks, obstacles, signalIntersections);
+  let { nodes, edges, connector, curvePoint } = network;
 
   // Sides of an intersection (road-network.js step 9): a grid intersection's are 0 east, 1 west, 2 south, 3 north;
   // centreline junctions number their arms from 4. Where lane i of edge e meets a crosswalk, measured along the
   // crosswalk: along its road's lateral axis (x across north-south roads, z across east-west ones)
   const laneCoord = (e, i) => (e.sx + e.rx * e.lanes[i]) * e.clx + (e.sz + e.rz * e.lanes[i]) * e.clz;
 
-  for (const n of nodes) {
-    n.box = new Array(n.groupCount).fill(0); // vehicles crossing it from each road (group: on the grid avenue 0, street 1)
-    n.crossing = new Array(n.sideCount).fill(0); // vehicles crossing (or about to cross) the crosswalk on each side
-    n.approach = new Array(n.sideCount).fill(null); // the edge arriving over each side's crosswalk
-    n.road = new Array(n.sideCount).fill(null); // an edge arriving or leaving over each side's crosswalk: the road it spans
+  // Runtime counters owned by this system (occupancy, approach/road links). They are rebuilt for every
+  // network the resident worker produces; a stale counter left on a node or edge would break the next frame.
+  function initNetwork(net) {
+    for (const n of net.nodes) {
+      n.box = new Array(n.groupCount).fill(0); // vehicles crossing it from each road (group: on the grid avenue 0, street 1)
+      n.crossing = new Array(n.sideCount).fill(0); // vehicles crossing (or about to cross) the crosswalk on each side
+      n.approach = new Array(n.sideCount).fill(null); // the edge arriving over each side's crosswalk
+      n.road = new Array(n.sideCount).fill(null); // an edge arriving or leaving over each side's crosswalk: the road it spans
+      n.touched = false;
+      n.walkers = []; // pedestrians (pedestrian-system.js) rebuilt around the new tracks
+      n.curb = [];
+    }
+    for (const e of net.edges) {
+      e.occ = e.lanes.map(() => []); // vehicles in each lane, sorted by position
+      // e.inSide / e.outSide: the crosswalks crossed on the way into e.to / out of e.from; e.axisIndex: its group at e.to;
+      // e.opposite: the oncoming edge of its road there (road-network.js)
+      e.to.approach[e.inSide] = e;
+      e.to.road[e.inSide] = e.from.road[e.outSide] = e;
+      e.through = 0; // vehicles from e crossing e.to straight on or to the right
+      e.lefts = 0; // and to the left
+      e.touched = false;
+    }
   }
-  for (const e of edges) {
-    e.occ = e.lanes.map(() => []); // vehicles in each lane, sorted by position
-    // e.inSide / e.outSide: the crosswalks crossed on the way into e.to / out of e.from; e.axisIndex: its group at e.to;
-    // e.opposite: the oncoming edge of its road there (road-network.js)
-    e.to.approach[e.inSide] = e;
-    e.to.road[e.inSide] = e.from.road[e.outSide] = e;
-    e.through = 0; // vehicles from e crossing e.to straight on or to the right
-    e.lefts = 0; // and to the left
-  }
+  initNetwork(network);
   // Is the intersection box held by vehicles of any road but group g's?
   const boxBusy = (n, g) => {
     for (let k = 0; k < n.box.length; k++) if (k !== g && n.box[k] > 0) return true;
@@ -315,7 +327,7 @@ function createTrafficSystem(scene, sidewalks, obstacles, signalIntersections) {
   const nearEdges = [];
   const nearSignals = [];
   const pedestrianSystem = createPedestrianSystem(network, {
-    player, nearEdges, nearSignals, mayCross, walkOn, visible, nearView
+    player, nearEdges, nearSignals, mayCross, walkOn, visible, nearView, blockAt: options.blockAt
   });
   group.add(...pedestrianSystem.meshes);
 
@@ -1311,7 +1323,7 @@ function createTrafficSystem(scene, sidewalks, obstacles, signalIntersections) {
     return true;
   }
 
-  function place(v, e, lane, s) {
+  function place(v, e, lane, s, speed = v.v0 * 0.5) {
     v.edge = e;
     v.lane = lane;
     v.s = s;
@@ -1320,7 +1332,7 @@ function createTrafficSystem(scene, sidewalks, obstacles, signalIntersections) {
     v.commit = null;
     v.yielding = false;
     v.wait = 0;
-    v.speed = v.v0 * 0.5;
+    v.speed = speed;
     v.acc = 0;
     v.dl = v.dlv = 0;
     v.vx = v.vz = v.yawOffset = v.yawVel = v.pitch = v.pitchVel = v.roll = v.rollVel = 0;
@@ -1772,9 +1784,50 @@ function createTrafficSystem(scene, sidewalks, obstacles, signalIntersections) {
     updateSparks(dt);
   }
 
+  // Match a vehicle onto the equivalent lane of a new network: position + heading geometrically,
+  // because the resident edges are rebuilt when tiles stream. A vehicle with no equivalent lane is
+  // retired and respawns near the focus later, so no route can point at an unloaded edge.
+  function rematchVehicle(v) {
+    const match = matchLane(edges, { x: v.x, z: v.z, tx: v.tx, tz: v.tz, half: v.half,
+      halfWidth: v.halfWidth, bus: v.bus });
+    if (!match) return false;
+    place(v, match.edge, match.lane, match.s, clamp(v.speed || v.v0 * 0.5, 0, v.v0));
+    return true;
+  }
+
+  // Replace the resident routing graph in place. Existing actors keep their world pose and stay on
+  // equivalent lanes/tracks; only the ones with no equivalent are retired (they respawn near the
+  // focus). Meshes, materials, population counters and the lane pool are reused, never rebuilt.
+  function setNetwork(nextNetwork, nextBlockAt) {
+    if (!nextNetwork || nextNetwork === network) return false;
+    network = nextNetwork;
+    ({ nodes, edges, connector, curvePoint } = nextNetwork);
+    initNetwork(network);
+    touchedNodes.length = 0;
+    touchedEdges.length = 0;
+    filled.length = 0;
+    poolUsed = 0;
+    for (const v of vehicles) {
+      const wasPlaced = !!v.edge;
+      v.edge = null;
+      v.move = null;
+      v.conn = v.trail = v.commit = null;
+      v.claimed = false;
+      v.yielding = false;
+      v.dl = v.dlv = 0;
+      if (!wasPlaced) continue;
+      if (!rematchVehicle(v)) { v.speed = 0; v.acc = 0; }
+    }
+    pedestrianSystem.setNetwork(network, nextBlockAt || options.blockAt);
+    nearX = nearZ = Infinity;
+    return true;
+  }
+
   return {
     group,
     update,
+    setNetwork,
+    getNetwork: () => network,
     setCollisionListener,
     cars,
     buses,
