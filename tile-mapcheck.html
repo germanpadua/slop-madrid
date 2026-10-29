@@ -21,7 +21,8 @@ import { createTilePreparer } from './js/madrid-tile-preparer.js';
 window.__mc = { ready: false, errors: [] };
 window.onerror = (m) => { window.__mc.errors.push(String(m)); };
 window.addEventListener('unhandledrejection', (e) => { window.__mc.errors.push('rej:' + String(e.reason && e.reason.message || e.reason)); });
-const TILEID = (location.search.match(/tile=([a-z0-9-]+)/i) || [])[1] || 'k3j0';
+const TILEIDS = (location.search.match(/tile=([a-z0-9,-]+)/i) || [,'k3j0'])[1].split(',');
+const TILEID = TILEIDS[0];
 if (location.search.includes('flatfacade=1')) globalThis.__FLATFACADE = true;
 if (location.search.includes('nowater=1')) globalThis.__NOWATER = true;
 if (location.search.includes('lawndebug=1')) globalThis.__LAWNDEBUG = true;
@@ -39,35 +40,43 @@ const sun = new THREE.DirectionalLight(0xffca92, 5.8);
 sun.position.set(-44, 58, -68);
 scene.add(sun);
 const t0 = performance.now();
-const mod = await import(`./js/geodata/tile-${TILEID}.js`);
-const tile = mod.TILE;
-const importMs = performance.now() - t0;
 const preparer = createTilePreparer({});
-const tp = performance.now();
-const prepared = await preparer.prepare(tile);
-const prepareMs = performance.now() - tp;
 const world = createTileWorld(scene, {});
-const tb = performance.now();
-const tileArg = { ...prepared, bytes: 0 };
-const entry = world.addTile(tileArg);
-const buildMs = performance.now() - tb;
-const group = entry.group || entry;
-if (group.parent !== scene) scene.add(group);
+let importMs = 0, prepareMs = 0, buildMs = 0;
+const tiles = [], perTile = [];
+for (const id of TILEIDS) {
+  const ti = performance.now();
+  const mod = await import(`./js/geodata/tile-${id}.js`);
+  const tile = mod.TILE;
+  importMs += performance.now() - ti;
+  const tp = performance.now();
+  const prepared = await preparer.prepare(tile);
+  prepareMs += performance.now() - tp;
+  const tb = performance.now();
+  const tileArg = { ...prepared, bytes: 0 };
+  const entry = world.addTile(tileArg);
+  buildMs += performance.now() - tb;
+  const group = entry.group || entry;
+  if (group.parent !== scene) scene.add(group);
+  tiles.push({ id, tile, group, tileArg });
+  perTile.push({ id, stageMs: (prepared.prepared || prepared).stageMs });
+}
 let roofInstances = 0, boxInstances = 0, meshTris = 0;
-group.traverse((o) => {
+for (const { group } of tiles) group.traverse((o) => {
   if (/TileBuildings/i.test(o.name || '')) boxInstances += o.count;
   if (/Roofs/i.test(o.name || '')) roofInstances += o.count;
   if (o.isMesh || o.isInstancedMesh) { const t = ((o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3) * (o.isInstancedMesh ? o.count : 1); meshTris += t; }
 });
 const fpModes = {};
-for (const s of (tileArg.footprintStats || [])) fpModes[s.mode] = (fpModes[s.mode] || 0) + 1;
-const core = tile.core[0];
-const cx = (core[0] + core[2]) / 2, cz = (core[1] + core[3]) / 2;
-const span = Math.max(core[2] - core[0], core[3] - core[1]);
+for (const { tileArg } of tiles) for (const s of (tileArg.footprintStats || [])) fpModes[s.mode] = (fpModes[s.mode] || 0) + 1;
+let ux0 = Infinity, uz0 = Infinity, ux1 = -Infinity, uz1 = -Infinity;
+for (const { tile } of tiles) for (const c of tile.core) { ux0 = Math.min(ux0, c[0]); uz0 = Math.min(uz0, c[1]); ux1 = Math.max(ux1, c[2]); uz1 = Math.max(uz1, c[3]); }
+const cx = (ux0 + ux1) / 2, cz = (uz0 + uz1) / 2;
+const span = Math.max(ux1 - ux0, uz1 - uz0);
 let streetCam = null;
 {
   let best = null, bestLen = 0;
-  for (const rd of (tile.roads || [])) {
+  for (const rd of (tiles[0].tile.roads || [])) {
     const pts = rd[5] || [];
     let L = 0; for (let i = 0; i + 3 < pts.length; i += 2) L += Math.hypot(pts[i + 2] - pts[i], pts[i + 3] - pts[i + 1]);
     if (L > bestLen) { bestLen = L; best = pts; }
@@ -85,6 +94,6 @@ let streetCam = null;
   }
 }
 window.__mc = { ready: true, errors: window.__mc.errors, renderer, scene, THREE,
-  info: { tile: TILEID, importMs: Math.round(importMs), prepareMs: Math.round(prepareMs), stageMs: (prepared.prepared || prepared).stageMs, buildMs: Math.round(buildMs),
+  info: { tile: TILEIDS.join('+'), importMs: Math.round(importMs), prepareMs: Math.round(prepareMs), stageMs: perTile.length === 1 ? perTile[0].stageMs : perTile, buildMs: Math.round(buildMs),
     roofInstances, boxInstances, meshTris: Math.round(meshTris), fpModes, cx, cz, span, streetCam } };
 </script></body></html>
