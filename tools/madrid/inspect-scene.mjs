@@ -19,6 +19,8 @@ const place = arg('--place', 'cibeles');
 const gridN = Number(arg('--grid', '3'));
 const waitMs = Number(arg('--wait', '6000'));
 const jsonOut = arg('--json-out', null);
+const shotPath = arg('--shot', null);
+const ndcPoint = arg('--ndc', null);
 
 const server = http.createServer((req, res) => {
   const url = decodeURIComponent(req.url.split('?')[0]);
@@ -37,14 +39,19 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 page.on('pageerror', (e) => console.error('[pageerror]', String(e)));
 await page.goto('http://127.0.0.1:' + port + '/?debug=1&capture=1', { waitUntil: 'load', timeout: 120000 });
 await page.waitForFunction(() => window.__madrid && document.querySelector('#loading-overlay.hidden'), null, { timeout: 180000 });
-const out = await page.evaluate(async ({ place, gridN, waitMs }) => {
+const out = await page.evaluate(async ({ place, gridN, waitMs, ndcPoint, shotPath }) => {
   const THREE = await import('three');
   const api = window.__madrid;
   const { TELEPORT_LOCATIONS } = await import(new URL('./js/city-config.js', location.href).href);
   document.querySelector('#mode-person').click();
+  document.querySelector('#cam-chase').click();
   const target = TELEPORT_LOCATIONS[place] || { x: 0, z: 0, heading: 0 };
+  const startFrames = api.renderedFrames || 0;
   api.controllerManager.teleportActiveTo(target.x, target.z, target.heading);
-  await new Promise((r) => setTimeout(r, waitMs));
+  const t0 = performance.now();
+  while (performance.now() - t0 < waitMs && (api.renderedFrames || 0) - startFrames < 3) {
+    await new Promise((r) => setTimeout(r, 200));
+  }
   const entity = api.controllerManager.getActiveEntity?.();
   const entityPos = entity ? { x: +entity.position.x.toFixed(1), y: +entity.position.y.toFixed(1), z: +entity.position.z.toFixed(1) } : null;
   const mode = api.controllerManager.activeMode;
@@ -64,18 +71,26 @@ const out = await page.evaluate(async ({ place, gridN, waitMs }) => {
   };
   const raycaster = new THREE.Raycaster();
   const occluders = [];
-  for (let ix = 0; ix < gridN; ix++) {
-    for (let iy = 0; iy < gridN; iy++) {
-      const ndc = new THREE.Vector2(((ix + 0.5) / gridN) * 2 - 1, 1 - ((iy + 0.5) / gridN) * 2);
-      raycaster.setFromCamera(ndc, camera);
-      const hits = raycaster.intersectObjects(api.scene.children, true);
-      if (hits.length) occluders.push({ ndc: { x: +ndc.x.toFixed(2), y: +ndc.y.toFixed(2) }, ...describe(hits[0]) });
-    }
+  const points = [];
+  if (ndcPoint) for (const pair of ndcPoint.split(';')) {
+    const [x, y] = pair.split(',').map(Number);
+    points.push(new THREE.Vector2(x, y));
   }
+  else for (let ix = 0; ix < gridN; ix++) {
+    for (let iy = 0; iy < gridN; iy++) points.push(new THREE.Vector2(((ix + 0.5) / gridN) * 2 - 1, 1 - ((iy + 0.5) / gridN) * 2));
+  }
+  for (const ndc of points) {
+    raycaster.setFromCamera(ndc, camera);
+    const hits = raycaster.intersectObjects(api.scene.children, true);
+    if (hits.length) occluders.push({ ndc: { x: +ndc.x.toFixed(2), y: +ndc.y.toFixed(2) }, ...describe(hits[0]) });
+  }
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  const shot = shotPath ? document.querySelector('canvas').toDataURL('image/jpeg', 0.72) : null;
   const cameraPos = camera.getWorldPosition(new THREE.Vector3());
-  return { place, target, mode, entity: entityPos, camera: { x: +cameraPos.x.toFixed(1), y: +cameraPos.y.toFixed(1), z: +cameraPos.z.toFixed(1) }, occluders };
-}, { place, gridN, waitMs });
-if (jsonOut) fs.writeFileSync(path.resolve(ROOT, jsonOut), JSON.stringify(out, null, 2));
-console.log(JSON.stringify({ place: out.place, target: out.target, mode: out.mode, entity: out.entity, camera: out.camera, hits: out.occluders.length, jsonOut }));
+  return { place, target, mode, entity: entityPos, camera: { x: +cameraPos.x.toFixed(1), y: +cameraPos.y.toFixed(1), z: +cameraPos.z.toFixed(1) }, occluders, shot };
+}, { place, gridN, waitMs, ndcPoint, shotPath });
+if (jsonOut) fs.writeFileSync(path.resolve(ROOT, jsonOut), JSON.stringify({ ...out, shot: undefined }, null, 2));
+if (shotPath && out.shot) fs.writeFileSync(path.resolve(ROOT, shotPath), Buffer.from(out.shot.split(',')[1], 'base64'));
+console.log(JSON.stringify({ place: out.place, target: out.target, mode: out.mode, entity: out.entity, camera: out.camera, hits: out.occluders.length, jsonOut, shotPath }));
 await browser.close();
 server.close();

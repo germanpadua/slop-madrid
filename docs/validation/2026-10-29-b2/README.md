@@ -68,10 +68,21 @@ que haya coches en la calle. Queda como limitación de la caída a la red hereda
 ## Capturas
 
 `street-sol.jpg`, `street-granvia.jpg`, `street-cibeles.jpg` (peatón a las 3 plazas), `tile-k0j-1.jpg`,
-`tile-k1j-1.jpg` (calle en tesela con tráfico: taxi, furgonetas, pasos de cebra). Con la GPU software el
-cámara de seguimiento tarda en asentarse tras cada teletransporte, así que se usan como evidencia
-ilustrativa de tráfico en calle, no como veredicto de paridad con cámara fija; el veredicto visual
-por manzanas sigue pendiente (bloque A).
+`tile-k1j-1.jpg` (calle en tesela con tráfico: taxi, furgonetas, pasos de cebra) y `cibeles-fixed.jpg`
+(cámara de seguimiento ya asentada en Cibeles, `inspect-scene.mjs --place cibeles --shot ...`). Con GPU
+software la cámara tarda varios frames en asentarse tras cada teletransporte; por eso las capturas de
+la ronda de circulación son ilustrativas y `cibeles-fixed.jpg` es la única con encuadre estable.
+
+Defectos visuales observados en el encuadre estable de Cibeles (para los bloques A/C, no de B2):
+
+- El "cubo blanco" a la izquierda del Palacio de Cibeles es una **extrusión genérica de huella OSM**
+  (`js/landmarks.js`) con material de cuerpo liso y sin ventanas; los edificios con monumento
+  procedural (Palacio de Cibeles, Puerta de Alcalá...) sí tienen detalle. Es la monotonía de fachadas
+  ya documentada, no un objeto suelto.
+- La **Fuente de Cibeles** no está modelada (`monuments.js` no la incluye; solo existe como punto OSM en
+  `GEO.landmarks`), así que la glorieta queda como pavimento liso.
+- El pavimento de la plaza (`Landmarks` color `bfb49f`, plano a y=0,12) no tiene juntas/textura a esta
+  distancia: candidato de detalle de calle (C).
 
 ## Riesgos y pendientes de este bloque
 
