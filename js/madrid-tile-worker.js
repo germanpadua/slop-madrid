@@ -3,8 +3,9 @@ self.onmessage = ({ data: { requestId, tile } }) => {
   try {
     const start = performance.now();
     const prepared = prepareTile(tile);
-    const transfer = prepared.farBuildings
-      ? [prepared.farBuildings.positions.buffer, prepared.farBuildings.normals.buffer, prepared.farBuildings.colors.buffer, prepared.farBuildings.indices.buffer] : [];
+    const fb = prepared.farBuildings;
+    const transfer = fb && fb.positions && fb.normals && fb.colors && fb.indices
+      ? [fb.positions.buffer, fb.normals.buffer, fb.colors.buffer, fb.indices.buffer] : [];
     self.postMessage({ requestId, prepared, workerMs: performance.now() - start }, transfer);
   } catch (error) {
     self.postMessage({ requestId, error: error.message });

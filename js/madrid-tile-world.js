@@ -718,7 +718,7 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     }
 
     const far = matchingPreparation && globalThis.__FP !== false && globalThis.__MERGED !== true && tile.prepared.farBuildings;
-    if (far?.indices.length) {
+    if (far && far.indices && far.indices.length && far.positions && far.positions.length && far.normals && far.colors) {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.BufferAttribute(far.positions, 3));
       geometry.setAttribute('normal', new THREE.BufferAttribute(far.normals, 3));
