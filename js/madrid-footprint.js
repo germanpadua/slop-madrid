@@ -153,6 +153,26 @@ const inPoly = (poly, u, v) => {
   return inside;
 };
 
+
+// Memoized uv-frame bounds per rect (non-enumerable: the public rect shape is unchanged). The merge
+// scan below re-derived these from world corners on EVERY pair check (16 projections per check);
+// caching the exact same derivation keeps the comparisons (and the merge decisions) bit-identical.
+const uvbCache = new WeakMap();
+const uvbOf = (r, f) => {
+  let b = uvbCache.get(r);
+  if (b) return b;
+  const toUv2 = (c) => [c[0] * f.ux + c[1] * f.uz, c[0] * f.vx + c[1] * f.vz];
+  const au = r.corners.map(toUv2);
+  let aU0 = 1e9, aU1 = -1e9, aV0 = 1e9, aV1 = -1e9;
+  for (const q of au) {
+    if (q[0] < aU0) aU0 = q[0]; if (q[0] > aU1) aU1 = q[0];
+    if (q[1] < aV0) aV0 = q[1]; if (q[1] > aV1) aV1 = q[1];
+  }
+  b = [aU0, aU1, aV0, aV1];
+  uvbCache.set(r, b);
+  return b;
+};
+
 /**
  * decomposeRing(ring, { stripW = 6, minW = 2, minD = 2, samples = 24 }):
  * -> { rects: [{ x0, z0, x1, z1 }] (world coords), deviation: 0..1, frame, areaPoly, areaRects }
@@ -219,18 +239,8 @@ export function decomposeRing(ring, { stripW = 6, minW = 2, minD = 2, holes = []
     let merged = false;
     for (let i = 0; i < rects.length && !merged; i++) {
       for (let j = i + 1; j < rects.length && !merged; j++) {
-        const A = rects[i].corners, B = rects[j].corners;
-        // corners: [bl, br, tr, tl] in uv
-        const Abl = A[0], Abr = A[1], Atl = A[3], Bbl = B[0], Bbr = B[1], Btl = B[3];
-        // uv-space coords
-        const uvA = (q) => q; // corners were converted to world; recompute uv below instead
-        // Recover uv bounds from world corners via frame
-        const toUv2 = (c) => [c[0] * f.ux + c[1] * f.uz, c[0] * f.vx + c[1] * f.vz];
-        const au = A.map(toUv2), bu = B.map(toUv2);
-        const aU0 = Math.min(...au.map((q) => q[0])), aU1 = Math.max(...au.map((q) => q[0]));
-        const aV0 = Math.min(...au.map((q) => q[1])), aV1 = Math.max(...au.map((q) => q[1]));
-        const bU0 = Math.min(...bu.map((q) => q[0])), bU1 = Math.max(...bu.map((q) => q[0]));
-        const bV0 = Math.min(...bu.map((q) => q[1])), bV1 = Math.max(...bu.map((q) => q[1]));
+        const [aU0, aU1, aV0, aV1] = uvbOf(rects[i], f);
+        const [bU0, bU1, bV0, bV1] = uvbOf(rects[j], f);
         const tol = 0.15;
         if (Math.abs(aU0 - bU0) < tol && Math.abs(aU1 - bU1) < tol &&
             (Math.abs(aV1 - bV0) < 0.01 || Math.abs(bV1 - aV0) < 0.01)) {
@@ -245,6 +255,7 @@ export function decomposeRing(ring, { stripW = 6, minW = 2, minD = 2, holes = []
           let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9;
           for (const [x, z] of rects[i].corners) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); z0 = Math.min(z0, z); z1 = Math.max(z1, z); }
           Object.assign(rects[i], { x0, x1, z0, z1 });
+          uvbCache.delete(rects[i]);
           rects.splice(j, 1);
           merged = true;
         }
@@ -266,15 +277,38 @@ export function decomposeRing(ring, { stripW = 6, minW = 2, minD = 2, holes = []
     for (const q of c) { a0 = Math.min(a0, q[0]); a1 = Math.max(a1, q[0]); b0 = Math.min(b0, q[1]); b1 = Math.max(b1, q[1]); }
     return [a0, a1, b0, b1];
   });
+  uvRects.sort((A, B) => A[0] - B[0]);
   const inRect = (u, v) => {
     for (const [a0, a1, b0, b1] of uvRects) {
+      if (a0 > u) break; // sorted: no later rect can contain u
       if (u >= a0 && u <= a1 && v >= b0 && v <= b1) return true;
     }
     return false;
   };
+  // Scanline form of the same probe: inPoly(u,v) is the parity of the edge crossings right of u,
+  // so per v-row the crossings (computed with the EXACT same expression as inPoly) are sorted once
+  // and each sample resolves by binary search. Bit-identical booleans, O(E) per row not per sample.
+  const rowCrossings = (poly, v) => {
+    const xs = [];
+    for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+      const [uj, vj] = poly[j], [ui, vi] = poly[i];
+      if ((vi > v) !== (vj > v)) xs.push(((uj - ui) * (v - vi)) / (vj - vi) + ui);
+    }
+    return xs.sort((a, b) => a - b);
+  };
+  const insideFrom = (xs, u) => {
+    let lo = 0, hi = xs.length;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (xs[mid] > u) hi = mid; else lo = mid + 1; }
+    return ((xs.length - lo) & 1) === 1;
+  };
+  const rowV = [];
+  for (let j = 0; j < NV; j++) rowV.push(v0 + ((j + 0.5) / NV) * (v1 - v0));
+  const polyRows = rowV.map((v) => rowCrossings(uv, v));
+  const holeRows = uvHoles.map((h) => rowV.map((v) => rowCrossings(h, v)));
   for (let i = 0; i < NU; i++) for (let j = 0; j < NV; j++) {
-    const u = u0 + ((i + 0.5) / NU) * (u1 - u0), v = v0 + ((j + 0.5) / NV) * (v1 - v0);
-    const a = inPoly(uv, u, v) && !uvHoles.some((h) => inPoly(h, u, v)), b = inRect(u, v);
+    const u = u0 + ((i + 0.5) / NU) * (u1 - u0);
+    const a = insideFrom(polyRows[j], u) && !holeRows.some((hr) => insideFrom(hr[j], u));
+    const b = inRect(u, rowV[j]);
     if (a || b) tot++;
     if (a !== b) diff++;
   }

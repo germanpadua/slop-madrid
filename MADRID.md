@@ -716,3 +716,21 @@ manchas lineales oscuras son plausiblemente esos paseos (geometria legitima, loo
 manchas en bloque grandes quedan SIN causa probada (hipotesis: asfalto de plazas/cruce de paseos
 del road renderer). HILO APARCADO aqui por acotado; si se reabre: paseos dentro de parques en tono
 tierra/acera en vez de asfalto de calle.
+
+## Optimizacion de decomposeRing / preparacion de tesela (2026-10-29)
+Perfil (worker real en el harness, k4j2 = tesela mas pesada): decomposeRing era ~64% de la
+preparacion. Dos cuellos: la sonda de desviacion 48x48 re-escaneaba todos los bordes del poligono
+por muestra (O(muestras x bordes)) y el merge de franjas re-proyectaba 16 esquinas por chequeo de
+par. Cambios en js/madrid-footprint.js: (1) sonda scanline - las intersecciones de cada fila v se
+calculan UNA vez con la expresion exacta de inPoly y cada muestra resuelve por busqueda binaria
+(pario de cruces, booleanos bit-identicos); (2) limites uv por rect memoizados en WeakMap (misma
+derivacion, mismos valores, decisiones de merge identicas); (3) inRect con early-break ordenado.
+Telemetria nueva: stageMs por etapa en prepareTile (decompose/heights/roofs/runs) expuesta en el
+INFO del harness.
+Medido (mismo harness, misma sesion, k4j2): decompose 5.388 -> 3.752 ms (-30%); preparacion total
+7.599 -> 5.842 ms (-23%). Node: k4j2 5,6 -> 3,6 s; k3j1 628 -> 198 ms (3,2x); k3j0 2,1 -> 1,9 s
+(1,1x - el camino de holes de k3j0 queda como candidato futuro).
+CORRECCIONES VERIFICADAS: salida de decomposeRing deep-equal a HEAD en TODAS las 4.851 parcelas de
+k4j2 + 733 muestreadas de k3j0/k4j2 + las 106 con patios de k3j0; render pixel-identico (0/518.400
+pixeles de diferencia vs HEAD en el harness). OJO: benchmark-preparation.mjs con baseline 77921de
+revienta por memoria en sandbox de 2 GB - usar el diferencial por parcelas como guardia.

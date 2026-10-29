@@ -85,6 +85,6 @@ let streetCam = null;
   }
 }
 window.__mc = { ready: true, errors: window.__mc.errors, renderer, scene, THREE,
-  info: { tile: TILEID, importMs: Math.round(importMs), prepareMs: Math.round(prepareMs), buildMs: Math.round(buildMs),
+  info: { tile: TILEID, importMs: Math.round(importMs), prepareMs: Math.round(prepareMs), stageMs: (prepared.prepared || prepared).stageMs, buildMs: Math.round(buildMs),
     roofInstances, boxInstances, meshTris: Math.round(meshTris), fpModes, cx, cz, span, streetCam } };
 </script></body></html>
