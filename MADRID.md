@@ -639,3 +639,25 @@ import 0,06-0,1 s, prepare 0,8-5,3 s en worker, build 0,1-0,3 s; 18k-153k tris p
   ciudad). Flags honestos: la ruta de teselas no pinta marcas viales (roadPaint es de la app); el asfalto
   lleva motas oscuras de suciedad; una medianera gris-azulada vista en un encuadre malo queda sin explicar
   (no verificada). Ache os de contacto: sin sombras en este harness, grounding no juzgable aquí.
+
+## Árboles de parque en la ruta de teselas (2026-10-29)
+La ruta de teselas pintaba los parques como césped desnudo (el Retiro se leía como un rectángulo verde
+vacío con su estanque oscuro): el createTreeField del seed es de capacidad fija y no cubre teselas, así
+que no había árboles en streaming. Sección 2b nueva en js/madrid-tile-world.js: dispersión determinista
+de arboleda (rejilla de 15 m con jitter hash, sin-field que abre claros, point-in-ring real sobre los
+rings OSM del parque; rechaza agua, calzadas (mitad de anchura + 2 m) y AABBs de parcela ±1 m). Un par de
+InstancedMesh por tesela (tronco prisma 8 tris, copa bipirámide hexagonal 12 tris, variante conífera
+estrecha/oscura al ~12%), materiales compartidos a nivel módulo, castShadow on; la geometría muere con la
+tesela en removeTile (eviction-safe, a diferencia del tree field de capacidad fija).
+Medido (mismo harness tile-mapcheck, antes -> después):
+- k3j1 (Retiro oeste): 17.994 -> 69.674 tris (+51.680, ~2.580 árboles); build 157 -> 232 ms.
+- k4j1 (Retiro este): 99.798 -> 104.998 tris (+5.200, ~260 árboles).
+- k4j2 (Salamanca este): 152.962 -> 155.422 tris (+2.460, ~123 árboles) - las plazas pequeñas quedan
+  mayoritariamente limpias (margen de 8 m de rejilla); comparación píxel a píxel k4j2 antes/después sin
+  árboles en asfalto (las motas oscuras del suelo son textura preexistente, presentes en ambos).
+Píxeles verificados: k3j1 top/oblique/street (arboleda con variación de grove, estanque y edificios
+limpios de árboles; a pie se leen troncos + copas con tintes verdes variados), k4j2 top (tejido urbano
+intacto, cuña verde con árboles), k4j1 top/oblique.
+Límites honestos: árboles de 20 tris sin LOD ni detalle de cerca; sin caminos/parterres dentro de los
+parques (sigue siendo césped + árboles); la alineación con especies/posiciones reales no existe (scatter
+sintético); el follow-up abierto para detalle de cerca es un tree field compartido streaming-aware.

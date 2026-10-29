@@ -33,6 +33,10 @@ hipRoofMat.colorNode = Fn(() => {
   const course = smoothstep(0.35, 0.65, fract(positionGeometry.y.mul(22.0)));
   return mix(color(0xffffff), color(0xd8cec6), course.mul(0.14));
 })();
+const parkTrunkMat = new THREE.MeshStandardNodeMaterial({ color: 0x6b4a33, roughness: 0.95, metalness: 0 });
+const parkCrownMat = new THREE.MeshStandardNodeMaterial({ roughness: 0.92, metalness: 0.0, side: THREE.DoubleSide });
+const PARK_CROWN_TINTS = [0x4c7a3a, 0x5d8a41, 0x6b9448, 0x3f6e35].map((c) => new THREE.Color(c));
+const PARK_CONIFER = new THREE.Color(0x2e5230);
 const HIP_PALETTE = [0xb0512b, 0xbc5f33, 0xa6492a, 0xc06a3d, 0x9a5238].map((c) => new THREE.Color(c));
 const HIP_SLATE = new THREE.Color(0x5d646e);
 const HIP_GEO_TRIS = new Float32Array([
@@ -212,6 +216,104 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       mesh.receiveShadow = true;
       mesh.name = 'TileParks';
       group.add(mesh);
+    }
+
+    // 2b. Park trees (Warsaw-simple): deterministic grove scatter on the real park landuse.
+    // Parks rendered as bare lawn until now (the Retiro read as an empty green rectangle in the
+    // streamed tiles; the seed's detailed tree field is fixed-capacity and does not cover tiles -
+    // a streaming-aware shared field is the open follow-up for close-up park detail). One instanced
+    // trunk + one instanced crown mesh per tile; geometry dies with the tile on eviction, materials
+    // shared. Trees keep out of the water, off the roadways and out of the building parcels.
+    {
+      const pointInRing = (pts, x, z) => {
+        let inside = false;
+        for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+          const xi = pts[i].x, zi = pts[i].z, xj = pts[j].x, zj = pts[j].z;
+          if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+        }
+        return inside;
+      };
+      const distSeg = (x, z, ax, az, bx, bz) => {
+        const dx = bx - ax, dz = bz - az;
+        const L2 = dx * dx + dz * dz || 1e-9;
+        const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L2));
+        return Math.hypot(x - (ax + dx * t), z - (az + dz * t));
+      };
+      const parcelBxs = (tile.parcels || []).map((p) => bboxOf(toPts(p.ring || [])));
+      const roadLines = (tile.roads || []).map((rd) => ({ w: (rd[1] || 6) / 2 + 2, pts: rd[5] || [] }));
+      const sites = [];
+      const SP = 15;
+      for (const park of tile.parks || []) {
+        for (const flat of park.rings || []) {
+          const ring = toPts(flat);
+          if (ring.length < 3) continue;
+          const bb = bboxOf(ring);
+          const wRings = waterBoxes.filter((w) => w.bb.x1 > bb.x0 && w.bb.x0 < bb.x1 && w.bb.z1 > bb.z0 && w.bb.z0 < bb.z1).map((w) => w.ring);
+          const pBxs = parcelBxs.filter((p) => p.x1 > bb.x0 && p.x0 < bb.x1 && p.z1 > bb.z0 && p.z0 < bb.z1);
+          for (let gz = bb.z1 - 8; gz >= bb.z0 + 8; gz -= SP) {
+            for (let gx = bb.x0 + 8; gx <= bb.x1 - 8; gx += SP) {
+              const tx = gx + (hash(gx, 2.1, gz) - 0.5) * SP * 0.95;
+              const tz = gz + (hash(gz, 5.7, gx) - 0.5) * SP * 0.95;
+              const grove = Math.sin(tx * 0.009 + tz * 0.004) + Math.sin(tz * 0.011 - tx * 0.006 + 2.0);
+              const skip = grove > 0.6 ? 0.05 : (grove < -0.8 ? 0.55 : 0.2);
+              if (hash(tx, 9.1, tz) < skip) continue;
+              if (!pointInRing(ring, tx, tz)) continue;
+              if (wRings.some((wr) => pointInRing(wr, tx, tz))) continue;
+              let onRoad = false;
+              for (const rl of roadLines) {
+                for (let i = 0; i + 3 < rl.pts.length; i += 2) {
+                  if (distSeg(tx, tz, rl.pts[i], rl.pts[i + 1], rl.pts[i + 2], rl.pts[i + 3]) < rl.w) { onRoad = true; break; }
+                }
+                if (onRoad) break;
+              }
+              if (onRoad) continue;
+              if (pBxs.some((p) => tx > p.x0 - 1 && tx < p.x1 + 1 && tz > p.z0 - 1 && tz < p.z1 + 1)) continue;
+              sites.push({ x: tx, z: tz, r0: hash(tx, 4.4, tz), r1: hash(tz, 6.6, tx), r2: hash(tx + tz, 8.8, 0.3) });
+            }
+          }
+        }
+      }
+      if (sites.length) {
+        const TRUNK_TRIS = new Float32Array([
+          -0.18, 0, -0.18, 0.18, 0, -0.18, 0.18, 2.4, -0.18, -0.18, 0, -0.18, 0.18, 2.4, -0.18, -0.18, 2.4, -0.18,
+          0.18, 0, 0.18, -0.18, 0, 0.18, -0.18, 2.4, 0.18, 0.18, 0, 0.18, -0.18, 2.4, 0.18, 0.18, 2.4, 0.18,
+          -0.18, 0, -0.18, -0.18, 0, 0.18, -0.18, 2.4, 0.18, -0.18, 0, -0.18, -0.18, 2.4, 0.18, -0.18, 2.4, -0.18,
+          0.18, 0, 0.18, 0.18, 0, -0.18, 0.18, 2.4, -0.18, 0.18, 0, 0.18, 0.18, 2.4, -0.18, 0.18, 2.4, 0.18
+        ]);
+        const crown = [];
+        for (let s = 0; s < 6; s++) {
+          const a0 = (s / 6) * Math.PI * 2, a1 = ((s + 1) / 6) * Math.PI * 2;
+          const x0 = Math.cos(a0) * 2.1, z0 = Math.sin(a0) * 2.1, x1 = Math.cos(a1) * 2.1, z1 = Math.sin(a1) * 2.1;
+          crown.push(x0, 3.4, z0, x1, 3.4, z1, 0, 7.6, 0);       // upper cone
+          crown.push(x1, 3.4, z1, x0, 3.4, z0, 0, 1.8, 0);       // lower cone (skirt)
+        }
+        const trunkGeo = new THREE.BufferGeometry();
+        trunkGeo.setAttribute('position', new THREE.BufferAttribute(TRUNK_TRIS, 3));
+        trunkGeo.computeVertexNormals();
+        const crownGeo = new THREE.BufferGeometry();
+        crownGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(crown), 3));
+        crownGeo.computeVertexNormals();
+        const trunks = new THREE.InstancedMesh(trunkGeo, parkTrunkMat, sites.length);
+        const crowns = new THREE.InstancedMesh(crownGeo, parkCrownMat, sites.length);
+        const dummy = new THREE.Object3D();
+        const tint = new THREE.Color();
+        sites.forEach((t, i) => {
+          const conifer = t.r2 > 0.88;
+          const s = 0.75 + t.r0 * 0.85;
+          dummy.position.set(t.x, 0.05, t.z);
+          dummy.rotation.set(0, t.r1 * Math.PI * 2, 0);
+          dummy.scale.set(s * (conifer ? 0.55 : 0.9 + t.r1 * 0.25), s * (conifer ? 1.45 : 0.9 + t.r2 * 0.25), s * (conifer ? 0.55 : 0.9 + t.r0 * 0.25));
+          dummy.updateMatrix();
+          trunks.setMatrixAt(i, dummy.matrix);
+          crowns.setMatrixAt(i, dummy.matrix);
+          tint.copy(conifer ? PARK_CONIFER : PARK_CROWN_TINTS[Math.floor(t.r0 * 3.999)]).multiplyScalar(0.85 + t.r1 * 0.3);
+          crowns.setColorAt(i, tint);
+        });
+        trunks.castShadow = crowns.castShadow = true;
+        trunks.name = 'TileParkTreeTrunks';
+        crowns.name = 'TileParkTreeCrowns';
+        group.add(trunks); group.add(crowns);
+      }
     }
 
     // 3. Raised sidewalks: the real block slab (cadastral parcels merged), granite curb + inset paving, as in the seed.
