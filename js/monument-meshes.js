@@ -9,6 +9,10 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const MESH_MONUMENTS = new Map([
   // filled per monument after export sidecar is baked; example:
   ['Templo de Debod', { url: 'assets/mesh-monuments/debod-ge2fp1.glb', x: -1153.94, z: -819.63, yawDeg: 0 }],
+  // ge2 batch 2026-10-29: candidate-only, gated LOCAL comparison (not validated, not default)
+  ['Banco de España', { url: 'assets/mesh-monuments/banco-ge2c08.glb', x: 762.10, z: -156.29, yawDeg: 0 }],
+  ['Catedral de la Almudena', { url: 'assets/mesh-monuments/almudena-ge8fp1.glb', x: -908.87, z: 110.14, yawDeg: 0 }],
+  ['Palacio Real', { url: 'assets/mesh-monuments/palacio-ge8fp1.glb', x: -898.62, z: -134.12, yawDeg: 0 }],
 ]);
 
 const gateOn = () => new URLSearchParams(location.search).get('meshmonuments') === '1';
