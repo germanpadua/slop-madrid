@@ -11,7 +11,7 @@ Prohibido push/deploy/merge a main. Auditoría detallada y checklists: `MADRID-P
 | B1. Worker y presupuesto | **hecho** | Worker de módulo terminable por tesela, reservas en vuelo, semilla completa, cancelación y admisión directa; reemplazo de residentes lejanos por celdas cercanas sin subir topes |
 | B2. Mundo activo y mapa | **avance entregado** | Alta/baja real de capas, calles, búsqueda, límites y aceras; grafo activo y rutas por vértices reales. Simulación de tráfico todavía usa semilla (B3) |
 | B3. Tráfico y LOD | pendiente | Adaptar red/simulación, LOD0; preservar movimiento cercano y no resetear todos los actores en cada carga |
-| C. Muestras de acabado fiel | pendiente | Huella exacta de teselas y vegetación con fuente; noche monumentos y localización de textos. No fabricar arquitectura |
+| C. Muestras de acabado fiel | **avance entregado** | Huellas reales cóncavas + 3.504 patios interiores nuevos, 5.989 nodos OSM de árboles/farolas/señales, relleno nocturno estilizado y cartel de bus Madrid. Falta acabado completo/LOD y QC del propietario |
 | D. Medir y cerrar | pendiente | Suite completa antes de cada commit de cierre, verify hashes, harness CPU, presupuesto y limitaciones; GPU/FPS los valida propietario |
 
 Se ejecuta A1 primero para detectar disponibilidad de fuentes; B1 puede continuar durante descargas. Datos antes de

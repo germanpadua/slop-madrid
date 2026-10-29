@@ -222,3 +222,16 @@ test('monuments stream with their tile: resident + near loads, eviction drops', 
   plan = planMonuments({ monuments, loaded: new Set(['near']), resident: new Set(), x: 0, z: 0 });
   assert.deepEqual(plan.drop, ['near'], 'losing the tile drops its monuments');
 });
+
+test('generic landmark volumes require a sourced height and preserve it without a 9 m floor or 160 m ceiling', async () => {
+  const { landmarkExtrusions } = await import('../js/monument-sites.js');
+  const sites = {
+    'Sin altura': { w: 20, ring: [0, 0, 20, 0, 20, 20, 0, 20] },
+    'Altura medida baja': { w: 20, ring: [0, 0, 20, 0, 20, 20, 0, 20], h: 4.2 },
+    'Altura medida alta': { w: 20, ring: [30, 0, 50, 0, 50, 20, 30, 20], h: 180 }
+  };
+  const values = landmarkExtrusions(sites);
+  assert.equal(values.length, 2);
+  assert.equal(values[0].H, 4.2);
+  assert.equal(values[1].H, 180);
+});

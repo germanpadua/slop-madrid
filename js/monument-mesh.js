@@ -4,7 +4,8 @@
 // vertex colours (uint8 RGB) and an index buffer. Every monument was flattened per source building by the pipeline,
 // so its lowest vertex is exactly on the simulation ground: the group is placed at (origin.x, 0, origin.z).
 import * as THREE from 'three/webgpu';
-import { attribute } from 'three/tsl';
+import { attribute, smoothstep } from 'three/tsl';
+import { cityUniforms } from './tsl-materials.js';
 
 const bytesOf = (b64) => {
   const raw = atob(b64);
@@ -50,6 +51,8 @@ export function buildMonumentMesh(data) {
     flatShading: true
   });
   material.colorNode = attribute('color', 'vec3');
+  // Stylised night fill follows the same dusk control as the city windows; no additional light/shadow passes.
+  material.emissiveNode = attribute('color', 'vec3').mul(smoothstep(0.4, 1.1, cityUniforms.uInteriorGlow).mul(0.22));
 
   const mesh = new THREE.Mesh(geometry, material);
   mesh.name = `MonumentMesh:${data.id}`;

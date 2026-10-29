@@ -21,7 +21,7 @@ spec=importlib.util.spec_from_file_location('pbf',sys.argv[1])
 m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
 with tempfile.TemporaryDirectory() as d:
  p=Path(d)/'cell.osm';p.write_text(sys.stdin.read());print(json.dumps(m.overpass_shape(p)))
-`, join(root, 'tools/madrid/pbf.py')], { encoding: 'utf8', input: xml });
+`, join(root, 'tools/madrid/pbf.py')], { encoding: 'utf8', input: xml, env: { ...process.env, PYTHONDONTWRITEBYTECODE: '1' } });
   assert.equal(result.status, 0, result.stderr);
   const { elements } = JSON.parse(result.stdout);
   const a = elements.find((e) => e.id === 10), b = elements.find((e) => e.id === 11);
@@ -65,4 +65,18 @@ test('PBF cells carry source provenance, connected graph indices and sourced str
       assert.ok(p.h === null || p.h > 0);
     }
   }
+});
+
+test('IDEAM interior rings remain courtyards instead of being silently filled by the building roof', () => {
+  let holes = 0;
+  for (const t of readyTiles().filter((t) => t.sourceSnapshot)) {
+    const TILE = JSON.parse(/export const TILE = (.*);\s*$/s.exec(readFileSync(join(root, t.module), 'utf8'))[1]);
+    for (const p of TILE.parcels) for (const h of p.holes || []) {
+      holes++;
+      assert.ok(h.length >= 6 && h.length % 2 === 0 && h.every(Number.isFinite));
+      const outer = new Set(Array.from({ length: p.ring.length / 2 }, (_, i) => `${p.ring[i * 2]},${p.ring[i * 2 + 1]}`));
+      assert.ok(!Array.from({ length: h.length / 2 }, (_, i) => `${h[i * 2]},${h[i * 2 + 1]}`).every((k) => outer.has(k)), 'exterior must never become its own hole');
+    }
+  }
+  assert.ok(holes > 100, `${holes} sourced courtyards preserved`);
 });

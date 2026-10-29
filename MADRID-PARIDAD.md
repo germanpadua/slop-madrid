@@ -188,3 +188,37 @@ Inspección B2 (`http://localhost:8000/?debug=1`):
 - [ ] Alejarse hasta expulsar la celda y volver: capas y búsqueda se actualizan, no quedan huellas fantasma.
 - [ ] Caminar sobre acera en Chamberí: pies a altura de acera y movimiento permitido en las celdas activas.
 - [ ] Fuera de semilla habrá poca o ninguna población simulada: limitación conocida, no fallo de carga de geometría.
+
+### C — muestras de acabado fiel entregadas
+
+Las teselas ya no dibujan el bbox de cada parcela: extruyen el **anillo IDEAM completo** a su altura emitida, con
+las tres fachadas procedurales y paleta del original en coordenadas de mundo. Un mesh por familia, compartiendo
+material entre teselas. Geometría indexada de techo y paredes sin tapa enterrada; no se añade retranqueo, cornisa
+ni volumen de azotea inventado. La extracción de las diez nuevas celdas conserva además **3.504 anillos interiores**
+y alas disjuntas de IDEAM, antes descartados. Los siete módulos de fase 3 y la semilla conservan sus datos previos
+(todavía sin sus anillos interiores). Los colisionadores siguen siendo cajas conservadoras: patios visibles no
+implican todavía una colisión poligonal exacta.
+
+Se añaden **5.989 puntos OSM** de árboles, farolas y señales en las celdas nuevas. Posiciones con id de nodo;
+formas low-poly documentadas: árbol sin altura etiquetada 7 m, farola 6 m, poste de señal 3 m. No se afirma especie
+ni diseño de luminaria medidos; no hay dispersión aleatoria dentro de parques. Las señales son postes sin fase
+activa (el tag no contiene orientación/ciclo); las farolas cambian brillo con la noche. Son símbolos estilizados,
+no emplazamientos fabricados. Retiro en módulos antiguos sigue pendiente de regenerar con puntos de arbolado.
+
+Los monumentos reciben un relleno emisivo tenue (0,22 × color de vértice al anochecer), ligado al uniforme de
+ventanas de la ciudad. **No es un modelo de iluminación municipal ni proyecta luz sobre el entorno.** Se conserva
+cada módulo/hash y presupuesto. Los buses ambientales ya muestran BUS/MADRID en vez de M1/5 AV/HARLEM;
+no se les atribuye una línea EMT real. Las libreas y otros detalles NYC siguen pendientes.
+
+El extrusor genérico de hitos ya exige altura de fuente: elimina los fallbacks 14/24 m y el mínimo 9 m, y no
+trunca torres medidas a 160 m. No se extruyen plazas ni los sitios reservados a monumentos. Queda pendiente
+revisar las reservas procedurales de la semilla (aún heredan nombres NYC) contra las mallas para evitar masas
+genéricas bajo hitos; no se declara resuelto sólo por retirar la extrusión de `landmarks.js`.
+
+Inspección C (`http://localhost:8000/?debug=1`):
+
+- [ ] Chamberí: patios cóncavos e interiores abiertos entre cubiertas, fachadas siguiendo el contorno real.
+- [ ] Esquinas de tesela: fachadas completas sin llenar las calles con su caja envolvente.
+- [ ] Árboles y farolas en celdas nuevas: posiciones coherentes con calles/parques; no se espera arbolado nuevo en Retiro antiguo.
+- [ ] Cambiar a noche en Cibeles/Alcalá/Debod: mallas legibles y brillo tenue; comparar con día, sin confundirlo con luz real de proyectores.
+- [ ] Autobuses: cartel Madrid sin destino NYC; revisar posibles masas bajo los monumentos y reportarlas como pendientes.

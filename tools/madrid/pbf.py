@@ -23,7 +23,7 @@ HEIGHT_URL = 'https://sigma.madrid.es/hosted/rest/services/CARTOGRAFIA/EDIFICIOS
 
 def write_json(path, data):
     temp = path.with_suffix('.tmp')
-    temp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n' if path.name == 'tiles.json'
+    temp.write_text(json.dumps(data, ensure_ascii=False, indent=1) + '\n' if path.name == 'tiles.json'
                     else json.dumps(data, separators=(',', ':')))
     temp.replace(path)
 

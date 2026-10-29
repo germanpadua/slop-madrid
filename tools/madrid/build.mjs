@@ -13,7 +13,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Raster, rdp, rdpRing, ringArea, bbox, r1 } from '../geo-geometry.mjs';
+import { Raster, rdp, rdpRing, ringArea, bbox, r1, pointInRing } from '../geo-geometry.mjs';
 const log = (...args) => console.log('[madrid]', ...args);
 import { getPhase } from './config.mjs';
 import { toWorld, utmToWorld } from './projection.mjs';
@@ -52,9 +52,11 @@ const IS_TILE = !!phase.tile;
 // New cells use centroid ownership (whole rings, never clipped); a parcel already delivered by the seed/phase3
 // stays with that owner. This reads only the fixed phase3 set, so build order never changes the result.
 const legacyParcels = new Set();
+let modernParcelTile = false;
 if (IS_TILE) {
   const mf = JSON.parse(fs.readFileSync(new URL('./tiles.json', import.meta.url), 'utf8'));
   const legacyIds = new Set([mf.grid.seed, ...mf.phases['3']]);
+  modernParcelTile = !legacyIds.has(phase.tile.id);
   if (!legacyIds.has(phase.tile.id)) {
     const { PARCELS } = await import(new URL('../../js/madrid-geodata-blocks.js', import.meta.url));
     for (const p of PARCELS.flat()) legacyParcels.add(p.ring.join(','));
@@ -285,7 +287,12 @@ for (const f of alturas.features) {
   const h = f.attributes?.ALTURA;
   const g = f.geometry?.rings?.[0];
   if (!Number.isFinite(h) || !g || g.length < 4) continue;
-  const ring = rdpRing(g.map(([x, y]) => utmToWorld(x, y)), 0.4);
+  const rings = f.geometry.rings.map((r) => rdpRing(r.map(([x, y]) => utmToWorld(x, y)), 0.4));
+  const outerSign = Math.sign(ringArea(rings[0]));
+  // ESRI polygons: exterior rings share winding; interiors have the opposite winding. Preserve disjoint wings
+  // and attach each courtyard to its containing exterior. Legacy generation keeps its original contract.
+  const exteriors = modernParcelTile ? rings.filter((r) => Math.sign(ringArea(r)) === outerSign) : [rings[0]];
+  for (const ring of exteriors) {
   if (Math.abs(ringArea(ring)) < 12) continue; // kiosks & sheds
   const bb = bbox(ring);
   if (bb.x1 - bb.x0 < 1.2 || bb.z1 - bb.z0 < 1.2) continue;
@@ -297,7 +304,10 @@ for (const f of alturas.features) {
   for (const q of ring) { cx += q[0]; cz += q[1]; }
   cx /= ring.length; cz /= ring.length;
   if (cx < wx0 || cx > wx1 || cz < wz0 || cz > wz1) continue;
-  parcels.push({ ring, h: Math.max(2.4, Math.round(h * 10) / 10), cx, cz });
+  const holes = modernParcelTile ? rings.filter((r) => !exteriors.includes(r) && r.length >= 3 && Math.abs(ringArea(r)) > 1 &&
+    pointInRing(r[0][0], r[0][1], ring)) : [];
+  parcels.push({ ring, holes, h: Math.max(2.4, Math.round(h * 10) / 10), cx, cz });
+  }
 }
 log(`${parcels.length} real building parcels (IDEAM alturas)`);
 
@@ -863,7 +873,8 @@ if (IS_TILE) {
     // whole in one tile); a footprint in no block belongs to the core that holds its centre.
     parcels: parcels.filter((p) => legacyParcels.size
       ? inCore(p.cx, p.cz) && !legacyParcels.has(flat(p.ring).join(','))
-      : (p.frameBlock >= 0 ? p.owned : inCore(p.cx, p.cz))).map((p) => ({ ring: flat(p.ring), h: p.h })),
+      : (p.frameBlock >= 0 ? p.owned : inCore(p.cx, p.cz))).map((p) => ({ ring: flat(p.ring), h: p.h,
+        ...(p.holes.length ? { holes: p.holes.map(flat) } : {}) })),
     parks: parksClipped.map((p) => ({ name: p.name, cat: p.cat, acres: p.acres, rings: p.rings.map(flat) })),
     water: waterClipped.map(flat),
     roads: roadLines.map((r) => [r.name, r1(r.w), r.dir, r.lanes, r.hw, flat(r.pts)]),

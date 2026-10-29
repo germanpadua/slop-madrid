@@ -11,15 +11,16 @@ import { Fn, abs, color, fract, max, mix, positionWorld, smoothstep } from 'thre
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createExtrudedPolygonMesh, createFlatPolygonMesh, offsetPolygonInward } from './city-grid.js';
 import {
-  WALL_KINDS,
   createCurbMaterial,
-  createFacadeBoxes,
   createParkLawnMaterial,
   createRoadSurfaceMaterial,
   createSidewalkMaterial,
   createWaterMaterial
 } from './tsl-materials.js';
 import { FACADE_DEFS } from './buildings.js';
+import { landmarkExtrusions } from './monument-sites.js';
+import { buildMadridStreetPoints } from './madrid-street-points.js';
+import { createParcelGeometry } from './madrid-parcel-geometry.js';
 
 const toPts = (flat) => {
   const out = [];
@@ -84,8 +85,9 @@ function createOutOfMapFloor(scene, bbox) {
 }
 
 export function createTileWorld(scene, { colliders = null, materials = null } = {}) {
-  // Shared materials: the facades come from the seed's own table (cached by options, so one shader compile each).
-  const facades = FACADE_DEFS.slice(0, 3).map(([create, opts]) => create({ ...opts, boxLocal: true }));
+  // Same palette/procedural facades as the seed, in world-space mode for arbitrary sourced contours. The cache
+  // shares these variants across tiles; they require their own first GPU compile (not measured by the CPU harness).
+  const facades = FACADE_DEFS.slice(0, 3).map(([create, opts]) => create({ ...opts, boxLocal: false }));
   const mats = {
     road: materials?.road || createRoadSurfaceMaterial(),
     curb: materials?.curb || createCurbMaterial(),
@@ -168,7 +170,7 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       group.add(mesh);
     }
 
-    // 4. Buildings: one facade box per IDEAM parcel (real footprint extent, real ALTURA) inside its block slab.
+    // 4. Exact IDEAM rings, merged into three facade batches. A bounding box fills concave patios and streets.
     const items = facades.map(() => []);
     const parcels = tile.parcels || [];
     const drawnHere = [];
@@ -185,16 +187,14 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       if (w < 2 || d < 2) continue;
       const cx = (bb.x0 + bb.x1) / 2, cz = (bb.z0 + bb.z1) / 2;
       const tier = Math.floor(hash(cx, cz, index) * facades.length) % facades.length;
-      items[tier].push({
-        x: cx, y: parcel.h / 2, z: cz, w, h: parcel.h, d,
-        tone: hash(cz, cx, 3),
-        faces: [WALL_KINDS.shop, WALL_KINDS.shop, WALL_KINDS.shop, WALL_KINDS.shop]
-      });
+      items[tier].push(createParcelGeometry(parcel.ring, parcel.h, parcel.holes));
       tileColliders.push({ minX: bb.x0, maxX: bb.x1, minZ: bb.z0, maxZ: bb.z1, minY: 0, maxY: parcel.h });
     }
     items.forEach((list, i) => {
       if (!list.length) return;
-      const mesh = createFacadeBoxes(facades[i], list);
+      const geometry = mergeGeometries(list, false);
+      for (const g of list) g.dispose();
+      const mesh = new THREE.Mesh(geometry, facades[i]);
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.name = `TileBuildings${i}`;
@@ -203,8 +203,9 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
 
     // 5. Landmarks: real footprint extruded to its IDEAM/OSM height. No height = no volume (nothing invented); the
     //    footprint stays covered by its parcel box, so there is no gap to fill.
-    for (const lm of Object.values(tile.landmarks || {})) {
-      if (!(lm.h > 0) || !lm.ring || lm.ring.length < 6) continue;
+    for (const { lm } of landmarkExtrusions(tile.landmarks || {})) {
+      if (!(lm.h > 0)) continue;
+      if (parcels.some((p) => pointInRing(toPts(p.ring), lm.cx, lm.cz))) continue;
       const ring = toPts(lm.ring);
       if (ring.length < 3) continue;
       if (shoelace(ring) > 0) ring.reverse();
@@ -214,6 +215,8 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       const bb = bboxOf(ring);
       tileColliders.push({ minX: bb.x0, maxX: bb.x1, minZ: bb.z0, maxZ: bb.z1, minY: 0, maxY: lm.h });
     }
+
+    group.add(buildMadridStreetPoints(tile.streetPoints || []));
 
     // 6. Bridge decks: roads that cross the water keep their deck at street level (it is a hole otherwise).
     for (const road of tile.roads || []) {
@@ -258,6 +261,7 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     scene.remove(group);
     group.traverse((o) => {
       if (o.geometry) o.geometry.dispose();
+      if (o.userData.tileOwnedMaterial) o.material.dispose();
       // materials are shared between tiles (facades are cached by options): keep them alive
       if (o.isInstancedMesh) o.dispose?.();
     });
@@ -276,7 +280,11 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     has: (id) => groups.has(id),
     ids: () => [...groups.keys()],
     residentBytes: () => [...groups.values()].reduce((n, g) => n + (g.group.userData.bytes || 0), 0),
-    meshCount: () => [...groups.values()].reduce((n, g) => n + g.group.children.length, 0),
+    meshCount: () => {
+      let n = 0;
+      for (const { group } of groups.values()) group.traverse((o) => { if (o.isMesh) n++; });
+      return n;
+    },
     disposeAll() {
       for (const id of [...groups.keys()]) removeTile(id);
     }

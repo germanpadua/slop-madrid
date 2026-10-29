@@ -34,9 +34,9 @@ export function landmarkExtrusions(sites) {
     // Open squares (any name starting with Plaza) and any untagged footprint this wide are ground, not masses:
     // never turn them into invented 24 m slabs. Buildings big enough for a ring carry their IDEAM height.
     if (/^Plaza\s/i.test(name)) continue;
-    if (!(lm.h > 0) && lm.w >= 60) continue;
+    if (!(lm.h > 0)) continue;
     // Real height (IDEAM parcel) where known; the 160 m ceiling only guards the extruder.
-    const H = Math.max(9, Math.min(lm.h || 0, 160) || (lm.w > 80 ? 24 : 14));
+    const H = lm.h;
     out.push({ name, lm, H });
   }
   return out;
