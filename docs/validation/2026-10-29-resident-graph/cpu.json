@@ -1,0 +1,25 @@
+{
+  "tiles": [
+    "fase2",
+    "k0j-1",
+    "k0j3",
+    "k1j-1",
+    "k2j-1",
+    "k2j4",
+    "k3j-1",
+    "k3j0",
+    "k3j1",
+    "k4j0",
+    "k4j1",
+    "k4j2"
+  ],
+  "obstacles": 0,
+  "sidewalks": 0,
+  "graphNodes": 5437,
+  "graphLinks": 6772,
+  "sourceSignals": 1039,
+  "routingNodes": 2559,
+  "routingEdges": 3992,
+  "assembleMs": 128.073443,
+  "laneLayoutMs": 767.1188830000001
+}

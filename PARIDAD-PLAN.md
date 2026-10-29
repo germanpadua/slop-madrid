@@ -102,3 +102,15 @@ WebGL2 sobre Intel Iris Xe (ANGLE/Mesa 26.0.8, confirmado por glRenderer) pasa c
 Evidencia en docs/validation/2026-10-29-empty-storage/: escena anterior, ambas mediciones, consulta de adaptadores y secuencia de frames. Rollback E2: guard de rectSlabs en city-grid y gate/telemetría del harness. Suite total actual 170/170 (incluye seis pruebas nuevas del ensamblador residente en preparación).
 
 Checklist E2: http://localhost:8080/?debug=1 sigue mostrando las mismas aceras. http://localhost:8080/?debug=1&webgpu=1 permite probar el backend en el navegador físico del propietario; verificar adaptador real y fluidez antes de recomendarlo. No se declara compartible por esta corrección.
+
+## B1 — ensamblador de topología residente (hecho; integración con agentes pendiente)
+
+Nuevo buildResidentRoadGraph combina streetFeatures residentes por IDs OSM, sin cruces inferidos por coordenadas. Simplifica solo nodos de forma de la misma vía, conserva señales/cruces y usa dos nodos originales para bucles cerrados (evita self-links descartados por el constructor de carriles). Política de circulación: respeta acceso de motor_vehicle/vehicle/access, oneway y roundabout; excluye peatones y vías con bridge/tunnel/layer sin perfil vertical resuelto. Anchuras sin etiqueta conservan aproximación de clase/carriles ya usada por el pipeline, no son medición topográfica.
+
+buildRoadNetwork acepta roadGraph/coverage/sourceOnly para preparar esas calles fuera de límites de semilla sin insertar rejilla heredada; el comportamiento predeterminado sigue intacto. Todavía NO se llama a esta opción desde la app ni cambian las rutas de los agentes. No declarar B terminado.
+
+Seis pruebas nuevas: continuidad entre celdas y orden de carga, retirada de aristas al descargar, cruces geométricos que no deben conectarse, permisos/sentidos/niveles, conservación de señales y bucles, preparación de carriles fuera de semilla y rechazo de terreno no residente. Suite 170/170. `node tools/madrid/benchmark-road-graph.mjs`: 5437 nodos/6772 enlaces de fuente, 1039 señales, 2559 nodos/3992 aristas de circulación; 128 ms ensamblado + 767 ms preparación en esta muestra. Benchmark sin obstáculos/aceras: coste mínimo orientativo, no FPS ni prueba de colisiones. Informe en docs/validation/2026-10-29-resident-graph/cpu.json. Esta latencia exige preparación fuera del hilo de interacción antes de conectar altas/bajas a la app.
+
+Rollback B1: retirar ensamblador y opciones de buildRoadNetwork junto con sus pruebas/benchmark; C0 y visual no dependen todavía de él.
+
+Checklist B1: no hay cambio visual de tráfico que aprobar aún; http://localhost:8080/?debug=1 conserva la simulación anterior. La siguiente integración debe demostrar coches/peatones fuera de semilla, continuidad al cargar, retirada segura al descargar y ausencia de rutas sobre edificios o vías excluidas. Mantener esa validación pendiente.

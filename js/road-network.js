@@ -23,7 +23,7 @@ const LANE_CLEAR = 1.2; // half width each lane keeps free of obstacles
 const CROSSWALK = 2.5; // depth between an intersection box and its stop lines
 const SHORE_MARGIN = 6;
 
-function buildRoadNetwork(sidewalks, obstacles, signalIntersections = []) {
+function buildRoadNetwork(sidewalks, obstacles, signalIntersections = [], options = {}) {
   // 1. Spatial hash of ground footprints: curbs bound the roads, everything else also blocks pedestrians
   const hash = new Map();
   const cellKey = (ix, iz) => (ix + 512) * 1024 + iz + 512;
@@ -55,6 +55,10 @@ function buildRoadNetwork(sidewalks, obstacles, signalIntersections = []) {
   }
 
   function onLand(minX, maxX, minZ, maxZ) {
+    if (options.coverage) {
+      return [minX,maxX].every(x => [minZ,maxZ].every(z =>
+        options.coverage.some(([x0,z0,x1,z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1)));
+    }
     for (const z of [minZ, maxZ]) {
       const shore = getIslandBoundsAtZ(z);
       if (minX < shore.westX + SHORE_MARGIN || maxX > shore.eastX - SHORE_MARGIN) return false;
@@ -114,7 +118,7 @@ function buildRoadNetwork(sidewalks, obstacles, signalIntersections = []) {
       : half >= 6.8 ? [-3.6, 0, 3.6]
         : half >= 4.4 ? [-1.8, 1.8] : null);
   const avenues = [];
-  for (const ave of ALL_AVENUES) {
+  for (const ave of options.sourceOnly ? [] : ALL_AVENUES) {
     if (ave.isHighway) continue;
     const segs = ave.segs || [{ z0: ave.minZ, z1: ave.maxZ, dir: ave.dir }];
     // the avenue's stretch at z (or the nearest one within an intersection's reach of its ends)
@@ -222,7 +226,7 @@ function buildRoadNetwork(sidewalks, obstacles, signalIntersections = []) {
   // One-way or two-way from the nearest named street inside the gap (majors and wide gaps are two-way)
   for (const p of pieces) {
     let st = null;
-    for (const s of ALL_STREETS) {
+    for (const s of options.sourceOnly ? [] : ALL_STREETS) {
       if (Math.abs(s.z - p.z) <= p.gap / 2 && (!st || Math.abs(s.z - p.z) < Math.abs(st.z - p.z))) st = s;
     }
     const twoWay = !st || st.dir === 0 || p.gap >= 20;
@@ -253,7 +257,7 @@ function buildRoadNetwork(sidewalks, obstacles, signalIntersections = []) {
   //     cross street); a street's bends get shape nodes, so every edge stays straight.
   const genRuns = centrelineStreets();
   function centrelineStreets() {
-    const RG = GEO.roadGraph;
+    const RG = options.roadGraph || GEO.roadGraph;
     const runs = [];
     if (!RG) return runs;
     const pos = [];

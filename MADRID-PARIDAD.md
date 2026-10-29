@@ -62,3 +62,7 @@ Total módulos ready más bloques 12089352 B, presupuesto sin elevar. Suite 164/
 ### E2 — precisión de la prueba de GPU
 
 Corregidos dos pools de aceras de capacidad cero que producían bindings inválidos. WebGL2 real usa Intel Iris Xe y pasa; WebGPU deja de emitir validaciones pero en este Chromium selecciona SwiftShader por software y sigue muy lento. La enumeración de GPU del sistema no bastaba para identificar su adaptador: no usar las cifras WebGPU anteriores como rendimiento de hardware. Evidencia directa de adaptadores y frames en docs/validation/2026-10-29-empty-storage/. Mantener WebGL2 y validar WebGPU físico por separado.
+
+### B1 — topología de circulación preparada
+
+Ensamblador residente por identidad OSM probado sobre datos reales: respeta accesos, sentidos y niveles; preserva cruces, señales y bucles. Constructor de carriles admite cobertura de teselas sin rejilla añadida. Suite 170/170. Quedan por conectar worker y migración de población al cargar/descargar: los agentes de la aplicación todavía usan la red inicial. Coste CPU mínimo del conjunto ~0,90 s, documentado como preparación y no rendimiento de navegación.
