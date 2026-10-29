@@ -796,6 +796,7 @@ const GEO = {
     ],
   barrios: barrios.map((b) => ({ name: b.name, ring: flat(b.ring), cx: r1(b.cx), cz: r1(b.cz) })),
   broadway: flat([[wx0 + (wx1 - wx0) / 2, wz0], [wx0 + (wx1 - wx0) / 2, wz1]]), // neutral spine; Madrid config replaces getBroadwayX
+  core: CORE.map(r => r.slice()),
   plazas: [],
   roads: roadLines.map((r) => [r.name, r1(r.w), r.dir, r.lanes, r.hw, flat(r.pts)]),
   roadGraph: { nodes: outNodes, links: outLinks, names },

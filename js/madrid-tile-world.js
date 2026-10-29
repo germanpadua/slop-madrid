@@ -7,6 +7,7 @@
 // same parcels). Everything here is real geometry owned by the tile core; polygons crossing a seam were already
 // clipped by the builder, so adjacent tiles never draw the same surface twice.
 import * as THREE from 'three/webgpu';
+import { createMappedParkPaths } from './madrid-park-paths.js';
 import { createSourcedStreetTrees } from './madrid-street-trees.js';
 import { Fn, abs, color, fract, max, mix, positionGeometry, positionWorld, smoothstep } from 'three/tsl';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
@@ -102,7 +103,7 @@ function createOutOfMapFloor(scene, bbox) {
   const mat = new THREE.MeshStandardNodeMaterial({ roughness: 1, metalness: 0 });
   mat.color.setHex(0x34383a);
   const mesh = new THREE.Mesh(geo, mat);
-  mesh.position.set((bbox[0] + bbox[2]) / 2, -0.16, (bbox[1] + bbox[3]) / 2);
+  mesh.position.set((bbox[0] + bbox[2]) / 2, -1.0, (bbox[1] + bbox[3]) / 2);
   mesh.receiveShadow = true;
   mesh.name = 'MadridOutOfMap';
   mesh.frustumCulled = false;
@@ -197,6 +198,9 @@ export function createTileWorld(scene, { colliders = null, materials = null, see
       mesh.name = 'TileParks';
       group.add(mesh);
     }
+
+    const mappedPaths=createMappedParkPaths(tile.id);
+    if(mappedPaths) group.add(mappedPaths);
 
     // 3. Raised sidewalks: the real block slab (cadastral parcels merged), granite curb + inset paving, as in the seed.
     const curbGeos = [];

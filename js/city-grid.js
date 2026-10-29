@@ -61,6 +61,7 @@ import {
   createTunnelShadeMaterial
 } from './tsl-materials.js';
 import { GEO } from './madrid-geodata.js';
+import { createMappedParkPaths } from './madrid-park-paths.js';
 
 // Materials the Madrid ground, lawns, sidewalks, curbs and water were built with. The phase-3 tile renderer
 // (js/madrid-tile-world.js) reuses them so streamed tiles never compile or hold a second copy of those shaders.
@@ -1538,7 +1539,11 @@ function buildCityGrid(scene) {
   // Granite bulkhead around every land piece (NYC): Madrid's frame is a cut, not a shoreline, so it is not walled
   const roadMat = createRoadSurfaceMaterial();
   cityMaterials.road = roadMat;
-  const LAND = LAND_RINGS && LAND_RINGS.length ? LAND_RINGS : [MANHATTAN_COASTLINE];
+  // The seed's fetch bounds include100m overlap. Its deck must own only its core;
+  // otherwise equal-height seed/tile decks z-fight and slice through park water.
+  const LAND = GEO.frame?.madrid && GEO.core?.length
+    ? GEO.core.map(([x0,z0,x1,z1]) => [{x:x0,z:z0},{x:x1,z:z0},{x:x1,z:z1},{x:x0,z:z1}])
+    : LAND_RINGS && LAND_RINGS.length ? LAND_RINGS : [MANHATTAN_COASTLINE];
   const MADRID_RIVER = !!(GEO.frame && GEO.frame.madrid) && (MADRID_WATER || []).length > 0;
   if (!MADRID_RIVER) {
     for (const ring of LAND) {
@@ -1643,6 +1648,9 @@ function buildCityGrid(scene) {
       group.userData.parkPatches = patches;
     }
   }
+
+  const mappedPaths=createMappedParkPaths('fase2');
+  if(mappedPaths) group.add(mappedPaths);
 
   // =========================================================================
   // 4. RAISED SIDEWALKS & GRANITE CURBSTONES: every real curb island of Manhattan (city-config.js BLOCKS, from the
@@ -2631,12 +2639,13 @@ function buildCityGrid(scene) {
   // Concrete decks on timber piles with fenders, railings & lanterns, plus each pier's real structures:
   // cruise terminals, Chelsea Piers, Pier 57, Little Island, Pier 40, the Intrepid, the 79th St Boat Basin,
   // Pier 17, the Wavertree, Pier 15, Pier 11 and the Staten Island Ferry Whitehall Terminal (see buildWaterfrontPiers)
-  buildWaterfrontPiers(group);
+  if(!GEO.frame?.madrid) buildWaterfrontPiers(group);
 
   // 9 & 10. The East River bridges, harbor islands and the surrounding boroughs are built by boroughs.js
 
   // 11. Manhattan's waterfront edge: esplanades, shore highways & riverside park belts (see buildManhattanWaterfrontEdge)
-  const highwayLanes = buildManhattanWaterfrontEdge(group, { blockSidewalks, treeSites, lawnMat: cpLawnMat, curbMat, roadMat });
+  // Madrid has no Manhattan shore highway/viaduct/greenway around its fetch rectangle.
+  const highwayLanes = GEO.frame?.madrid ? [] : buildManhattanWaterfrontEdge(group, { blockSidewalks, treeSites, lawnMat: cpLawnMat, curbMat, roadMat });
 
   // Batch static sub-meshes by material to reduce per-frame WebGPU draw calls
   batchStaticGroupMeshes(group, new Set([waterMat, roadMat, cpLawnMat, cpMeadowMat]));
