@@ -587,3 +587,35 @@ porque construía materiales directamente con createPreWarBuildingMaterial; lo c
 ruta real). Ahora TODAS las tiers Madrid usan la factoría pre-war (mampostería). Medianeras Madrid aclaradas
 (revoco claro 0xb3a48c-0xcbbfa7 en vez del ladrillo común oscuro NYC, gated por uMadrid). Verificación de
 escena completa SIGUE PENDIENTE.
+
+## Prototipo mesh municipal fotogramétrico (2026-10-29) — APARCADO, conocidos sin resolver
+Pipeline propio (fuera del repo, /home/sandbox/meshproto): ZONA5 3DTiles municipal → walk con poda REPLACE
+(ge<=8, el colector original padre+hijo duplicaba geometría) → Draco → corte por footprint → decimación voxel → GLB.
+Candidatos tras comparativa acotada (mesh-context.html, composición local real: grid+landmarks+bloques, SIN
+teselas/tráfico/postFX/sombras): banco-ge2c08 (118.311 tris / 2,28 MB), almudena-ge8fp1 (1,06 MB),
+palacio-ge8fp1 (1,85 MB). Debod ge2fp1 (500 KB) APARCADO (portales no abiertos de forma probada).
+Cibeles ge2, Edificio España ge2 y Congreso ge2 FALLARON (ruido de escaneo colgante / losa flotante sin fuste /
+agujero de cubierta) — hipótesis registrada: el agujero/recorte de altura puede ser del filtro de exportación
+(corte por footprint o filtro de bandas) y no de la fuente; revisar solo si se retoman.
+Hallazgos (frames verificados píxel a píxel, gate on/off misma cámara):
+- Aéreo/skyline: el mesh GANA con claridad (Almudena con cúpulas y planta de cruz, Palacio con patio, Banco con
+  chaflán y patios interiores) frente a las cajas procedurales actuales.
+- A pie de calle: el mesh crudo FALLA (masa cerosa arrugada azul-grisácea, huecos vanos ilegibles, peor que una
+  fachada procedural limpia). Dirección señalada: escaneo como identidad aérea/silueta de referencia + banda de
+  calle procedural limpia; NO mesh crudo a pie.
+PROBLEMAS CONOCIDOS SIN RESOLVER (no retomar el híbrido a ciegas antes de resolver 1-2):
+1. Solape de footprints: los bloques procedurales del centro intersectan visiblemente las footprints de
+   Banco/Palacio/Almudena (el mesh y los bloques genéricos coexisten en la misma parcela). Emplazamiento local
+   NO validado: el anclaje numérico (sidecar→toWorld, error <=0,3 m sobre el anchor de Debod) no basta.
+2. Datum vertical/contacto con el suelo no probado: el harness no tiene shadow maps; en banco-street el mesh
+   "cuelga" sobre la banda de edificios genérica. Falta verificar alineación suelo-zócalo.
+3. Paleta: los meshes renderizan pálidos azul-grisáceos frente a la ciudad cálida (vertex colors del scan, sin
+   ajuste de material).
+4. Métrica de draw calls NO fiable en WebGPURenderer backend WebGL2: renderer.info.render.calls daba 2 con 48
+   meshes visibles en frustum (3 GLB) — cuenta pases/envíos, no draws por malla. El delta de tris SÍ es válido
+   (sigue la geometría dibujada: +118k-266k tris/vista según frustum). Ninguna afirmación de rendimiento queda
+   en pie: integración/perf en la app completa SIN VALIDAR (frames full-city cuestan 20-40 s bajo SwiftShader y
+   exceden el límite de ejecución del sandbox; 3 intentos de captura full-app muertos).
+5. Licencia: la malla ZONA* municipal no tiene binding de licencia localizable (item ArcGIS sin licenseInfo);
+   TODOS los GLB permanecen locales (assets/mesh-monuments/ en .gitignore) y el gate ?meshmonuments=1 sigue
+   OFF por defecto. Nada se publica.
