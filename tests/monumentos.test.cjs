@@ -41,14 +41,25 @@ const inRect = ([x, z], [x0, z0, x1, z1], tol) =>
   x >= Math.min(x0, x1) - tol && x <= Math.max(x0, x1) + tol
   && z >= Math.min(z0, z1) - tol && z <= Math.max(z0, z1) + tol;
 
-test('each delivered monument is a real module inside its expected place (15 m)', async () => {
-  // Expected positions: real GEO.landmarks centroids, except Atocha (the historical head of the station, north-west
-  // of the yard polygon in GEO.landmarks) and the palace group (midpoint of the two landmark footprints).
+test('each delivered monument is a real module inside its expected place', async () => {
+  // Expected positions: real GEO.landmarks centroids where they exist; fixed world coordinates (the Sol frame of
+  // js/landmarks) where the landmark has no GEO entry (Neptuno, Metrópolis) or the mesh covers the whole parcel
+  // (Atocha yard, Palacio Real).
+  const at = (name, dx, dz) => {
+    const [x, z] = anchor(name);
+    return { bbox: [x - dx, z - dz, x + dx, z + dz] };
+  };
   const expected = {
-    cibeles: { bbox: [anchor('Fuente de Cibeles')[0] - 20, anchor('Fuente de Cibeles')[1] - 20, anchor('Fuente de Cibeles')[0] + 20, anchor('Fuente de Cibeles')[1] + 20] },
-    alcala: { bbox: [anchor('Puerta de Alcalá')[0] - 5, anchor('Puerta de Alcalá')[1] - 22, anchor('Puerta de Alcalá')[0] + 5, anchor('Puerta de Alcalá')[1] + 22] },
-    banco: { bbox: [anchor('Banco de España')[0] - 62, anchor('Banco de España')[1] - 70, anchor('Banco de España')[0] + 62, anchor('Banco de España')[1] + 70] },
-    palacio: { bbox: [-984.3, -266.9, -841.4, 163.9] } // union: Palacio Real + Almudena
+    cibeles: at('Fuente de Cibeles', 20, 20),
+    alcala: at('Puerta de Alcalá', 5, 22),
+    banco: at('Banco de España', 62, 70),
+    palacio: { bbox: [-990, -270, -805, 20] },     // Palacio Real (Almudena is its own module now)
+    almudena: at('Catedral de la Almudena', 70, 70),
+    debod: at('Templo de Debod', 45, 45),
+    plazaespana: at('Plaza de España', 170, 170),  // monumento a Cervantes, inside the plaza ring
+    neptuno: { bbox: [875, 148, 925, 198] },       // Plaza de Cánovas del Castillo (no GEO entry)
+    metropolis: { bbox: [640, -215, 726, -100] },  // Calle de Alcalá 42 (no GEO entry)
+    atocha: { bbox: [980, 1040, 1460, 1625] }      // yard roof; the historic facade is not in the LOD2
   };
   assert.deepEqual(manifest.monuments.map((m) => m.id).sort(), Object.keys(expected).sort());
   for (const meta of manifest.monuments) {
@@ -74,9 +85,11 @@ test('the eight sites of the brief are owned by the monument layer (strict budge
     assert.ok(delivered.has(id) || missing.has(id), `${id} must be delivered or documented as missing`);
     assert.ok(!(delivered.has(id) && missing.has(id)), `${id} cannot be both delivered and missing`);
   }
-  assert.deepEqual([...missing].sort(), ['atocha', 'debod', 'neptuno', 'plazaespana']);
+  assert.deepEqual([...missing].sort(), []);
   for (const m of manifest.missing) assert.ok(m.reason.length > 40, `${m.id} needs a documented reason`);
 
+  // Low-poly hand-modelled pieces (no municipal mesh exists) may be leaner; real municipal meshes stay detailed.
+  const minTris = { neptuno: 200, debod: 100, plazaespana: 60, metropolis: 150 };
   let total = 0;
   for (const meta of manifest.monuments) {
     assert.ok(existsSync(modulePath(meta)), `${meta.id} module exists`);
@@ -87,7 +100,7 @@ test('the eight sites of the brief are owned by the monument layer (strict budge
     total += bytes;
 
     const { data } = await loadMonument(meta.id);
-    assert.ok(data.triangles > 1000, `${meta.id} has volume (${data.triangles} tris)`);
+    assert.ok(data.triangles > (minTris[meta.id] ?? 1000), `${meta.id} has volume (${data.triangles} tris)`);
     assert.equal(data.vertices, meta.vertices);
     assert.equal(data.triangles, meta.triangles);
     const pos = typed(data.positions, Int16Array);

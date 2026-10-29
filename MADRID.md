@@ -479,30 +479,43 @@ cercanas. Ampliar radios/budget es un valor del manifiesto, no un cambio de cód
 
 Sustituye la extrusión genérica de los hitos principales por mallas del **modelo 3D municipal** (i3s del
 Ayuntamiento), simplificadas al presupuesto de la web. La premisa de partida («el modelo contiene estatuas y
-fuentes») sólo se cumple en parte: `MODELADO_3D_MADRID` es **sólo edificación** y las fuentes/estatuas exentas no
-están, salvo dos servicios dedicados. Por eso hay 4 mallas reales y 4 huecos documentados; no se inventa geometría.
+fuentes») sólo se cumple en parte: `MODELADO_3D_MADRID` es **sólo edificación**; los servicios dedicados a
+esculturas (`Conjunto_Fuente_Cibeles_sin_textura`, `P_Alcala_st`) traen malla, pero Neptuno, Debod y Cervantes están
+**registrados y vacíos** y la fotogrametría del conjunto de Cibeles no tiene silueta legible (amasijo). Por eso hay
+6 mallas municipales reales (más la cubierta de Atocha) y 4 piezas **low-poly manuales** documentadas; no se inventa
+masa municipal.
 
 ### Resultado
 
-| Hito | Servicio i3s | Triángulos | Vértices | Módulo | Altura | Celda | Δ centro vs `GEO.landmarks` |
-|---|---|---|---|---|---|---|---|
-| Cibeles (fuente completa) | `Conjunto_Fuente_Cibeles_sin_textura` | 15 841 | 8 490 | 229 534 B | 7,4 m | 0,24 m | **0,3 m** |
-| Puerta de Alcalá | `P_Alcala_st` | 16 888 | 7 475 | 225 670 B | 24,8 m | 0,75 m | **1,0 m** |
-| Palacio Real + Almudena | `MODELADO_3D_MADRID` | 8 516 | 3 764 | 114 230 B | 77,9 m | 0,18 m | **2,8 m** |
-| Banco de España | `MODELADO_3D_MADRID` | 9 813 | 4 172 | 129 437 B | 40,7 m | 0,18 m | **0,8 m** |
-| **Total** | | **51 058** | **23 901** | **698 871 B** (0,67 MB) | | | |
+| Hito | Servicio i3s | Triángulos | Vértices | Módulo | Altura |
+|---|---|---|---|---|---|
+| Cibeles (bacín real + escultura low-poly) | `Conjunto_Fuente_Cibeles_sin_textura` + manual | 8 027 | 3 503 | 106 697 B | 7,3 m |
+| Puerta de Alcalá | `P_Alcala_st` | 16 888 | 7 475 | 225 670 B | 24,8 m |
+| Palacio Real | `MODELADO_3D_MADRID` | 2 010 | 1 008 | 28 625 B | 57,2 m |
+| Catedral de la Almudena | `MODELADO_3D_MADRID` | 2 032 | 1 014 | 28 868 B | 94,9 m |
+| Banco de España | `MODELADO_3D_MADRID` | 9 813 | 4 172 | 129 437 B | 40,7 m |
+| Edificio Metrópolis | `MODELADO_3D_MADRID` | 217 | 172 | 4 245 B | 40,8 m |
+| Atocha (cubierta de vías) | `MODELADO_3D_MADRID` | 9 462 | 5 722 | 144 819 B | 62,3 m |
+| Fuente de Neptuno | low-poly manual | 340 | 197 | 5 553 B | 5,5 m |
+| Templo de Debod | low-poly manual | 176 | 104 | 3 137 B | 8,4 m |
+| Monumento a Cervantes | low-poly manual | 108 | 72 | 2 234 B | 16,1 m |
+| **Total** | | **51 075** | **23 439** | **679 285 B** (0,65 MB) | | |
 
 Δ = centro del bbox de la malla contra el centroide de la huella OSM/IDEAM del hito (o el centro de la unión
 Palacio+Almudena). Tolerancia de test: 15 m.
 
-**Huecos documentados** (`tools/madrid/monumentos.json` → `missing`, y `js/monument-sites.js`):
+**Piezas low-poly manuales** (sin malla municipal utilizable; `tools/madrid/monumentos.json` → `notes`):
 
-- **Fuente de Neptuno**: 0 triángulos en su recinto en `MODELADO_3D_MADRID`; no hay SceneServer municipal de la fuente.
-- **Templo de Debod**: 0 triángulos en `MODELADO_3D_MADRID` y en los servicios 2023 del parque; sin SceneServer del templo.
-- **Monumento a Cervantes (Plaza de España)**: 0 triángulos; sin servicio municipal del conjunto escultórico.
-- **Atocha (fachada + reloj)**: el modelo municipal sólo tiene naves, el invernadero y un anexo alto; no modela la
-  fachada de 1892 con el reloj. El único servicio dedicado de la zona (`SG_INNOVACION_ATOCHA_CARLOSV`) es una nube de
-  puntos. Se deja fuera antes que publicar una torre que no existe.
+- **Escultura de Cibeles**: el servicio dedicado trae el bacín limpio pero el conjunto escultórico es fotogrametría
+  sin silueta (bloque amorfo de 9 × 8 m). El módulo lleva el bacín real menos ese bloque, y encima peñasco, carro,
+  figura y leones low-poly (escala real: remate a +7,3 m).
+- **Fuente de Neptuno**: los SceneServers dedicados (`Conjunto_Fuente_Neptuno_sin_textura`) existen pero están
+  **vacíos** (0 hojas); lo mismo `Templo_Debod_st`, `Monumento_Cervantes_st` y `Plaza_Espana_st`.
+- **Templo de Debod / Monumento a Cervantes**: igual; low-poly con silueta icónica (pórtico y losa en Debod;
+  obelisco, pilares y figuras en Cervantes).
+- **Atocha (fachada + reloj)**: el modelo municipal sólo tiene naves y cubierta; no modela la fachada de 1892. El
+  único servicio dedicado de la zona (`SG_INNOVACION_ATOCHA_CARLOSV`) es una nube de puntos. El módulo lleva la
+  cubierta de vías real; la fachada se queda fuera antes que publicar una torre que no existe.
 
 Los ocho hitos del encargo dejan de extruirse en `js/landmarks.js` aunque no tengan malla: una caja de 24 m sobre una
 plaza o sobre el templo es peor que ningún volumen. También dejan de extruirse las plazas y recintos sin altura
@@ -529,12 +542,12 @@ etiquetada (`Plaza Mayor`, `Puerta del Sol`, `Plaza de España`…), que hasta a
    uint16 (uint32 si hiciera falta) e índice base64. Sin Draco ni texturas: 9 B/vértice + 6 B/triángulo, ~5–15× más
    pequeño que el JSON de origen.
 
-Para regenerar (requiere `numpy` y `requests`; en esta máquina `/usr/bin/python3`):
+Para regenerar (requiere `numpy` y `requests`; en esta máquina el venv de tiny-madrid o `/usr/bin/python3`):
 
 ```
-/usr/bin/python3 tools/madrid/monumentos.py                 # los 4 hitos
-/usr/bin/python3 tools/madrid/monumentos.py --only cibeles   # uno
-/usr/bin/python3 tools/madrid/monumentos.py --budget 245     # KiB por módulo
+<venv>/bin/python tools/madrid/monumentos.py                # extractor original: alcala, banco (servicios dedicados)
+<venv>/bin/python tools/madrid/monumentos_emitir.py         # emisor: bacín+escultura Cibeles, Real, Almudena,
+                                                            # Metrópolis, Atocha y las 3 piezas low-poly
 ```
 
 ### Carga y colocación (`js/monumentos.js`)
@@ -546,13 +559,13 @@ tesela está residente (`isTileResident`, la semilla siempre lo está) y la cám
    indexada, material `MeshStandardNodeMaterial` con `attribute('color')` (luz del visor, sin sombras propias raras),
    sombreado plano, y añade un colisionador de caja a `allColliders`.
 
-En el arranque desde Sol se cargan Palacio, Banco y Cibeles (~474 KB); Alcalá entra al acercarse; Atocha ya no existe
-como malla.
+En el arranque desde Sol se cargan Palacio, Banco y Cibeles (~265 KB); Alcalá entra al acercarse; la cubierta de
+Atocha y el resto llevan su tesela.
 
 ### Verificación
 
-- **Tests**: `timeout 900 node --test 'tests/*.test.cjs' tests/geodata.test.mjs` → **127/127**, incluidos 4 nuevos
-  (`tests/monumentos.test.cjs`): colocación de cada malla dentro de su bbox esperado (15 m), presupuesto estricto
+- **Tests**: `node --test tests/*.test.cjs tests/*.test.mjs` → **134/134**, incluidos 4 de monumentos
+  (`tests/monumentos.test.cjs`): colocación de cada malla dentro de su bbox esperado, presupuesto estricto
   (≤ 250 KiB por módulo, ≤ 2 MiB total), md5/tamaño, geometría decodificable (índices en rango, base sin flotar,
   altura del manifiesto), los 8 hitos fuera del extrusor, plazas nunca extruidas, y la política de carga/expulsión por
   tesela y radio.
@@ -567,8 +580,10 @@ como malla.
 
 ### Limitaciones conocidas (monumentos)
 
-- **Faltan 4 de los 8 hitos** (Neptuno, Debod, Cervantes, fachada de Atocha): no hay malla municipal; documentado
-  arriba y en el manifiesto. No se rellena con cajas.
+- **Low-poly donde no hay municipal**: escultura de Cibeles, Neptuno, Debod y Cervantes son siluetas manuales (~2–6 KB);
+  la fachada de Atocha no está. Documentado arriba y en el manifiesto.
+- **Cibeles: sin bloque central municipal**: la fotogrametría del conjunto escultórico no tiene silueta; se sustituyó
+  por la pieza low-poly (los restos del borde del bloque en la zona de corte son mínimos).
 - **Sin texturas ni colores de origen**: el material del servicio es blanco; la paleta (piedra, cubierta, banda alta)
   es estilizada, como en el piloto de tiny-madrid.
 - **Base plana**: el simulador no tiene terreno; en la Almudena (ladera) la base del percentil 5 deja la fachada baja
