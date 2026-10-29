@@ -93,7 +93,7 @@ let streetCam = null;
     streetCam = { pos: [ax, 1.7, az], tgt: [tx, 9, tz], roadLen: Math.round(bestLen) };
   }
 }
-window.__mc = { ready: true, errors: window.__mc.errors, renderer, scene, THREE,
+window.__mc = { ready: true, errors: window.__mc.errors, renderer, scene, THREE, world, tiles, createTileWorld,
   info: { tile: TILEIDS.join('+'), importMs: Math.round(importMs), prepareMs: Math.round(prepareMs), stageMs: perTile.length === 1 ? perTile[0].stageMs : perTile, buildMs: Math.round(buildMs),
     roofInstances, boxInstances, meshTris: Math.round(meshTris), fpModes, cx, cz, span, streetCam } };
 </script></body></html>

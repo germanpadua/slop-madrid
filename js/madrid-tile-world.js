@@ -733,6 +733,7 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
         parcels: far.representedParcels, bytes: far.positions.byteLength + far.normals.byteLength + far.colors.byteLength + far.indices.byteLength };
     }
     group.userData.colliders = tileColliders;
+    group.userData.matchingPreparation = !!matchingPreparation;
     group.userData.parcelKeys = drawnHere;
     group.userData.bytes = tile.bytes || 0;
     group.userData.id = tile.id;
