@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>tile-mapcheck</title>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.webgpu.js",
+  "three/webgpu": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.webgpu.js",
+  "three/tsl": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.tsl.js",
+  "three/addons/": "https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/jsm/"
+} }
+</script></head>
+<body style="margin:0">
+<script type="module">
+// tile-mapcheck.html — full-map roof/facade visual validation on the REAL tile route:
+// real generated tile module (js/geodata/tile-*.js) -> real createTilePreparer worker ->
+// createTileWorld().addTile, exactly as js/madrid-tiles.js streams it in the app.
+// Golden-preset lighting synced to js/lighting.js (as block-tilepath.html). No tiles
+// streaming/traffic/postFX: bounded per-tile captures that fit sandbox run limits.
+import * as THREE from 'three/webgpu';
+import { createTileWorld } from './js/madrid-tile-world.js';
+import { createTilePreparer } from './js/madrid-tile-preparer.js';
+window.__mc = { ready: false, errors: [] };
+window.onerror = (m) => { window.__mc.errors.push(String(m)); };
+window.addEventListener('unhandledrejection', (e) => { window.__mc.errors.push('rej:' + String(e.reason && e.reason.message || e.reason)); });
+const TILEID = (location.search.match(/tile=([a-z0-9-]+)/i) || [])[1] || 'k3j0';
+const canvas = document.createElement('canvas');
+canvas.width = 960; canvas.height = 540;
+const ctx = canvas.getContext('webgl2', { antialias: true, alpha: true, depth: true, stencil: false, preserveDrawingBuffer: true });
+const renderer = new THREE.WebGPURenderer({ canvas, context: ctx, antialias: true, forceWebGL: true });
+renderer.setSize(960, 540);
+await renderer.init();
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xebd1b5);
+scene.add(new THREE.HemisphereLight(0x9abbe6, 0xc88a62, 1.48));
+const sun = new THREE.DirectionalLight(0xffca92, 5.8);
+sun.position.set(-44, 58, -68);
+scene.add(sun);
+const t0 = performance.now();
+const mod = await import(`./js/geodata/tile-${TILEID}.js`);
+const tile = mod.TILE;
+const importMs = performance.now() - t0;
+const preparer = createTilePreparer({});
+const tp = performance.now();
+const prepared = await preparer.prepare(tile);
+const prepareMs = performance.now() - tp;
+const world = createTileWorld(scene, {});
+const tb = performance.now();
+const tileArg = { ...prepared, bytes: 0 };
+const entry = world.addTile(tileArg);
+const buildMs = performance.now() - tb;
+const group = entry.group || entry;
+if (group.parent !== scene) scene.add(group);
+let roofInstances = 0, boxInstances = 0, meshTris = 0;
+group.traverse((o) => {
+  if (/TileBuildings/i.test(o.name || '')) boxInstances += o.count;
+  if (/Roofs/i.test(o.name || '')) roofInstances += o.count;
+  if (o.isMesh || o.isInstancedMesh) { const t = ((o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3) * (o.isInstancedMesh ? o.count : 1); meshTris += t; }
+});
+const fpModes = {};
+for (const s of (tileArg.footprintStats || [])) fpModes[s.mode] = (fpModes[s.mode] || 0) + 1;
+const core = tile.core[0];
+const cx = (core[0] + core[2]) / 2, cz = (core[1] + core[3]) / 2;
+const span = Math.max(core[2] - core[0], core[3] - core[1]);
+let streetCam = null;
+{
+  let best = null, bestLen = 0;
+  for (const rd of (tile.roads || [])) {
+    const pts = rd[5] || [];
+    let L = 0; for (let i = 0; i + 3 < pts.length; i += 2) L += Math.hypot(pts[i + 2] - pts[i], pts[i + 3] - pts[i + 1]);
+    if (L > bestLen) { bestLen = L; best = pts; }
+  }
+  if (best && best.length >= 4) {
+    const ax = best[0], az = best[1];
+    // aim ~70m along the polyline
+    let acc = 0, tx = best[2], tz = best[3];
+    for (let i = 0; i + 3 < best.length; i += 2) {
+      const seg = Math.hypot(best[i + 2] - best[i], best[i + 3] - best[i + 1]);
+      if (acc + seg >= 70) { const f = (70 - acc) / seg; tx = best[i] + (best[i + 2] - best[i]) * f; tz = best[i + 1] + (best[i + 3] - best[i + 1]) * f; break; }
+      acc += seg; tx = best[i + 2]; tz = best[i + 3];
+    }
+    streetCam = { pos: [ax, 1.7, az], tgt: [tx, 9, tz], roadLen: Math.round(bestLen) };
+  }
+}
+window.__mc = { ready: true, errors: window.__mc.errors, renderer, scene, THREE,
+  info: { tile: TILEID, importMs: Math.round(importMs), prepareMs: Math.round(prepareMs), buildMs: Math.round(buildMs),
+    roofInstances, boxInstances, meshTris: Math.round(meshTris), fpModes, cx, cz, span, streetCam } };
+</script></body></html>

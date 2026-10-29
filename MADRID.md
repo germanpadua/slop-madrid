@@ -619,3 +619,23 @@ PROBLEMAS CONOCIDOS SIN RESOLVER (no retomar el híbrido a ciegas antes de resol
 5. Licencia: la malla ZONA* municipal no tiene binding de licencia localizable (item ArcGIS sin licenseInfo);
    TODOS los GLB permanecen locales (assets/mesh-monuments/ en .gitignore) y el gate ?meshmonuments=1 sigue
    OFF por defecto. Nada se publica.
+
+## Validación visual full-map de tejados + paleta + factoría (2026-10-29, ruta de teselas REAL)
+Harness nuevo tile-mapcheck.html: módulo de tesela real (js/geodata/tile-*.js) -> createTilePreparer (worker)
+-> createTileWorld().addTile, la ruta exacta del streaming, con capturas 960x540 WebGL2 (una tesela por corrida:
+import 0,06-0,1 s, prepare 0,8-5,3 s en worker, build 0,1-0,3 s; 18k-153k tris por tesela - peso bajo confirmado).
+- Auditoría de decisiones sobre las 11 teselas listas (26.328 parcelas, réplica exacta de pabs+fp de addTile):
+  10.418 hips (~40%), 0 rings (estructural: la descomposición fp convierte bloques de patio en franjas de
+  perímetro con hips - la rama ring solo existe en el mundo AABB puro del seed), 60% flat (bajos <9 m, franjas
+  <4-6 m y el roll del 28%), pizarra 7,9% ~= 8% documentado, bigHips >26 m de luz SON TODOS torres h>22
+  (permitido por la regla). Sin violaciones de regla.
+- Píxeles (misma cámara por tesela): k3j0 (Centro-sur), k2j-1 (Arganzuela), k4j2 (Salamanca este), k3j1
+  (Retiro oeste, estanque en su sitio). Roofscape con hips de teja omnipresentes en las 4; mix de paleta
+  visible (caliza/ocre/salmón/ladrillo); CERO torres de cristal - el bug de factoría NO reaparece full-map.
+- Paleta: distribución de tiers uniforme 25,0/25,3/25,0/24,7% en las 11 teselas (26.344 parcelas). DECISIÓN
+  ESTÉTICA ABIERTA: uniforme vs pesos light-dominant del probe flatfacade (50/25/15/10, user-steered).
+- Calle a pie (cámara sobre la calle real más larga de la tesela): k4j2 muestra canyon de calle Salamanca
+  reconocible con bajos comerciales y balcones. k3j0 cayó en verde (fallo de encuadre del harness, no de la
+  ciudad). Flags honestos: la ruta de teselas no pinta marcas viales (roadPaint es de la app); el asfalto
+  lleva motas oscuras de suciedad; una medianera gris-azulada vista en un encuadre malo queda sin explicar
+  (no verificada). Ache os de contacto: sin sombras en este harness, grounding no juzgable aquí.
