@@ -186,6 +186,7 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     water: materials?.water || createWaterMaterial(),
     lawn: materials?.lawn || createParkLawnMaterial(false),
     dirt: materials?.dirt || new THREE.MeshStandardNodeMaterial({ color: 0xb59a6e, roughness: 1, metalness: 0 }),
+    lot: materials?.lot || new THREE.MeshStandardNodeMaterial({ color: 0x9b9284, roughness: 0.98, metalness: 0, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }), // dusty plot ground (distinct from granite/dirt/asphalt); polygonOffset wins the sub-millimetre depth race against the deck at aerial distances
     stone: new THREE.MeshStandardNodeMaterial({ color: 0xc9c2b4, roughness: 0.88, metalness: 0.02 }),
     landmark: new THREE.MeshStandardNodeMaterial({ color: 0xcfc8b8, roughness: 0.85, metalness: 0.03 }),
     // Named monuments get their own material (caliza blanca / granito berroqueno), not one blanket tone.
@@ -221,6 +222,27 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       const plane = createFlatPolygonMesh(ring, -0.45, mats.water, true);
       plane.name = 'TileWater';
       group.add(plane);
+    }
+
+    // 1d. Cadastral lot underlay (prototype): real CP plot polygons owning orphan buildings, at y=0.03 - under
+    //     park dirt (0.05), lawn (0.10) and the raised slabs. Fully contained water is cut as a hole; the builder
+    //     rejects plots crossing water or swallowing named roads. Plot ground, NOT sidewalk pavement.
+    if (tile.lots && tile.lots.length) {
+      const lotGeos = [];
+      for (const entry of tile.lots) {
+        const ring = toPts(entry.r || entry);
+        if (ring.length < 3) continue;
+        // Build-time holes are exact (parks); water still relies on contained-ring detection here.
+        const holes = [...(entry.h || []).map(toPts), ...holesWithin(ring, bboxOf(ring), waterBoxes)];
+        lotGeos.push(createFlatPolygonMesh(ring, 0.045, mats.lot, true, holes.length ? holes : null).geometry);
+      }
+      if (lotGeos.length) {
+        const mergedLots = mergeGeometries(lotGeos, false);
+        for (const g of lotGeos) g.dispose();
+        const mesh = new THREE.Mesh(mergedLots, mats.lot);
+        mesh.name = 'TileLots';
+        group.add(mesh);
+      }
     }
 
     // 2. Parks & gardens: real OSM landuse, clipped to the core by the builder; the channel is cut out of them too.

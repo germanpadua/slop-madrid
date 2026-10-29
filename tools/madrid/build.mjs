@@ -846,6 +846,106 @@ const credits = `// Building footprints & heights: Ayuntamiento de Madrid IDEAM 
 // parks, water, landmark footprints and the roads that carry bridge decks — with every feature owned by this core.
 // ---------------------------------------------------------------------------------------------------------------------
 if (IS_TILE) {
+  // Cadastral PLOT underlay (prototype): real CP.CadastralParcel polygons that own orphan footprints
+  // (buildings centred off every traced block slab). Candidates: plot contains >=1 core-orphan centre.
+  // Rejected: plots swallowing a NAMED public road (sampled ~4 m; unnamed service drives inside a private
+  // parcela are cadastre-owned ground, accepted) and plots CROSSING a water ring (the renderer only cuts
+  // fully contained holes). Raw CP GML stays local under tools/data/madrid; the license returned by the
+  // service GetCapabilities (Licencia_en.pdf, one document for CP/AD/BU) allows only transformed products,
+  // which this simplified derived geometry is. (c) IGN/Catastro.
+  const cpLots = [];
+  const cpPath = path.join(DATA, 'cadastral_parcels_raw.json');
+  if (fs.existsSync(cpPath)) {
+    const cp = JSON.parse(fs.readFileSync(cpPath, 'utf8'));
+    const extRing = (gml) => {
+      const m = gml.match(/<[^>]*exterior[^>]*>[\s\S]*?<[^>]*posList[^>]*>([\d\s.+-eE]+)<\/[^>]*posList>/);
+      if (!m) return null;
+      const nums = m[1].trim().split(/\s+/).map(Number);
+      const pts = [];
+      for (let i = 0; i + 1 < nums.length; i += 2) pts.push([nums[i], nums[i + 1]]);
+      return pts.length >= 3 ? pts.map(([x, y]) => utmToWorld(x, y)) : null;
+    };
+    const orphanCentres = parcelOrphans.filter((p) => inCore(p.cx, p.cz)).map((p) => [p.cx, p.cz]);
+    // Named-road protection: reject a plot when a NAMED road segment CROSSES its boundary (segment-segment
+    // test - endpoints outside does not imply no crossing) or any sampled road point falls inside it
+    // (catches a road running wholly within the plot). Unnamed service ways are not protected here:
+    // whether they are cadastre-owned private ground is UNCONFIRMED (needs source tags + pixel review).
+    const namedRoadSegs = [];
+    const namedRoadPts = [];
+    for (const r of roadLines) {
+      if (!r.name) continue;
+      for (let i = 1; i < r.pts.length; i++) {
+        const [rx0, rz0] = r.pts[i - 1], [rx1, rz1] = r.pts[i];
+        namedRoadSegs.push([rx0, rz0, rx1, rz1]);
+        const d = Math.hypot(rx1 - rx0, rz1 - rz0), n = Math.max(1, Math.round(d / 4));
+        for (let k = 0; k < n; k++) namedRoadPts.push([rx0 + ((rx1 - rx0) * k) / n, rz0 + ((rz1 - rz0) * k) / n]);
+      }
+    }
+    const segsCross = (ax, az, bx, bz, cx, cz, dx, dz) => {
+      const d1 = (bx - ax) * (cz - az) - (bz - az) * (cx - ax);
+      const d2 = (bx - ax) * (dz - az) - (bz - az) * (dx - ax);
+      const d3 = (dx - cx) * (az - cz) - (dz - cz) * (ax - cx);
+      const d4 = (dx - cx) * (bz - cz) - (dz - cz) * (bx - cx);
+      return ((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0));
+    };
+    const roadHitsPlot = (ring) => {
+      for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+        const [ex0, ez0] = ring[j], [ex1, ez1] = ring[i];
+        for (const [ax, az, bx, bz] of namedRoadSegs) if (segsCross(ex0, ez0, ex1, ez1, ax, az, bx, bz)) return true;
+      }
+      return namedRoadPts.some(([x, z]) => inRing(ring, x, z));
+    };
+    let rejectedRoad = 0, rejectedWater = 0;
+    for (const f of cp.features) {
+      const ring = extRing(f.gml);
+      if (!ring) continue;
+      if (!orphanCentres.some(([x, z]) => inRing(ring, x, z))) continue;
+      if (roadHitsPlot(ring)) { rejectedRoad++; continue; }
+      let crosses = false;
+      for (const w of waterClipped) {
+        const wr = [];
+        for (let i = 0; i + 1 < w.length; i += 2) wr.push([w[i], w[i + 1]]);
+        const ins = wr.map(([x, z]) => inRing(ring, x, z));
+        if (ins.some(Boolean) && !ins.every(Boolean)) { crosses = true; break; }
+      }
+      if (crosses) { rejectedWater++; continue; }
+      cpLots.push(ring);
+    }
+    const clipped = cpLots.flatMap((r) => clipToCore(r, 60));
+    // Parks keep their own floors at every camera distance: a park ring fully inside a lot becomes a HOLE
+    // (polygonOffset must never let plot ground beat dirt/lawn); a lot CROSSING any park ring is rejected
+    // wholesale (conservative - no boolean clipping of partial overlaps in this prototype).
+    const parkRingsAll = parksClipped.flatMap((pk) => (pk.rings || []));
+    const lotOut = [];
+    let rejectedPark = 0;
+    for (const ring of clipped) {
+      let crosses = false;
+      const holes = [];
+      for (const pr of parkRingsAll) {
+        const ins = pr.map(([x, z]) => inRing(ring, x, z));
+        const anyIn = ins.some(Boolean), allIn = ins.every(Boolean);
+        if (anyIn && !allIn) { crosses = true; break; }
+        if (!anyIn) {
+          // Vertex tests miss edge-only intersections (all vertices outside, edges crossing): check segments.
+          for (let i = 0, j = pr.length - 1; i < pr.length; j = i++) {
+            const [px0, pz0] = pr[j], [px1, pz1] = pr[i];
+            let hit = false;
+            for (let k = 0, l = ring.length - 1; k < ring.length; l = k++) {
+              if (segsCross(px0, pz0, px1, pz1, ring[l][0], ring[l][1], ring[k][0], ring[k][1])) { hit = true; break; }
+            }
+            if (hit) { crosses = true; break; }
+          }
+          if (crosses) break;
+          continue;
+        }
+        if (allIn) holes.push(pr);
+      }
+      if (crosses) { rejectedPark++; continue; }
+      lotOut.push({ ring, holes });
+    }
+    cpLots.length = 0; cpLots.push(...lotOut);
+    log(`cadastral lots: ${cpLots.length} pieces (${lotOut.reduce((t, l) => t + l.holes.length, 0)} park holes) for ${orphanCentres.length} core orphans (rejected ${rejectedRoad} named-road, ${rejectedWater} water-crossing, ${rejectedPark} park-crossing)`);
+  }
   const TILE = {
     id: phase.tile.id,
     label: phase.label,
@@ -862,6 +962,7 @@ if (IS_TILE) {
     parks: parksClipped.map((p) => ({ name: p.name, cat: p.cat, acres: p.acres, rings: p.rings.map(flat) })),
     water: waterClipped.map(flat),
     roads: roadLines.map((r) => [r.name, r1(r.w), r.dir, r.lanes, r.hw, flat(r.pts)]),
+    lots: cpLots.map((l) => ({ r: l.ring.flatMap(([x, z]) => [r1(x), r1(z)]), ...(l.holes.length ? { h: l.holes.map((h) => h.flatMap(([x, z]) => [r1(x), r1(z)])) } : {}) })),
     landmarks,
   };
   fs.writeFileSync(OUT, `// ${path.relative(path.resolve(OUT_DIR, '../..'), OUT)} — GENERATED by tools/madrid/build.mjs, do not edit by hand.

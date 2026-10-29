@@ -71,6 +71,7 @@ residentes de las 52,1 km² del ámbito) — completada el 27-10-2026; **fase 4*
 |---|---|---|---|
 | OSM Overpass | edificios (height/levels), highways, parks, agua, plazas | geometría base | ODbL, © colaboradores |
 | Catastro INSPIRE WFS (`ovc.catastro.meh.es/inspire/wfsBU.aspx`) | huellas de edificios (GML, EPSG:25830), `numberOfFloorsAboveGround` parcial | alturas cuando no hay dato mejor | reutilización libre con atribución (IApoD, RC insancción art. 12: "© IGN/Catastro") |
+| Catastro INSPIRE WFS CP (`ovc.catastro.meh.es/inspire/wfsCP.aspx`) | parcelas catastrales (GML, EPSG:25830) | **solares bajo huérfanas** (prototipo k4j0: simplificadas rdp 0,8 m, recortadas al core, mergeadas) | `Licencia_en.pdf` (CP/AD/BU): productos transformados OK incl. comercial; crudo NO redistribuible (queda local en `tools/data/madrid/`); no suplantar cartografía catastral; © IGN/Catastro |
 | Ayuntamiento MapServer `CARTOGRAFIA/EDIFICIOS_ALTURAS` | huellas con `ALTURA` (m, z-suelo) y `Z_EDIFICIO_HUELLA` | **alturas primarias** | © Ayuntamiento de Madrid (IDEAM), uso libre con atribución |
 | IDEAM i3s `MODELADO_3D_MADRID` (SceneServer tiles-eu1.arcgis.com) | malla realista 3D por nodos (LOD tree, EPSG:4326) | hitos (opcional) | © Ayuntamiento de Madrid; descarga por nodos, sin API key |
 | BBBike Madrid.osm.pbf (77 MB) | respaldo OSM completo | si Overpass cae | ODbL |
