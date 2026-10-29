@@ -122,17 +122,33 @@ export function createResidentRoadService({ tileWorld, manifest, seedSidewalks =
     return { featureSets, sidewalks, obstacles: seedObstacles, coverage };
   }
 
-  function apply(result, inputs) {
+  function apply(result, inputs, timings = {}) {
     // The worker ships plain connectivity; the runtime functions (lane curves, ground queries) are
     // rebuilt here from the exact same input snapshot, so both halves describe one network.
+    // Per-phase timings land in roadStats so the cost of a swap can be watched without a profiler.
+    const tQueries = performance.now();
     const queries = createGroundQueries(inputs.sidewalks, inputs.obstacles, { coverage: inputs.coverage });
+    const tDecode = performance.now();
     const network = decodeRoadNetwork({
       nodes: result.nodes, edges: result.edges,
       walkable: queries.walkable, onSidewalk: queries.onSidewalk, isRoadClear: queries.isRoadClear
     });
+    const tBlocks = performance.now();
     const residentBlocks = createResidentBlockLookup(tileWorld);
     const blockAt = (x, z) => seedBlockAt(x, z) || residentBlocks.blockAt(x, z);
-    onNetwork(network, blockAt, result.stats, residentBlocks.count());
+    const applyMs = performance.now() - tQueries;
+    onNetwork(network, blockAt, {
+      ...result.stats,
+      timings: {
+        ...result.stats?.timings,
+        snapshotMs: timings.snapshotMs,
+        workerMs: timings.workerMs,
+        applyMs: +applyMs.toFixed(1),
+        queriesMs: +(tDecode - tQueries).toFixed(1),
+        decodeMs: +(tBlocks - tDecode).toFixed(1),
+        blockLookupMs: +(performance.now() - tBlocks).toFixed(1)
+      }
+    }, residentBlocks.count());
   }
 
   function schedule() {
@@ -150,11 +166,17 @@ export function createResidentRoadService({ tileWorld, manifest, seedSidewalks =
     const requestVersion = version;
     let inputs;
     let result;
+    let snapshotMs;
+    let workerMs;
     try {
+      const tSnapshot = performance.now();
       inputs = snapshot();
+      snapshotMs = performance.now() - tSnapshot;
       // Curbs are for walking and painting, not for laying lanes: the source graph already carries
       // real road widths, and blocking lanes against coarse curb rectangles collapses the graph.
+      const tWorker = performance.now();
       result = await preparer.prepare({ featureSets: inputs.featureSets, sidewalks: [], obstacles: [], coverage: inputs.coverage });
+      workerMs = performance.now() - tWorker;
     } catch (error) {
       inFlight = false;
       if (!disposed) onError(error);
@@ -163,7 +185,7 @@ export function createResidentRoadService({ tileWorld, manifest, seedSidewalks =
     inFlight = false;
     if (disposed) return;
     if (requestVersion !== version) { timer = setTimeout(run, debounceMs); return; }
-    apply(result, inputs);
+    apply(result, inputs, { snapshotMs: +snapshotMs.toFixed(1), workerMs: +workerMs.toFixed(1) });
   }
 
   schedule();

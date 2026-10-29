@@ -187,5 +187,30 @@ test('the worker payload round-trips connectivity through flat index-addressed d
   assert.equal(dMove.to, decoded.edges[sMove.to.id]);
   assert.equal(decoded.connector(decodedWithMoves, 0, dMove.to, dMove.out[0]).len > 0, true);
 });
+test('a swap reports its own per-phase timings, not just the worker numbers', async () => {
+  const { buildResidentRoadGraph } = await import('../js/madrid-resident-road-graph.js');
+  const { buildRoadNetwork, encodeRoadNetwork, createResidentRoadService } = await load();
+  const way = (id, nodes) => ({ id, nodes, tags: { highway: 'residential', name: 'Calle' } });
+  const features = { ways: [way(1, [[1, 200, 0], [2, 400, 0]]), way(2, [[2, 400, 0], [3, 400, 200]]), way(3, [[3, 400, 200], [4, 200, 200]]), way(4, [[4, 200, 200], [1, 200, 0]]), way(5, [[5, 300, -100], [6, 300, 300]])] };
+  const graph = buildResidentRoadGraph([features]);
+  const encoded = encodeRoadNetwork(buildRoadNetwork([], [], [], { roadGraph: graph, coverage: [[150, -150, 450, 350]], sourceOnly: true }));
+  const tileWorld = { residentGeometry: () => new Map(), residentStreetFeatures: () => new Map([['fase2', features]]) };
+  const manifest = { grid: { seed: 'fase2' }, tiles: [{ id: 'fase2', core: [[-1841, -1145, 1408, 1454]] }] };
+  let captured = null;
+  const service = createResidentRoadService({ tileWorld, manifest, seedSidewalks: [],
+    onNetwork: (_network, _blockAt, stats) => { captured = stats; }, debounceMs: 1e6 });
+  try {
+    service.apply(encoded, service.snapshot(), { snapshotMs: 2.5, workerMs: 11 });
+  } finally {
+    service.dispose();
+  }
+  assert.ok(captured, 'the swap reached onNetwork');
+  assert.equal(captured.timings.snapshotMs, 2.5);
+  assert.equal(captured.timings.workerMs, 11);
+  for (const key of ['applyMs', 'queriesMs', 'decodeMs', 'blockLookupMs']) {
+    assert.equal(typeof captured.timings[key], 'number', key + ' is timed');
+    assert.ok(captured.timings[key] >= 0, key + ' cannot be negative');
+  }
+});
 
 

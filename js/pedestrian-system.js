@@ -477,11 +477,20 @@ function createPedestrianSystem(initialNetwork, { player, nearEdges, nearSignals
     for (const n of walkedNodes) n.walkers.length = 0;
     walkedNodes.length = 0;
     let pedBudget = jump ? NUM_PEDS : 6;
+    // A graph swap retires the walks whose track disappeared; fill those vacancies before spending the
+    // same budget relocating walkers that are merely too far from the focus, so street life recovers
+    // in a few seconds instead of waiting for the placed population to wander past the radius.
+    for (let i = 0; i < NUM_PEDS && pedBudget > 0; i++) {
+      const p = peds[i];
+      if (p.placed) continue;
+      pedBudget--;
+      spawnPed(p, jump ? 0 : 60, jump ? NEAR_RADIUS : 280, !jump);
+    }
     for (let scanned = 0; scanned < NUM_PEDS && pedBudget > 0; scanned++) {
       const p = peds[pedCursor];
       pedCursor = (pedCursor + 1) % NUM_PEDS;
-      const d = p.placed ? Math.hypot(p.x - focusX, p.z - focusZ) : Infinity;
-      if (d <= (jump ? NEAR_RADIUS : PED_RADIUS)) continue;
+      if (!p.placed) continue;
+      if (Math.hypot(p.x - focusX, p.z - focusZ) <= (jump ? NEAR_RADIUS : PED_RADIUS)) continue;
       pedBudget--;
       spawnPed(p, jump ? 0 : 60, jump ? NEAR_RADIUS : 280, !jump);
     }
