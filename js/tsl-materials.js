@@ -2710,17 +2710,13 @@ function createParkLawnMaterial(isMeadow = false) {
 
   mat.colorNode = Fn(() => {
     const wp = positionWorld.xz;
-    const macroPatch = noise2D(wp.mul(0.06));
-    const midClover = noise2D(wp.mul(0.35));
-    const microBlade = noise2D(wp.mul(3.8));
-    const mowStripe = sin(wp.x.mul(0.55).add(wp.y.mul(0.25))).mul(0.5).add(0.5);
-
-    const baseLawn = mix(
-      cGrassDeep,
-      cGrassMid,
-      macroPatch.mul(0.45).add(midClover.mul(0.35)).add(mowStripe.mul(0.20))
-    );
-    return mix(baseLawn, cGrassSun, microBlade.mul(0.38));
+    // Broad patches survive minification. Subpixel blade noise caused a moving grid
+    // in the aerial model; fade fine detail using screen derivatives, not only distance.
+    const footprint = length(fwidth(wp));
+    const detail = float(1).sub(smoothstep(0.04, 0.20, footprint));
+    const broad = noise2D(wp.mul(0.025));
+    const fine = noise2D(wp.mul(1.5)).sub(0.5).mul(detail).mul(0.06);
+    return mix(cGrassDeep, cGrassMid, broad.mul(0.5).add(0.25).add(fine));
   })();
 
   mat.normalNode = Fn(() => {

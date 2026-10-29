@@ -17,3 +17,7 @@ No publicar cambios ni subir datos fuente con permisos de redistribución pendie
 ## Siguiente criterio de calidad
 
 Verificar arranque y continuidad de renderizado, navegación aérea y a pie, y legibilidad de los monumentos en escritorio y móvil antes de comparar la experiencia final con las referencias. Las mediciones con rasterización por software no representan el rendimiento de una GPU de usuario.
+
+## Revisión visual del propietario
+
+La maqueta actual no está aceptada: parpadeo, fondo visible, monumentos poco fieles, fuente ausente y parques incorrectos. Referencia prioritaria: TinyWarsaw. Antes de ampliar cobertura/población, Cibeles y entorno deben servir como muestra convincente de arquitectura, calles, vegetación y estabilidad al orbitar. Revisar en movimiento y a pie; no sustituir esa revisión por contadores o tests.

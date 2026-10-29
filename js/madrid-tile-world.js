@@ -90,8 +90,8 @@ const hash = (x, z, salt = 0) => {
 };
 
 /**
- * "Out of map" ground: what a tile that has not been streamed in yet shows. A neutral dark paving with a survey
- * grid and a hazard tint — never city asphalt/grass, so a pending area can't be mistaken for empty city.
+ * "Out of map" ground: what a tile that has not been streamed in yet shows. A neutral, untextured backdrop for missing/pending coverage.
+ * It stays below mounted ground without a survey grid that aliases in aerial views.
  */
 function createOutOfMapFloor(scene, bbox) {
   const pad = 3000;
@@ -100,19 +100,7 @@ function createOutOfMapFloor(scene, bbox) {
   const geo = new THREE.PlaneGeometry(w, d, 1, 1);
   geo.rotateX(-Math.PI / 2);
   const mat = new THREE.MeshStandardNodeMaterial({ roughness: 1, metalness: 0 });
-  mat.colorNode = Fn(() => {
-    const p = positionWorld.xz;
-    const grid = (stepM) => {
-      const f = abs(fract(p.div(stepM)).sub(0.5));
-      return max(smoothstep(0.455, 0.5, f.x), smoothstep(0.455, 0.5, f.y));
-    };
-    const minor = grid(50).mul(0.55);
-    const major = grid(250);
-    const base = color(0x1d2127);
-    const tint = color(0x2a3138);
-    const line = color(0x3d4650);
-    return mix(mix(base, tint, minor), line, major);
-  })();
+  mat.color.setHex(0x34383a);
   const mesh = new THREE.Mesh(geo, mat);
   mesh.position.set((bbox[0] + bbox[2]) / 2, -0.16, (bbox[1] + bbox[3]) / 2);
   mesh.receiveShadow = true;

@@ -1519,7 +1519,7 @@ function buildCityGrid(scene) {
   harborWaterGeo.rotateX(-Math.PI / 2);
   const harborWaterMesh = new THREE.Mesh(harborWaterGeo, waterMat);
   harborWaterMesh.position.set(0, ISLAND_BOUNDS.waterLevel, -50);
-  group.add(harborWaterMesh);
+  if (!GEO.frame?.madrid) group.add(harborWaterMesh);
 
   // =========================================================================
   // 2. POLYGONAL MANHATTAN ISLAND SEAWALL BULKHEAD & ROADWAY ASPHALT DECK

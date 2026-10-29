@@ -25,6 +25,7 @@ const ndcPoint = arg('--ndc', null);
 const at = arg('--at', null);
 const buildingsFile = arg('--buildings-file', null);
 const view = arg('--view', 'chase');
+const motionDir = arg('--motion-dir', null);
 const zoom = Number(arg('--zoom', '1'));
 if (!['chase', 'maqueta'].includes(view) || !(zoom >= 0.45 && zoom <= 2.4)) throw new Error('Invalid view/zoom');
 
@@ -119,6 +120,15 @@ const out = await page.evaluate(async ({ place, gridN, waitMs, ndcPoint, shotPat
   return { overlappingLandmarks, view, zoom, overlappingPalace, glRenderer, framesAfterTeleport: (api.renderedFrames || 0) - startFrames, place, target, mode, entity: entityPos, camera: { x: +cameraPos.x.toFixed(1), y: +cameraPos.y.toFixed(1), z: +cameraPos.z.toFixed(1) }, occluders, shot,
     roadPaintStats: api.roadPaintStats || null, roadStats: api.roadStats ? { routingNodes: api.roadStats.routingNodes, routingEdges: api.roadStats.routingEdges } : null };
 }, { place, gridN, waitMs, ndcPoint, shotPath, at, view, zoom });
+if (motionDir) {
+  fs.mkdirSync(motionDir, { recursive: true });
+  for (let i = 0; i < 4; i++) {
+    await page.evaluate(() => { window.__madrid.cameraSystem.orbitYawOffset += 0.35; });
+    await page.waitForTimeout(2000);
+    const data = await page.evaluate(() => document.querySelector('canvas').toDataURL('image/jpeg', 0.8));
+    fs.writeFileSync(path.join(motionDir, `orbit-${i}.jpg`), Buffer.from(data.split(',')[1], 'base64'));
+  }
+}
 if (jsonOut) fs.writeFileSync(path.resolve(ROOT, jsonOut), JSON.stringify({ ...out, shot: undefined }, null, 2));
 if (shotPath && out.shot) fs.writeFileSync(path.resolve(ROOT, shotPath), Buffer.from(out.shot.split(',')[1], 'base64'));
 console.log(JSON.stringify({ place: out.place, target: out.target, mode: out.mode, entity: out.entity, camera: out.camera, hits: out.occluders.length, jsonOut, shotPath, roadPaintStats: out.roadPaintStats }));
