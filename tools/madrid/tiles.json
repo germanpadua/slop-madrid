@@ -1309,7 +1309,7 @@
   "ready": 14,
   "pending": 71,
   "failed": 0,
-  "readyBytes": 9033694,
+  "readyBytes": 9012778,
   "readyKm2": 20.8
  },
  "tiles": [
@@ -1349,11 +1349,11 @@
    "areaKm2": 8.45,
    "bytes": 738732,
    "md5": "acaa2795a8899d7200c6c74f11e6b1f9",
-   "blocksBytes": 3169682,
-   "blocksMd5": "f985a504f2219045e71b4751f439dc49",
+   "blocksBytes": 3160990,
+   "blocksMd5": "a3dc76ec3154c0116b8f8094a6d99255",
    "counts": {
     "blocks": 488,
-    "parcels": 26216
+    "parcels": 26151
    },
    "sources": [
     "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
@@ -4011,11 +4011,11 @@
    "module": "js/geodata/tile-k3j1.js",
    "overlapped": true,
    "areaKm2": 0.75,
-   "bytes": 121670,
-   "md5": "ff10a81d001440199d720ff66363111c",
+   "bytes": 117495,
+   "md5": "dae757bb4198bef6c09807c9439b17f0",
    "counts": {
     "blocks": 14,
-    "parcels": 476,
+    "parcels": 442,
     "parks": 295,
     "water": 7,
     "roads": 79,
@@ -4547,11 +4547,11 @@
    "module": "js/geodata/tile-k4j2.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": 693314,
-   "md5": "06e2df3ee93044f020c4f376d9bde6bb",
+   "bytes": 685265,
+   "md5": "c585d35383b4a619122a7fee99cf5f7d",
    "counts": {
     "blocks": 81,
-    "parcels": 4851,
+    "parcels": 4779,
     "parks": 61,
     "water": 0,
     "roads": 271,
