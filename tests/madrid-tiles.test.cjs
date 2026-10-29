@@ -124,6 +124,15 @@ test('phase-3 tiles are generated, hashed and listed with their area', () => {
   assert.ok(bytes <= manifest.budget.maxResidentBytes, `ready tiles fit the ${manifest.budget.maxResidentBytes} B budget (${bytes} B)`);
 });
 
+test('all ready geodata and static supplemental datasets fit the unchanged 12 MiB cap', () => {
+  const tiles = readyTiles().reduce((n, t) => n + (t.bytes || 0) + (t.blocksBytes || 0), 0);
+  const supplemental = ['madrid-marked-crossings.js', 'madrid-landmark-masses.js',
+    'madrid-park-paths-data.js', 'madrid-municipal-tree-data.js'];
+  const bytes = tiles + supplemental.reduce((n, file) => n + statSync(join(root, 'js', file)).size, 0);
+  assert.ok(bytes <= manifest.budget.maxResidentBytes,
+    `ready modules plus supplemental source data: ${bytes}/${manifest.budget.maxResidentBytes} B`);
+});
+
 test('tile modules carry their own real geodata, owned by their core', () => {
   for (const t of readyTiles().filter((x) => x.module.includes('/geodata/'))) {
     const src = readFileSync(join(root, t.module), 'utf8');

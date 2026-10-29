@@ -1,0 +1,284 @@
+{
+  "ambientActors": {
+    "cars": 0,
+    "buses": 0,
+    "pedestrians": 0
+  },
+  "overlappingLandmarks": {
+    "Príncipe Pío": 0,
+    "Banco de España": 0,
+    "Catedral de la Almudena": 0,
+    "Palacio Real": 0,
+    "Palacio de Santoña": 0,
+    "Casa y Torre de los Lujanes": 0,
+    "Torre de Madrid": 0,
+    "Edificio Carrión": 0,
+    "Estación de Atocha": 0,
+    "Palacio del Congreso de los Diputados": 0,
+    "Palacio de Linares": 0,
+    "Real Basílica de San Francisco el Grande": 0,
+    "Mercado de San Miguel": 0,
+    "Teatro Real": 0,
+    "Edificio España": 0,
+    "Palacio de la Prensa": 0,
+    "Casa de la Panadería": 0,
+    "Real Academia Española": 0,
+    "Círculo de Bellas Artes": 0,
+    "Palacio de Cibeles": 0,
+    "Mercado de San Antón": 0,
+    "Puerta de Alcalá": 0,
+    "Estación de Príncipe Pío": 0
+  },
+  "view": "maqueta",
+  "zoom": 0.7,
+  "overlappingPalace": [],
+  "glRenderer": "ANGLE (Intel, Mesa Intel(R) Iris(R) Xe Graphics (RPL-P), OpenGL ES 3.2)",
+  "framesAfterTeleport": 447,
+  "place": "retiro",
+  "target": {
+    "x": 1600,
+    "z": 50,
+    "heading": 0
+  },
+  "mode": "person",
+  "entity": {
+    "x": 1500.7,
+    "y": 0,
+    "z": 50
+  },
+  "camera": {
+    "x": 1878.7,
+    "y": 650.1,
+    "z": 337.3
+  },
+  "occluders": [
+    {
+      "ndc": {
+        "x": -0.67,
+        "y": 0.67
+      },
+      "name": "MadridRoadSurfaces",
+      "parentChain": [
+        "MadridRoadSurfaces",
+        "ManhattanCityGrid",
+        "Scene"
+      ],
+      "distance": 1034.7,
+      "point": {
+        "x": 1088.6,
+        "y": 0,
+        "z": 183.1
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "606767"
+      },
+      "geometry": "BufferGeometry"
+    },
+    {
+      "ndc": {
+        "x": -0.67,
+        "y": 0
+      },
+      "name": "MadridParks",
+      "parentChain": [
+        "MadridParks",
+        "ManhattanCityGrid",
+        "Scene"
+      ],
+      "distance": 859.2,
+      "point": {
+        "x": 1318.7,
+        "y": 0.1,
+        "z": 289.5
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "ffffff"
+      },
+      "geometry": "BufferGeometry"
+    },
+    {
+      "ndc": {
+        "x": -0.67,
+        "y": -0.67
+      },
+      "name": "",
+      "parentChain": [
+        "Mesh",
+        "MadridSourcedStreetTrees",
+        "MadridTile:k3j1",
+        "Scene"
+      ],
+      "distance": 746.5,
+      "point": {
+        "x": 1494.1,
+        "y": 10.9,
+        "z": 367
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "ffffff"
+      },
+      "geometry": "IcosahedronGeometry"
+    },
+    {
+      "ndc": {
+        "x": 0,
+        "y": 0.67
+      },
+      "name": "",
+      "parentChain": [
+        "Mesh",
+        "MadridSourcedStreetTrees",
+        "Scene"
+      ],
+      "distance": 955.4,
+      "point": {
+        "x": 1313.3,
+        "y": 10.9,
+        "z": -92.4
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "ffffff"
+      },
+      "geometry": "IcosahedronGeometry"
+    },
+    {
+      "ndc": {
+        "x": 0,
+        "y": 0
+      },
+      "name": "",
+      "parentChain": [
+        "Mesh",
+        "MadridSourcedStreetTrees",
+        "MadridTile:k3j1",
+        "Scene"
+      ],
+      "distance": 787.8,
+      "point": {
+        "x": 1508.8,
+        "y": 13.9,
+        "z": 56.2
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "ffffff"
+      },
+      "geometry": "IcosahedronGeometry"
+    },
+    {
+      "ndc": {
+        "x": 0,
+        "y": -0.67
+      },
+      "name": "TileParks",
+      "parentChain": [
+        "TileParks",
+        "MadridTile:k3j1",
+        "Scene"
+      ],
+      "distance": 713,
+      "point": {
+        "x": 1645.3,
+        "y": 0.1,
+        "z": 160
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "ffffff"
+      },
+      "geometry": "BufferGeometry"
+    },
+    {
+      "ndc": {
+        "x": 0.67,
+        "y": 0.67
+      },
+      "name": "",
+      "parentChain": [
+        "Mesh",
+        "MadridSourcedStreetTrees",
+        "MadridTile:k3j1",
+        "Scene"
+      ],
+      "distance": 1016.3,
+      "point": {
+        "x": 1525.1,
+        "y": 11.6,
+        "z": -369.9
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "ffffff"
+      },
+      "geometry": "IcosahedronGeometry"
+    },
+    {
+      "ndc": {
+        "x": 0.67,
+        "y": 0
+      },
+      "name": "TileParks",
+      "parentChain": [
+        "TileParks",
+        "MadridTile:k3j1",
+        "Scene"
+      ],
+      "distance": 859.2,
+      "point": {
+        "x": 1682.8,
+        "y": 0.1,
+        "z": -189.4
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "ffffff"
+      },
+      "geometry": "BufferGeometry"
+    },
+    {
+      "ndc": {
+        "x": 0.67,
+        "y": -0.67
+      },
+      "name": "TileParks",
+      "parentChain": [
+        "TileParks",
+        "MadridTile:k3j1",
+        "Scene"
+      ],
+      "distance": 759.2,
+      "point": {
+        "x": 1803.1,
+        "y": 0.1,
+        "z": -47.6
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "ffffff"
+      },
+      "geometry": "BufferGeometry"
+    }
+  ],
+  "roadPaintStats": {
+    "rebuildMs": 79,
+    "vertices": 20664,
+    "triangles": 10332
+  },
+  "roadStats": {
+    "routingNodes": 2296,
+    "routingEdges": 3565
+  }
+}

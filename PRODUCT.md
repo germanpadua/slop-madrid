@@ -21,3 +21,9 @@ Verificar arranque y continuidad de renderizado, navegación aérea y a pie, y l
 ## Revisión visual del propietario
 
 La maqueta actual no está aceptada: parpadeo, fondo visible, monumentos poco fieles, fuente ausente y parques incorrectos. Referencia prioritaria: TinyWarsaw. Antes de ampliar cobertura/población, Cibeles y entorno deben servir como muestra convincente de arquitectura, calles, vegetación y estabilidad al orbitar. Revisar en movimiento y a pie; no sustituir esa revisión por contadores o tests.
+
+## Dirección estática vigente
+
+Coches, autobuses y peatones ambientales **desactivados** hasta alcanzar el estilo y calidad solicitados. El usuario pidió expresamente mantenerlos apagados. No reactivarlos como una mejora de ambientación. Arranque en persona + maqueta + mediodía; materiales mates, luz simple, sin SSR/bloom. Los modos de exploración del jugador permanecen disponibles.
+
+Retiro con caminos OSM y posiciones/alturas del inventario municipal; copas ilustrativas. Monumentos con masas de parcelas y topología OSM donde existen. La fuente de Cibeles vuelve a tener una representación escultórica simplificada. Esta dirección aún necesita revisión arquitectónica: no equivale a paridad con TinyWarsaw ni a aceptación visual del propietario.

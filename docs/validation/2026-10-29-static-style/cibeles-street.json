@@ -1,0 +1,273 @@
+{
+  "ambientActors": {
+    "cars": 0,
+    "buses": 0,
+    "pedestrians": 0
+  },
+  "overlappingLandmarks": {
+    "Príncipe Pío": 0,
+    "Banco de España": 0,
+    "Catedral de la Almudena": 0,
+    "Palacio Real": 0,
+    "Palacio de Santoña": 0,
+    "Casa y Torre de los Lujanes": 0,
+    "Torre de Madrid": 0,
+    "Edificio Carrión": 0,
+    "Estación de Atocha": 0,
+    "Palacio del Congreso de los Diputados": 0,
+    "Palacio de Linares": 0,
+    "Real Basílica de San Francisco el Grande": 0,
+    "Mercado de San Miguel": 0,
+    "Teatro Real": 0,
+    "Edificio España": 0,
+    "Palacio de la Prensa": 0,
+    "Casa de la Panadería": 0,
+    "Real Academia Española": 0,
+    "Círculo de Bellas Artes": 0,
+    "Palacio de Cibeles": 0,
+    "Mercado de San Antón": 0,
+    "Puerta de Alcalá": 0,
+    "Estación de Príncipe Pío": 0
+  },
+  "view": "chase",
+  "zoom": 1,
+  "overlappingPalace": [],
+  "glRenderer": "ANGLE (Intel, Mesa Intel(R) Iris(R) Xe Graphics (RPL-P), OpenGL ES 3.2)",
+  "framesAfterTeleport": 404,
+  "place": "cibeles",
+  "target": {
+    "x": 875,
+    "z": -265,
+    "heading": 1.25
+  },
+  "mode": "person",
+  "entity": {
+    "x": 875,
+    "y": 0,
+    "z": -265
+  },
+  "camera": {
+    "x": 870.9,
+    "y": 2.3,
+    "z": -266.4
+  },
+  "occluders": [
+    {
+      "ndc": {
+        "x": -0.67,
+        "y": 0.67
+      },
+      "name": "MadridAtmosphericSky",
+      "parentChain": [
+        "MadridAtmosphericSky",
+        "Scene"
+      ],
+      "distance": 109697.7,
+      "point": {
+        "x": 100000,
+        "y": 39068.2,
+        "z": -26359.6
+      },
+      "material": {
+        "name": "",
+        "type": "NodeMaterial"
+      },
+      "geometry": "BoxGeometry"
+    },
+    {
+      "ndc": {
+        "x": -0.67,
+        "y": 0
+      },
+      "name": "MadridAtmosphericSky",
+      "parentChain": [
+        "MadridAtmosphericSky",
+        "Scene"
+      ],
+      "distance": 102408.1,
+      "point": {
+        "x": 100000,
+        "y": 7480,
+        "z": -24861.6
+      },
+      "material": {
+        "name": "",
+        "type": "NodeMaterial"
+      },
+      "geometry": "BoxGeometry"
+    },
+    {
+      "ndc": {
+        "x": -0.67,
+        "y": -0.67
+      },
+      "name": "MadridRoadSurfaces",
+      "parentChain": [
+        "MadridRoadSurfaces",
+        "ManhattanCityGrid",
+        "Scene"
+      ],
+      "distance": 10.5,
+      "point": {
+        "x": 880.9,
+        "y": 0,
+        "z": -268.7
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "606767"
+      },
+      "geometry": "BufferGeometry"
+    },
+    {
+      "ndc": {
+        "x": 0,
+        "y": 0.67
+      },
+      "name": "MadridAtmosphericSky",
+      "parentChain": [
+        "MadridAtmosphericSky",
+        "Scene"
+      ],
+      "distance": 114765.9,
+      "point": {
+        "x": 100000,
+        "y": 47539,
+        "z": 32671.6
+      },
+      "material": {
+        "name": "",
+        "type": "NodeMaterial"
+      },
+      "geometry": "BoxGeometry"
+    },
+    {
+      "ndc": {
+        "x": 0,
+        "y": 0
+      },
+      "name": "",
+      "parentChain": [
+        "Mesh",
+        "Landmarks",
+        "Scene"
+      ],
+      "distance": 112.3,
+      "point": {
+        "x": 977.1,
+        "y": 12,
+        "z": -231.1
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "eae3d1"
+      },
+      "geometry": "BufferGeometry"
+    },
+    {
+      "ndc": {
+        "x": 0,
+        "y": -0.67
+      },
+      "name": "MadridRoadSurfaces",
+      "parentChain": [
+        "MadridRoadSurfaces",
+        "ManhattanCityGrid",
+        "Scene"
+      ],
+      "distance": 9,
+      "point": {
+        "x": 879.2,
+        "y": 0,
+        "z": -263.6
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "606767"
+      },
+      "geometry": "BufferGeometry"
+    },
+    {
+      "ndc": {
+        "x": 0.67,
+        "y": 0.67
+      },
+      "name": "MadridAtmosphericSky",
+      "parentChain": [
+        "MadridAtmosphericSky",
+        "Scene"
+      ],
+      "distance": 137092.4,
+      "point": {
+        "x": 80604.4,
+        "y": 48824.1,
+        "z": 100000
+      },
+      "material": {
+        "name": "",
+        "type": "NodeMaterial"
+      },
+      "geometry": "BoxGeometry"
+    },
+    {
+      "ndc": {
+        "x": 0.67,
+        "y": 0
+      },
+      "name": "",
+      "parentChain": [
+        "Mesh",
+        "Landmarks",
+        "Scene"
+      ],
+      "distance": 121,
+      "point": {
+        "x": 947.4,
+        "y": 11.1,
+        "z": -172.9
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "eae3d1"
+      },
+      "geometry": "BufferGeometry"
+    },
+    {
+      "ndc": {
+        "x": 0.67,
+        "y": -0.67
+      },
+      "name": "MadridRoadSurfaces",
+      "parentChain": [
+        "MadridRoadSurfaces",
+        "ManhattanCityGrid",
+        "Scene"
+      ],
+      "distance": 10.5,
+      "point": {
+        "x": 877.5,
+        "y": 0,
+        "z": -258.5
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "606767"
+      },
+      "geometry": "BufferGeometry"
+    }
+  ],
+  "roadPaintStats": {
+    "rebuildMs": 31.3,
+    "vertices": 22196,
+    "triangles": 11098
+  },
+  "roadStats": {
+    "routingNodes": 2248,
+    "routingEdges": 3516
+  }
+}

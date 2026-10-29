@@ -154,13 +154,23 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
   if (checkStreetLifecycle) {
     const id = walk.find(id => tileWorld?.has(id));
     if (!id) throw new Error('Street lifecycle check requires a loaded --tiles target');
-    const expected = tileWorld.residentStreetFeatures().get(id)?.trees.length;
+    const sourceExpected = tileWorld.residentStreetFeatures().get(id)?.trees.length;
+    const initialTrees=sceneOf.getObjectByName(`MadridTile:${id}`)?.getObjectByName('MadridSourcedStreetTrees');
+    const expected=initialTrees?.userData.sourceCount;
+    const municipalExpected=initialTrees?.userData.municipalCount || 0;
     tileStreamer.dropTile(id);
     const removed = !tileWorld.has(id) && !tileWorld.residentStreetFeatures().has(id) && !sceneOf.getObjectByName(`MadridTile:${id}`);
+    // loadTile deliberately returns while all three import slots are reserved.
+    // Wait for capacity instead of treating that no-op as a successful reload.
+    await waitFor(()=>tileStreamer.status().pending.length < 3 || tileWorld.has(id));
     await tileStreamer.loadTile(id);
+    await waitFor(()=>tileWorld.has(id),30000);
     const group = sceneOf.getObjectByName(`MadridTile:${id}`);
     const actual = group?.getObjectByName('MadridSourcedStreetTrees')?.userData.sourceCount;
-    streetLifecycle = { id, expected, actual, removed, passed: removed && expected > 0 && actual === expected };
+    const sourceActual=tileWorld.residentStreetFeatures().get(id)?.trees.length;
+    const municipalActual=group?.getObjectByName('MadridSourcedStreetTrees')?.userData.municipalCount || 0;
+    streetLifecycle = { id, expected, actual, sourceExpected, sourceActual, municipalExpected, municipalActual, removed,
+      passed: removed && expected > 0 && actual === expected && sourceActual === sourceExpected && municipalActual === municipalExpected };
   }
   const tileSet = tileStreamer ? tileStreamer.status() : null;
   // Count completed application renders; renderer-info field names vary across Three.js versions.
@@ -207,6 +217,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
       return empty;
     })(),
     streetLifecycle,
+    ambientActors: { cars: window.__madrid.trafficSystem.cars.length, buses: window.__madrid.trafficSystem.buses.length, pedestrians: window.__madrid.trafficSystem.peds.length },
     sourcedStreetFeatures: [...(tileWorld?.residentStreetFeatures?.() || [])].map(([id, data]) => ({
       id, trees: data.trees.length, signals: data.signals.length, ways: data.ways.length
     })),
@@ -257,6 +268,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
     fps: frames / secs,
     frames,
     legacyBoroughs: Boolean(sceneOf.getObjectByName('Boroughs')),
+    legacyWaterfront: Boolean(sceneOf.getObjectByName('ShoreHighwayMarkings') || sceneOf.getObjectByName('SouthStreetViaductDeck')),
     fireEscapeInstances: (() => {
       let count = 0;
       sceneOf.traverse((o) => { if (/^FireEscapes/.test(o.name)) count += o.isInstancedMesh ? o.count : 1; });
@@ -324,7 +336,7 @@ if (process.env.VIEWS_DIR) {
 }
 const contextLost = logs.some((line) => /CONTEXT_LOST|Device Lost/i.test(line));
 const graphicsErrors = logs.filter((line) => /GPUValidationError|Shader Error|GL_INVALID|Error compiling/i.test(line));
-const passed = result.emptyInstanceStorage.length === 0 && (!checkStreetLifecycle || result.streetLifecycle?.passed) && graphicsErrors.length === 0 && !contextLost && pageErrors.length === 0 && failed.length === 0 && result.frames > 0 && result.shaderWarmupHidden && result.placeSamples.every(p => p.frames > 0) && result.tileStats.every((tile) => !tile.unsharedFacades) && result.tileMs.every((tile) => tile.ok) && (result.after?.failures || 0) === 0 && !result.legacyBoroughs && result.fireEscapeInstances === 0;
+const passed = Object.values(result.ambientActors).every(count => count === 0) && result.emptyInstanceStorage.length === 0 && (!checkStreetLifecycle || result.streetLifecycle?.passed) && graphicsErrors.length === 0 && !contextLost && pageErrors.length === 0 && failed.length === 0 && result.frames > 0 && result.shaderWarmupHidden && result.placeSamples.every(p => p.frames > 0) && result.tileStats.every((tile) => !tile.unsharedFacades) && result.tileMs.every((tile) => tile.ok) && (result.after?.failures || 0) === 0 && !result.legacyBoroughs && !result.legacyWaterfront && result.fireEscapeInstances === 0;
 console.log(JSON.stringify({
   passed,
   gpu: gpuInfo.gpu,

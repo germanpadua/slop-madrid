@@ -25,6 +25,7 @@ const ndcPoint = arg('--ndc', null);
 const at = arg('--at', null);
 const buildingsFile = arg('--buildings-file', null);
 const view = arg('--view', 'chase');
+const noShadows = args.includes('--no-shadows');
 const motionDir = arg('--motion-dir', null);
 const zoom = Number(arg('--zoom', '1'));
 if (!['chase', 'maqueta'].includes(view) || !(zoom >= 0.45 && zoom <= 2.4)) throw new Error('Invalid view/zoom');
@@ -53,9 +54,10 @@ page.on('pageerror', (e) => console.error('[pageerror]', String(e)));
 await page.goto('http://127.0.0.1:' + port + '/?debug=1&capture=1', { waitUntil: 'load', timeout: 120000 });
 await page.waitForFunction(() => (window.__madrid && document.querySelector('#loading-overlay.hidden')) || document.querySelector('#loading-status button'), null, { timeout: 90000 });
 if (await page.locator('#loading-status button').count()) throw new Error(await page.locator('#loading-status').textContent());
-const out = await page.evaluate(async ({ place, gridN, waitMs, ndcPoint, shotPath, at, view, zoom }) => {
+const out = await page.evaluate(async ({ place, gridN, waitMs, ndcPoint, shotPath, at, view, zoom, noShadows }) => {
   const THREE = await import('three');
   const api = window.__madrid;
+  if(noShadows) api.scene.traverse(o=>{if(o.isLight && o.shadow)o.castShadow=false;});
   const { footprintsOverlap, createMadridLandmarkReserves, overlapsMadridLandmark } = await import(new URL('./js/madrid-landmark-reserves.js', location.href).href);
   const { TELEPORT_LOCATIONS, LANDMARK_SITES } = await import(new URL('./js/city-config.js', location.href).href);
   document.querySelector('#mode-person').click();
@@ -117,9 +119,9 @@ const out = await page.evaluate(async ({ place, gridN, waitMs, ndcPoint, shotPat
   const gl = document.querySelector('canvas').getContext('webgl2');
   const debugInfo = gl?.getExtension('WEBGL_debug_renderer_info');
   const glRenderer = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : null;
-  return { overlappingLandmarks, view, zoom, overlappingPalace, glRenderer, framesAfterTeleport: (api.renderedFrames || 0) - startFrames, place, target, mode, entity: entityPos, camera: { x: +cameraPos.x.toFixed(1), y: +cameraPos.y.toFixed(1), z: +cameraPos.z.toFixed(1) }, occluders, shot,
+  return { ambientActors: { cars: api.trafficSystem.cars.length, buses: api.trafficSystem.buses.length, pedestrians: api.trafficSystem.peds.length }, overlappingLandmarks, view, zoom, overlappingPalace, glRenderer, framesAfterTeleport: (api.renderedFrames || 0) - startFrames, place, target, mode, entity: entityPos, camera: { x: +cameraPos.x.toFixed(1), y: +cameraPos.y.toFixed(1), z: +cameraPos.z.toFixed(1) }, occluders, shot,
     roadPaintStats: api.roadPaintStats || null, roadStats: api.roadStats ? { routingNodes: api.roadStats.routingNodes, routingEdges: api.roadStats.routingEdges } : null };
-}, { place, gridN, waitMs, ndcPoint, shotPath, at, view, zoom });
+}, { place, gridN, waitMs, ndcPoint, shotPath, at, view, zoom, noShadows });
 if (motionDir) {
   fs.mkdirSync(motionDir, { recursive: true });
   for (let i = 0; i < 4; i++) {
