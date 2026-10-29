@@ -89,7 +89,7 @@ test('the eight sites of the brief are owned by the monument layer (strict budge
   for (const m of manifest.missing) assert.ok(m.reason.length > 40, `${m.id} needs a documented reason`);
 
   // Low-poly hand-modelled pieces (no municipal mesh exists) may be leaner; real municipal meshes stay detailed.
-  const minTris = { neptuno: 200, debod: 100, plazaespana: 60, metropolis: 150 };
+  const minTris = { neptuno: 4500, debod: 3500, plazaespana: 12000, metropolis: 150 };
   let total = 0;
   for (const meta of manifest.monuments) {
     assert.ok(existsSync(modulePath(meta)), `${meta.id} module exists`);
@@ -118,6 +118,7 @@ test('the eight sites of the brief are owned by the monument layer (strict budge
       yMax = Math.max(yMax, pos[i + 1]);
     }
     for (const i of idx) maxIndex = Math.max(maxIndex, i);
+    assert.ok(yMax * data.quantum <= 120, `${meta.id} stays below +120 m`);
     assert.ok(yMin <= 5, `${meta.id} never floats above the ground (base ${yMin / 10} m)`);
     assert.ok(yMin > -600, `${meta.id} keeps its buried part bounded (base ${yMin / 10} m)`);
     assert.ok(maxIndex < data.vertices, `${meta.id} index range`);
@@ -127,6 +128,61 @@ test('the eight sites of the brief are owned by the monument layer (strict budge
   }
   assert.ok(total <= 2 * 1024 * 1024, `total monument payload ${total} B > 2 MiB`);
   assert.equal(manifest.totals.bytes, total);
+});
+
+test('municipal modules and the Cibeles basin retain their original geometry', async () => {
+  const protectedHashes = {
+    alcala: '8031c6f96dd21e65ad86b480ec17c5d6', banco: 'bf8e29064f7cdc525059f2805b759511',
+    palacio: '5a5b1fd1f153fe63c5e613e8f397dc89', almudena: 'c064cff098e289b960e11ecee6c426f7',
+    metropolis: '750c7ff24f049679ee07a3a1a23d0d8f', atocha: 'fcbe5a96768f3502566c86b07aaf3b7c'
+  };
+  for (const [id, hash] of Object.entries(protectedHashes)) {
+    const meta = manifest.monuments.find((m) => m.id === id);
+    assert.equal(createHash('md5').update(readFileSync(modulePath(meta))).digest('hex'), hash, id);
+  }
+  const { data } = await loadMonument('cibeles');
+  assert.deepEqual(data.proceduralStart, { vertices: 3371, triangles: 7791 });
+  assert.deepEqual(data.origin, [895.2, 0, -291.6]);
+  const basin = {
+    positions: [3371 * 6, 'c4687a0193896c2cda1df4f808f8febe16d5630286b4e93b604b40f4c6b5c02e'],
+    colors: [3371 * 3, 'ea35e53a31e9b50c7143dda66612f4c36412d42e7862602a4672838f9e105b8d'],
+    indices: [7791 * 6, 'efe956a421d60e7851c2b79e0d04022ecadb720fb678eaae4465f2f1ea47fcbe']
+  };
+  for (const [field, [size, hash]] of Object.entries(basin)) {
+    assert.equal(createHash('sha256').update(Buffer.from(data[field], 'base64').subarray(0, size)).digest('hex'), hash, field);
+  }
+  const indices = typed(data.indices, Uint16Array);
+  assert.ok(indices.slice(0, 7791 * 3).every((i) => i < 3371));
+  assert.ok(indices.slice(7791 * 3).every((i) => i >= 3371));
+  assert.ok(data.triangles - 7791 > 6500, 'Cibeles sculpture has its own substantial detail');
+});
+
+test('procedural modules use ground-level bases and declare their manual provenance', async () => {
+  for (const id of ['neptuno', 'debod', 'plazaespana']) {
+    const { data } = await loadMonument(id);
+    assert.equal(data.quantum, 0.1);
+    assert.equal(data.service, 'modelado manual');
+    const pos = typed(data.positions, Int16Array);
+    let minY = Infinity;
+    for (let i = 1; i < pos.length; i += 3) minY = Math.min(minY, pos[i]);
+    assert.equal(minY, 0, `${id} rests exactly on y=0`);
+  }
+});
+
+test('procedural detail survives decimetre quantization without collapsed triangles', async () => {
+  for (const id of ['cibeles', 'neptuno', 'debod', 'plazaespana']) {
+    const { data } = await loadMonument(id);
+    const pos = typed(data.positions, Int16Array);
+    const idx = typed(data.indices, data.indexBits === 32 ? Uint32Array : Uint16Array);
+    const start = (data.proceduralStart?.triangles ?? 0) * 3;
+    for (let i = start; i < idx.length; i += 3) {
+      const [a, b, c] = [idx[i] * 3, idx[i + 1] * 3, idx[i + 2] * 3];
+      const u = [pos[b] - pos[a], pos[b + 1] - pos[a + 1], pos[b + 2] - pos[a + 2]];
+      const v = [pos[c] - pos[a], pos[c + 1] - pos[a + 1], pos[c + 2] - pos[a + 2]];
+      const area = Math.hypot(u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]);
+      assert.ok(area > 0, `${id} triangle ${i / 3} has area after quantization`);
+    }
+  }
 });
 
 test('landmarks.js no longer extrudes the eight monument sites or open squares', () => {

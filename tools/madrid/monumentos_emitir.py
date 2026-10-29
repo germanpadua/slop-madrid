@@ -13,7 +13,7 @@ Fuentes:
                               + escultura low-poly procedural (peñasco, carro, Cibeles, leones)
   palacio, almudena        -> MODELADO_3D_MADRID (CITY) por separado, clip por bbox
   metropolis, atocha       -> MODELADO_3D_MADRID (CITY)
-  neptuno, debod, plazaespana -> low-poly procedural (silueta icónica, ~2-8 KB)
+  neptuno, debod, plazaespana -> geometría procedural interpretativa, no dato municipal
 """
 import sys, os, json, base64, hashlib
 sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
@@ -124,7 +124,7 @@ def box(cx, cy, cz, sx, sy, sz, col, yaw=0.0):
         [2, 3, 7], [2, 7, 6],       # +z
         [1, 2, 6], [1, 6, 5],       # +x
         [3, 0, 4], [3, 4, 7]], int)  # -x
-    return v, f, np.repeat(np.array(col, float)[None], 8, 0)
+    return v, f[:, ::-1], np.repeat(np.array(col, float)[None], 8, 0)
 
 
 def cylinder(cx, cy, cz, r0, r1, h, seg, col):
@@ -136,14 +136,9 @@ def cylinder(cx, cy, cz, r0, r1, h, seg, col):
     f = []
     for i in range(seg):
         j = (i + 1) % seg
-        f += [[i, j, seg + j], [i, seg + j, seg + i],
-              [i + seg, j + seg, 0 if False else i], ]  # (no se usa)
-    f = []
-    for i in range(seg):
-        j = (i + 1) % seg
-        f += [[i, j, seg + j], [i, seg + j, seg + i]]
-    f += [[i, 2 * seg, (i + 1) % seg] for i in range(seg)]                      # tapa abajo
-    f += [[seg + i, 2 * seg + 1, seg + (i + 1) % seg] for i in range(seg)]       # tapa arriba
+        f += [[i, seg + j, j], [i, seg + i, seg + j]]
+    f += [[i, (i + 1) % seg, 2 * seg] for i in range(seg)]
+    f += [[seg + i, 2 * seg + 1, seg + (i + 1) % seg] for i in range(seg)]
     f = np.array(f, int)
     v = np.concatenate([v, [[cx, cy, cz], [cx, cy + h, cz]]])
     colv = np.repeat(np.array(col, float)[None], len(v), 0)
@@ -159,79 +154,330 @@ def merge(*pieces):
     return np.concatenate(vs), np.concatenate(fs), np.concatenate(cs)
 
 
-def lowpoly_cibeles(cx, cz, base_y):
-    """Escultura: peñasco escalonado + carro + Cibeles + dos leones (mirando al NE, hacia Alcalá)."""
-    yaw = np.radians(25)
+def transform(piece, cx=0, cy=0, cz=0, yaw=0):
+    """Giro local: +z es el frente; x este / z sur en coordenadas del visor."""
+    v, f, c = piece
+    co, si = np.cos(yaw), np.sin(yaw)
+    rot = np.array([[co, 0, si], [0, 1, 0], [-si, 0, co]])
+    return v @ rot.T + [cx, cy, cz], f, c
+
+
+def ellipsoid(x, y, z, rx, ry, rz, col=MARMOL, seg=12, rings=6):
+    """Volumen cerrado con polos únicos; facetas en vez de bloques para las tallas."""
+    v = [[x, y - ry, z]]
+    for j in range(1, rings):
+        lat = -np.pi / 2 + np.pi * j / rings
+        for i in range(seg):
+            t = 2 * np.pi * i / seg
+            v.append([x + rx * np.cos(lat) * np.cos(t), y + ry * np.sin(lat),
+                      z + rz * np.cos(lat) * np.sin(t)])
+    v.append([x, y + ry, z])
+    f = []
+    for i in range(seg):
+        f.append([0, 1 + i, 1 + (i + 1) % seg])
+    for j in range(rings - 2):
+        for i in range(seg):
+            a, b = 1 + j * seg + i, 1 + j * seg + (i + 1) % seg
+            f.extend([[a, a + seg, b], [b, a + seg, b + seg]])
+    for i in range(seg):
+        f.append([len(v) - 1, 1 + (rings - 2) * seg + (i + 1) % seg,
+                  1 + (rings - 2) * seg + i])
+    return np.array(v), np.array(f), np.tile(col, (len(v), 1))
+
+
+def rod(a, b, r, col=MARMOL, r1=None, seg=10):
+    """Tubo/tronco de cono entre dos puntos: brazos, patas, radios y atributos."""
+    a, b = np.array(a, float), np.array(b, float)
+    axis = b - a
+    length = np.linalg.norm(axis)
+    axis /= length
+    u = np.cross(axis, [0, 0, 1] if abs(axis[2]) < .9 else [1, 0, 0])
+    u /= np.linalg.norm(u)
+    w = np.cross(u, axis)
+    v, f, c = cylinder(0, 0, 0, r, r if r1 is None else r1, length, seg, col)
+    return v @ np.array([u, axis, w]) + a, f, c
+
+
+def torus(x, y, z, major, minor, col, seg=24, sides=8, oval=1):
+    v, f = [], []
+    for i in range(seg):
+        t = 2 * np.pi * i / seg
+        for j in range(sides):
+            a = 2 * np.pi * j / sides
+            r = major + minor * np.cos(a)
+            v.append([x + r * np.cos(t), y + minor * np.sin(a), z + oval * r * np.sin(t)])
+    for i in range(seg):
+        for j in range(sides):
+            a, b = i * sides + j, ((i + 1) % seg) * sides + j
+            c, d = i * sides + (j + 1) % sides, ((i + 1) % seg) * sides + (j + 1) % sides
+            f.extend([[a, c, b], [b, c, d]])
+    return np.array(v), np.array(f), np.tile(col, (len(v), 1))
+
+
+def rock(x, y, z, sx, sy, sz, seed=0):
+    v, f, c = ellipsoid(x, y, z, sx, sy, sz, PIEDRA_OSCURA, seg=9, rings=4)
+    rng = np.random.default_rng(seed)
+    v += rng.uniform(-.18, .18, v.shape) * [sx, sy, sz]
+    c *= rng.uniform(.92, 1.12, (len(v), 1))
+    return v, f, c
+
+
+def person(x, floor, z, height=2, col=MARMOL, seated=False, stout=1, pose='rest'):
+    """Talla articulada: torso ovoide, cuello, cabeza, hombros, brazos y piernas."""
     p = []
-    p.append(cylinder(cx, base_y, cz, 3.6, 3.0, 1.4, 24, PIEDRA_OSCURA))
-    p.append(cylinder(cx, base_y + 1.4, cz, 2.6, 2.0, 1.6, 20, PIEDRA))
-    p.append(box(cx, base_y + 3.6, cz, 4.2, 0.9, 3.2, PIEDRA, yaw))            # carro plataforma
-    p.append(box(cx, base_y + 4.6, cz - 0.4, 1.9, 2.1, 1.7, MARMOL, yaw))      # Cibeles
-    p.append(box(cx + 1.9, base_y + 4.5, cz + 1.1, 2.6, 1.3, 1.1, MARMOL, yaw))   # león izq
-    p.append(box(cx - 1.9, base_y + 4.5, cz + 1.1, 2.6, 1.3, 1.1, MARMOL, yaw))   # león der
-    p.append(box(cx, base_y + 5.9, cz, 0.9, 0.5, 0.9, BRONCE, yaw))            # remate
+    # Coordenadas de la figura de pie normalizada; el sentado conserva cabeza y torso grandes.
+    hip = .43 if not seated else .25
+    torso = .64 if not seated else .49
+    shoulder = .76 if not seated else .63
+    head = .91 if not seated else .80
+    def at(q):
+        return (x + q[0] * height, floor + q[1] * height, z + q[2] * height)
+    def orb(q, radii):
+        p.append(ellipsoid(*at(q), *(np.array(radii) * height), col, seg=10, rings=5))
+    orb((0, torso, 0), (.18 * stout, .23, .12 * stout))
+    orb((0, hip, 0), (.17 * stout, .12, .14))
+    p.append(rod(at((0, shoulder, 0)), at((0, head, 0)), height * .065, col, seg=8))
+    orb((0, head, .015), (.105, .13, .105))
+    orb((0, head - .02, .10), (.045, .045, .045))  # nariz / perfil
+    for side in (-1, 1):
+        if seated:
+            leg = [(side * .105, hip, 0), (side * .12, .22, .28), (side * .12, .035, .31)]
+        else:
+            leg = [(side * .095, hip, 0), (side * .11, .23, side * .025), (side * .12, .035, .04)]
+        for a, b in zip(leg, leg[1:]):
+            p.append(rod(at(a), at(b), height * .078 * stout, col, r1=height * .055, seg=8))
+        orb((leg[-1][0], .04, leg[-1][2] + .035), (.075 * stout, .045, .12))
+        start = (side * .15 * stout, shoulder, 0)
+        if pose == 'extend' and side == 1:
+            elbow, hand = (.36, .70, .04), (.57, .72, .04)
+        elif pose == 'raise' and side == -1:
+            elbow, hand = (-.32, .85, 0), (-.40, 1.04, 0)
+        else:
+            elbow, hand = (side * .24, shoulder - .16, .06), (side * .20, shoulder - .28, .20)
+        p.append(rod(at(start), at(elbow), height * .062, col, r1=height * .05, seg=8))
+        p.append(rod(at(elbow), at(hand), height * .05, col, r1=height * .04, seg=8))
+        orb(hand, (.055, .065, .055))
     return merge(*p)
+
+
+def wheel(x, y, z, radius):
+    # Rueda en el plano yz: aro, cubo y ocho radios; huecos realmente abiertos.
+    p = [transform(torus(0, 0, 0, radius, .14, MARMOL, seg=24, sides=6),
+                   x, y, z)]
+    # El torus horizontal gira 90° sobre z para que su eje sea x.
+    v, f, c = p[0]
+    v = (v - [x, y, z]) @ np.array([[0, 1, 0], [-1, 0, 0], [0, 0, 1]]) + [x, y, z]
+    p[0] = v, f, c
+    p.append(rod((x - .23, y, z), (x + .23, y, z), .25, MARMOL))
+    for a in np.linspace(0, 2 * np.pi, 8, endpoint=False):
+        p.append(rod((x, y, z), (x, y + radius * np.cos(a), z + radius * np.sin(a)), .10, PIEDRA))
+    return merge(*p)
+
+
+def lion(x, floor, z):
+    p = [ellipsoid(x, floor + .9, z, .48, .56, 1.12),
+         ellipsoid(x, floor + 1.25, z + .76, .53, .70, .55, PIEDRA),
+         ellipsoid(x, floor + 1.58, z + 1.03, .35, .37, .39),
+         ellipsoid(x, floor + 1.43, z + 1.36, .26, .19, .29)]
+    for side in (-1, 1):
+        p.append(ellipsoid(x + side * .27, floor + 1.87, z + .92, .13, .16, .13))
+        for along in (-.66, .64):
+            p.append(rod((x + side * .32, floor + .93, z + along),
+                         (x + side * .36, floor + .18, z + along + .2), .19, r1=.14))
+            p.append(ellipsoid(x + side * .36, floor + .14, z + along + .36, .22, .14, .31))
+    for a, b in zip([(x, floor + 1, z - 1), (x + .55, floor + .65, z - 1.4),
+                     (x + .65, floor + 1.15, z - 1.6)],
+                    [(x + .55, floor + .65, z - 1.4), (x + .65, floor + 1.15, z - 1.6),
+                     (x + .40, floor + 1.3, z - 1.6)]):
+        p.append(rod(a, b, .10))
+    return merge(*p)
+
+
+def lowpoly_cibeles(cx, cz, base_y):
+    """Dos leones al NE (vector hacia Alcalá), carro de ruedas caladas y diosa coronada."""
+    p = [cylinder(0, 0, 0, 3.7, 3.5, .35, 28, PIEDRA_OSCURA)]
+    for i, (x, y, z, sx, sy, sz) in enumerate([
+            (0, .6, 0, 3.5, .7, 3.0), (-1.7, 1.05, -.6, 1.7, .8, 1.7),
+            (1.5, 1.05, .6, 1.6, .8, 2.0), (0, 1.4, -1, 2.4, .8, 1.9),
+            (-1.3, .8, 2.4, 1.4, .7, 1.6), (1.3, .8, 2.4, 1.4, .7, 1.6)]):
+        p.append(rock(x, y, z, sx, sy, sz, i))
+    p.extend([box(0, 2.0, -.8, 2.8, .45, 3.1, PIEDRA),
+              box(0, 2.45, -1.7, 2.5, .6, 1.1, MARMOL),
+              box(0, 3.25, -2, 1.9, 2.5, .42, PIEDRA)])
+    for side in (-1, 1):
+        for along in (-1.8, .15):
+            p.append(wheel(side * 1.55, 1.9, along, .82))
+        p.append(rod((side * 1.1, 2.3, -.8), (side * 1.5, 1.6, 2.3), .12, PIEDRA))
+        p.append(lion(side * 1.25, 1.12, 2.25))
+        # Costados curvos del carro, con volutas en los extremos.
+        p.append(ellipsoid(side * 1.13, 2.7, -.65, .25, .55, 1.25, PIEDRA))
+        p.append(transform(torus(0, 0, 0, .31, .12, MARMOL, seg=16, sides=6),
+                           side * 1.2, 2.9, .4))
+    p.append(person(0, 2.3, -1.2, 3.2, seated=True))
+    p.append(cylinder(0, 4.95, -1.15, .35, .32, .30, 12, MARMOL))
+    for t in np.linspace(0, 2 * np.pi, 6, endpoint=False):
+        p.append(box(.28 * np.cos(t), 5.32, -1.15 + .28 * np.sin(t), .19, .35, .19, MARMOL))
+    # Cetro, orbe y pliegues de la túnica, más anchos que un decímetro.
+    p.append(rod((-.83, 3.5, -.65), (-.83, 5.15, -.65), .11, MARMOL))
+    p.append(ellipsoid(.72, 3.75, -.60, .24, .24, .24))
+    for x in np.linspace(-.42, .42, 5):
+        p.append(rod((x, 3.4, -.65), (x * 1.25, 2.45, -.15), .12, PIEDRA))
+    # +z local apunta al vector Alcalá - Cibeles: (+370, -70), nunca al SO.
+    return transform(merge(*p), cx, base_y, cz, np.arctan2(370, -70))
 
 
 def lowpoly_neptuno(cx, cz, base_y):
-    """Fuente de Neptuno: bacín ovalado sobre pedestal, peñasco y figura central."""
-    yaw = np.radians(38)
-    p = []
-    n = 36
-    t = np.linspace(0, 2 * np.pi, n, endpoint=False)
-    a, b = 4.6, 2.6
-    rim = np.stack([a * np.cos(t), np.zeros(n), b * np.sin(t)], 1)
-    inner = np.stack([a * 0.82 * np.cos(t), np.zeros(n), b * 0.82 * np.sin(t)], 1)
-    lo = rim + [cx, base_y + 1.1, cz]
-    hi = rim + [cx, base_y + 1.7, cz]
-    inn = inner + [cx, base_y + 1.35, cz]
-    v = np.concatenate([lo, hi, inn])
-    f = []
-    for i in range(n):
-        j = (i + 1) % n
-        f += [[i, j, n + j], [i, n + j, n + i], [n + i, n + j, 2 * n + i], [n + j, 2 * n + j, 2 * n + i]]
-    f += [[i, 3 * n, (i + 1) % n] for i in range(n)]
-    f = np.array(f, int)
-    v = np.concatenate([v, [[cx, base_y, cz]]])
-    col = np.repeat(PIEDRA[None], len(v), 0)
-    p.append((v, np.array(f, int), col))
-    p.append(cylinder(cx, base_y, cz, 1.5, 1.3, 1.1, 16, PIEDRA_OSCURA))       # pedestal
-    p.append(cylinder(cx, base_y + 1.1, cz, 1.9, 1.2, 1.6, 18, PIEDRA))        # peñasco
-    p.append(box(cx, base_y + 3.5, cz, 1.5, 2.0, 1.2, MARMOL, yaw))            # Neptuno
-    p.append(box(cx + 0.6, base_y + 4.9, cz, 0.25, 1.1, 0.25, BRONCE, yaw))    # tridente
-    return merge(*p)
+    """Bacín oval, doble bocel, concha, volutas, dios y tridente de tres púas separadas."""
+    water = np.array([65, 104, 109])
+    p = [transform(cylinder(0, 0, 0, 6.6, 6.6, .38, 48, PIEDRA_OSCURA))]
+    v, f, c = p[0]; v[:, 2] *= .76; p[0] = v, f, c
+    p.append(ellipsoid(0, .40, 0, 6.15, .12, 4.55, water, seg=48, rings=4))
+    for y, r, minor in ((.5, 6.35, .25), (.90, 6.45, .22)):
+        p.append(torus(0, y, 0, r, minor, PIEDRA, seg=48, sides=8, oval=.76))
+    for i, x in enumerate((-1.65, 0, 1.7)):
+        p.append(rock(x, 1.0, 0, 1.8, .85, 1.6, 20 + i))
+    p.extend([cylinder(0, 1.25, 0, 1.9, 1.5, .85, 24, PIEDRA),
+              ellipsoid(0, 2.1, -.15, 1.65, .28, 1.25, MARMOL)])
+    # Concha abierta detrás: nervaduras radiantes en abanico, sin tapar la figura.
+    for t in np.linspace(-1.15, 1.15, 11):
+        p.append(rod((0, 1.8, -.3), (1.55 * np.sin(t), 2.55 + .5 * np.cos(t), -1.0), .14, PIEDRA))
+    for side in (-1, 1):
+        scroll = torus(0, 0, 0, .48, .17, MARMOL, seg=20, sides=6)
+        v, f, c = scroll
+        v = v[:, [0, 2, 1]]  # voluta en plano vertical xy
+        p.append((v + [side * 1.7, 1.85, .1], f[:, ::-1], c))
+        # Delfines: lomo arqueado, hocico, aletas y cola bifurcada.
+        p.extend([ellipsoid(side * 2.45, 1.2, .55, .42, .58, .95, MARMOL),
+                  ellipsoid(side * 2.45, 1.15, 1.28, .26, .26, .40, MARMOL),
+                  rod((side * 2.45, 1.1, 1.4), (side * 2.45, .92, 1.9), .16, r1=.10),
+                  rod((side * 2.45, 1.25, -.1), (side * 2.45, 1.8, -.8), .22, r1=.12)])
+        for branch in (-1, 1):
+            p.append(rod((side * 2.45, 1.8, -.8), (side * 2.45 + branch * .40, 1.95, -.95), .14))
+    p.append(person(0, 2.25, 0, 3.8, pose='extend'))
+    p.append(ellipsoid(0, 5.52, .18, .30, .32, .22, PIEDRA))  # barba
+    # Paño a la cadera, piernas y torso conservan una silueta humana.
+    p.append(ellipsoid(0, 3.85, 0, .70, .40, .49, PIEDRA))
+    # Mano extendida a la derecha, unida al asta: 0.57 * 3.8 = 2.17 m.
+    tx, tz = 2.15, .15
+    p.append(rod((tx, 2.1, tz), (tx, 7.2, tz), .12, BRONCE, seg=10))
+    p.append(rod((tx - .70, 6.5, tz), (tx + .70, 6.5, tz), .13, BRONCE))
+    for off in (-.70, 0, .70):
+        top = 7.5 if off == 0 else 7.25
+        p.append(rod((tx + off, 6.5, tz), (tx + off, top - .25, tz), .13, BRONCE))
+        p.append(rod((tx + off, top - .25, tz), (tx + off, top, tz), .18, BRONCE, r1=.02))
+    return transform(merge(*p), cx, base_y, cz, np.radians(-18))
+
+
+def gable(x, y, z, width, depth, rise, col):
+    v = np.array([[-width / 2, 0, -depth / 2], [width / 2, 0, -depth / 2],
+                  [0, rise, -depth / 2], [-width / 2, 0, depth / 2],
+                  [width / 2, 0, depth / 2], [0, rise, depth / 2]]) + [x, y, z]
+    f = np.array([[0, 1, 2], [3, 5, 4], [0, 2, 5], [0, 5, 3],
+                  [2, 1, 4], [2, 4, 5], [0, 3, 4], [0, 4, 1]])[:, ::-1]
+    return v, f, np.tile(col, (len(v), 1))
 
 
 def lowpoly_debod(cx, cz, base_y):
-    """Templo de Debod: plataforma, caja del templo, pórtico con columnas y techo losa."""
-    yaw = np.radians(12)  # orientación real: eje este-oeste aprox
-    p = [box(cx, base_y + 0.4, cz, 26, 0.8, 20, PIEDRA_OSCURA, yaw)]
-    ox, oz = np.cos(yaw), np.sin(yaw)
-    p.append(box(cx, base_y + 4.6, cz, 14, 7.6, 10.5, PIEDRA, yaw))            # templo
-    px, pz = cx - ox * 8.6, cz - oz * 8.6                                      # pórtico delantero
-    for s in (-3.6, -1.2, 1.2, 3.6):
-        p.append(cylinder(px + ox * s, base_y + 0.8, pz + oz * s, 0.45, 0.42, 5.4, 8, PIEDRA))
-    p.append(box(px, base_y + 6.4, pz, 10.4, 0.9, 9.2, PIEDRA_OSCURA, yaw))
-    px2, pz2 = cx + ox * 8.4, cz + oz * 8.4
-    p.append(box(px2, base_y + 3.4, pz2, 10.4, 5.4, 1.0, PIEDRA_OSCURA, yaw))  # muro trasero
-    return merge(*p)
+    """Templo de piedra, cubierta con pico bajo, columnas, dos puertas axiales y estanque."""
+    sand = np.array([193, 160, 113])
+    light = np.array([218, 187, 140])
+    dark = np.array([115, 96, 73])
+    p = [box(0, .2, 6, 31, .4, 44, PIEDRA_OSCURA),
+         box(0, .6, -3, 27, .4, 25, PIEDRA),
+         box(0, 1.0, -4, 24, .4, 20, sand),
+         box(0, .48, 16, 23, .16, 20, [45, 67, 67])]
+    # Bordes del vaso por encima de la lámina hundida.
+    for x in (-11.8, 11.8):
+        p.append(box(x, .70, 16, .5, .40, 20.5, sand))
+    p.append(box(0, .70, 26.1, 24, .4, .5, sand))
+    p.append(box(0, .75, 15, 4.4, .5, 23, sand))  # camino sagrado axial
+    # Caja de la capilla hecha por hiladas, juntas y hueco real de entrada.
+    for row in range(7):
+        y = 1.2 + .70 * row
+        for x in (-5.8, 5.8):
+            for z in np.arange(-10.3, -.6, 1.6):
+                p.append(box(x, y + .33, z, 1.05, .66, 1.55,
+                             light if (row + int(z)) % 3 else sand))
+        for x in np.arange(-5.0, 5.1, 1.4):
+            p.append(box(x, y + .33, -11.0, 1.35, .66, 1.0, sand))
+            if abs(x) > 1.6 or row >= 5:
+                p.append(box(x, y + .33, -.1, 1.35, .66, 1.0, light))
+    p.append(box(0, 6.2, -5.5, 13.2, .5, 12.2, sand))
+    # Pico bajo solicitado, del color de la piedra (sin frontón clásico ni tejas).
+    p.append(gable(0, 6.45, -5.5, 13.2, 12.2, .8, light))
+    p.append(box(0, 3.0, -.55, 2.5, 3.6, .16, dark))  # sombra interior del portal
+    for x in (-4.5, -1.5, 1.5, 4.5):
+        p.append(cylinder(x, 1.2, 2.2, .72, .48, 4.5, 16, light))
+        p.append(cylinder(x, 1.2, 2.2, .88, .86, .32, 16, sand))
+        p.append(cylinder(x, 5.4, 2.2, .48, .85, .45, 16, sand))
+    p.extend([box(0, 6.0, 2.2, 12.6, .6, 2.1, sand),
+              box(0, 6.4, 2.2, 13.2, .25, 2.5, light)])
+    # Segundo pórtico trasero, también calado y con columnas cónicas.
+    for x in (-4.2, 0, 4.2):
+        p.append(cylinder(x, 1.2, -12.5, .68, .45, 4.4, 16, light))
+    p.append(box(0, 5.8, -12.5, 11.2, .7, 1.8, sand))
+    # Dos pilonos exentos alineados delante del templo: silueta icónica de Debod.
+    for z, h in ((10.3, 5.4), (20.3, 4.6)):
+        for side in (-1, 1):
+            p.append(box(side * 2.8, .95 + h / 2, z, 1.3, h, 1.2, light))
+            p.append(box(side * 2.8, 1.1, z, 1.65, .30, 1.6, sand))
+        p.append(box(0, .95 + h, z, 7.1, .65, 1.5, sand))
+        p.append(box(0, 1.35 + h, z, 7.5, .2, 1.8, light))
+    # Recinto en L, abierto por el frente para ver templo y agua.
+    for x in np.arange(-11.5, 12, 1.6):
+        p.append(box(x, 1.9, -14.1, 1.55, 1.4, .75, sand))
+    for z in np.arange(-13, 5, 1.6):
+        p.append(box(-11.5, 1.9, z, .75, 1.4, 1.55, sand))
+    return transform(merge(*p), cx, base_y, cz, np.radians(12))
 
 
 def lowpoly_cervantes(cx, cz, base_y):
-    """Monumento a Cervantes: base escalonada, obelisco central, dos pilares, figuras."""
-    yaw = np.radians(-14)
+    """Sillería, estela escalonada, alas curvas y grupos de figuras con volumen."""
     p = []
-    p.append(box(cx, base_y + 0.5, cz, 20, 1.0, 12, PIEDRA_OSCURA, yaw))
-    p.append(box(cx, base_y + 1.4, cz, 16, 0.8, 9.5, PIEDRA, yaw))
-    ox, oz = np.cos(yaw), np.sin(yaw)
-    for s in (-1, 1):
-        p.append(box(cx + ox * 6.2 * s, base_y + 7.4, cz + oz * 6.2 * s, 2.6, 11.0, 2.6, PIEDRA, yaw))
-    p.append(box(cx, base_y + 8.2, cz, 3.4, 14.0, 3.4, PIEDRA, yaw))           # obelisco
-    p.append(box(cx, base_y + 15.6, cz, 4.2, 1.0, 4.2, PIEDRA_OSCURA, yaw))    # capitel
-    p.append(box(cx, base_y + 2.9, cz - oz * 0.2 + 2.2, 1.4, 2.2, 1.2, MARMOL, yaw))   # Cervantes sentado
-    p.append(box(cx + ox * 1.9, base_y + 2.7, cz + oz * 1.9 - 0.6, 0.9, 1.9, 0.9, BRONCE, yaw))  # Quijote
-    p.append(box(cx - ox * 2.2, base_y + 2.6, cz + oz * 2.2 + 0.6, 0.9, 1.7, 0.9, BRONCE, yaw))  # Sancho
-    return merge(*p)
+    for i in range(5):
+        p.append(box(0, .18 + i * .30, 0, 23 - i * 1.1, .36, 14 - i * .8,
+                     PIEDRA_OSCURA if i == 0 else PIEDRA))
+    # Sillería visible con juntas en el zócalo central.
+    for row in range(3):
+        for x in np.arange(-3.2, 3.3, 1.3):
+            p.append(box(x, 1.6 + row * .55, 0, 1.25, .52, 5.6, PIEDRA))
+    for y, width, depth, height in ((3.4, 6.6, 5, 1), (6.8, 5.6, 4.4, 5.8),
+                                    (10.3, 6.3, 4.8, 1.1), (14.9, 4.3, 3.8, 8.1),
+                                    (19.4, 5.3, 4.6, .9), (20.2, 4.7, 4.0, .7)):
+        p.append(box(0, y, 0, width, height, depth, PIEDRA))
+    # Nervios y relieves dan profundidad a la estela de varios cuerpos.
+    for side in (-1, 1):
+        p.append(box(side * 1.88, 14.8, 2, .36, 7.7, .35, MARMOL))
+        p.append(person(side * 1.25, 11.5, 2.13, 2.2, PIEDRA))
+    # Continentes alrededor del globo, remate reconocible, sin aguja inventada.
+    for a in np.linspace(0, 2 * np.pi, 5, endpoint=False):
+        p.append(person(1.15 * np.cos(a), 20.5, .95 * np.sin(a), 1.9, MARMOL, seated=True))
+    p.append(ellipsoid(0, 22.25, 0, 1.15, 1.15, 1.15, PIEDRA, seg=20, rings=8))
+    # Dos brazos bajos curvos, continuos; los grupos quedan separados de la estela.
+    for side in (-1, 1):
+        for i in range(10):
+            t = i / 9
+            x, z = side * (3.3 + 5.1 * t), .4 + 2.6 * t * t
+            yaw = -side * np.arctan(5.2 * t / 5.1)
+            p.append(box(x, 2.2, z, .86, 1.65, 1.8, PIEDRA, yaw))
+            p.append(box(x, 3.1, z, .88, .22, 2.1, MARMOL, yaw))
+        p.append(cylinder(side * 8.6, 1.6, 3.1, 1.65, 1.5, 1.9, 20, PIEDRA))
+        p.append(person(side * 8.6, 3.5, 3.1, 3.0, MARMOL, seated=True))
+        p.append(person(side * 6.8, 3.25, 1.7, 1.9, PIEDRA, pose='raise'))
+        p.append(person(side * 9.3, 3.5, 2.5, 1.6, MARMOL))
+    # Cervantes sentado, libro y gola; Quijote delgado con lanza, Sancho más ancho.
+    p.extend([box(0, 4.3, 3, 2.0, 3.6, .7, PIEDRA_OSCURA),
+              box(0, 3.2, 3.5, 2.0, .45, 1.6, PIEDRA),
+              person(0, 2.9, 3.75, 3.4, MARMOL, seated=True),
+              box(.45, 4.35, 4.5, .65, .2, .75, PIEDRA_OSCURA, .15),
+              person(-2.2, 1.6, 4.5, 3.4, BRONCE, pose='raise'),
+              person(2.0, 1.6, 4.6, 2.65, BRONCE, stout=1.45)])
+    p.append(cylinder(2, 3.95, 4.6, .46, .32, .22, 16, BRONCE))  # sombrero Sancho
+    p.append(cylinder(-2.2, 4.85, 4.5, .34, .25, .22, 12, BRONCE))
+    p.append(rod((-3.6, 1.7, 4.65), (-3.6, 7.5, 4.65), .11, BRONCE))
+    p.append(ellipsoid(-2.9, 3.15, 4.85, .48, .65, .18, BRONCE))  # escudo
+    p.append(torus(0, 5.37, 3.75, .32, .12, MARMOL, seg=16, sides=6))
+    return transform(merge(*p), cx, base_y, cz, np.radians(-14))
 
 
 # ---------------------------------------------------------------- mallas reales
@@ -274,80 +520,87 @@ def cibeles_basin():
     return v, f, c
 
 
+def read_module(mid):
+    """Lee el JSON del módulo, sin ejecutar JS ni acceder al servicio municipal."""
+    path = os.path.join(JS_DIR, f'm-{mid}.js')
+    text = open(path).read()
+    data = json.loads(text.split('export const MONUMENT = ', 1)[1].rstrip().rstrip(';'))
+    v = np.frombuffer(base64.b64decode(data['positions']), '<i2').reshape(-1, 3).astype(float)
+    v *= data['quantum']
+    v += [data['origin'][0], 0, data['origin'][2]]
+    f = np.frombuffer(base64.b64decode(data['indices']), '<u2' if data['indexBits'] == 16 else '<u4').reshape(-1, 3)
+    c = np.frombuffer(base64.b64decode(data['colors']), 'u1').reshape(-1, 3)
+    return data, v, f, c
+
+
 def main():
-    import time
-    t0 = time.time()
-    entries = []
-    # --- módulos existentes intactos
+    """Regenera SÓLO las cuatro piezas manuales; conserva las seis mallas municipales.
+
+    Cibeles almacena el límite entre el bacín original y la talla para que sucesivas
+    ejecuciones sean idempotentes. La primera migración comprueba la topología del
+    bloque antiguo (132 vértices / 236 triángulos) antes de separar ese sufijo.
+    """
     old = json.load(open(OUT_MANIFEST))
-    for meta in old['monuments']:
-        if meta['id'] in ('alcala', 'banco'):
-            path = os.path.join(ROOT, meta['module'])
-            entries.append({**meta, 'bytes': os.path.getsize(path),
-                            'md5': hashlib.md5(open(path, 'rb').read()).hexdigest()})
-
-    # --- cibeles: bacín real + escultura
-    v, f, c = cibeles_basin()
-    bx, bz = 910.17, -277.0
-    bv, bf, bc = lowpoly_cibeles(bx, bz, v[:, 1].min() + 1.15)
-    fv = np.concatenate([v, bv]); ff = np.concatenate([f, bf + len(v)]); fc = np.concatenate([c, bc])
-    y0 = fv[:, 1].min()
-    meta = write_module('cibeles', fv, ff, fc, (float(fv[:, 0].min()), 0, float(fv[:, 2].min())),
-                        float(fv[:, 1].max() - y0),
-                        extra={'service': 'Conjunto_Fuente_Cibeles_sin_textura + escultura low-poly', 'cell': 0.35})
-    entries.append(meta)
-    print('cibeles', meta['vertices'], meta['triangles'], meta['bytes'])
-
-    # --- CITY: palacio, almudena, metropolis, atocha
-    CITY = {
-        'palacio':   ((-1000.0, -800.0, -282.0, -22.0), 'Palacio Real (sin Almudena)'),
-        'almudena':  ((-991.3, -826.4, 42.2, 178.9), 'Catedral de la Almudena'),
-        'metropolis': ((645.0, 715.0, -218.0, -148.0), 'Edificio Metrópolis'),
-        'atocha':    ((1027.0, 1438.0, 1122.0, 1610.0), 'Estación de Atocha (cubierta de vías)'),
+    data, v, f, c = read_module('cibeles')
+    split = data.get('proceduralStart', {'vertices': 3371, 'triangles': 7791})
+    nv, nf = split['vertices'], split['triangles']
+    if 'proceduralStart' not in data:
+        if len(v) != nv + 132 or len(f) != nf + 236:
+            raise ValueError('Cibeles no coincide con el módulo original: no se toca el bacín')
+    if np.any(f[:nf] >= nv) or np.any(f[nf:] < nv):
+        raise ValueError('La escultura y el bacín deben tener índices independientes')
+    v, f, c = v[:nv], f[:nf], c[:nv]
+    bv, bf, bc = lowpoly_cibeles(910.17, -277.0, 1.15)
+    pieces = {
+        'cibeles': (merge((v, f, c), (bv, bf, bc)), {
+            'service': 'Conjunto_Fuente_Cibeles_sin_textura + escultura procedural',
+            'cell': .35, 'proceduralStart': split}),
+        'neptuno': (lowpoly_neptuno(*utm_to_world(-3.69317, 40.41528), 0), {
+            'service': 'modelado manual', 'label': 'Fuente de Neptuno',
+            'note': 'Geometría procedural interpretativa; no es dato municipal'}),
+        'debod': (lowpoly_debod(-1153.9, -819.3, 0), {
+            'service': 'modelado manual', 'label': 'Templo de Debod',
+            'note': 'Geometría procedural interpretativa; pico bajo y columnas según brief'}),
+        'plazaespana': (lowpoly_cervantes(*utm_to_world(-3.71144, 40.42327), 0), {
+            'service': 'modelado manual', 'label': 'Monumento a Cervantes (Plaza de España)',
+            'note': 'Geometría procedural interpretativa; Quijote y Sancho de pie según brief'}),
     }
-    for mid, (bbox, label) in CITY.items():
-        soup = city_soup(mid, bbox)
-        v, f, c = soup_to_module(soup, None, 250000)
-        y0 = v[:, 1].min()
-        meta = write_module(mid, v, f, c, (float(v[:, 0].min()), 0, float(v[:, 2].min())),
-                            float(v[:, 1].max() - y0),
-                            extra={'service': 'MODELADO_3D_MADRID', 'cell': 0.35, 'label': label})
-        entries.append(meta)
-        print(mid, meta['vertices'], meta['triangles'], meta['bytes'])
-
-    # --- low-poly puros
-    nx, nz = utm_to_world(-3.69317, 40.41528)
-    dx, dz = -1153.9, -819.3     # anchor Templo de Debod
-    cxx, czz = utm_to_world(-3.71144, 40.42327)   # monumento a Cervantes
-    LOW = {
-        'neptuno':     (lowpoly_neptuno(nx, nz, 0.0), 'Fuente de Neptuno', 'low-poly (sin malla municipal)'),
-        'debod':       (lowpoly_debod(dx, dz, 0.0), 'Templo de Debod', 'low-poly (SceneServer municipal vacío)'),
-        'plazaespana': (lowpoly_cervantes(cxx, czz, 0.0), 'Monumento a Cervantes (Plaza de España)', 'low-poly (sin malla municipal)'),
-    }
-    for mid, ((v, f, c), label, why) in LOW.items():
-        v = v.copy()
-        v[:, 1] -= v[:, 1].min()
-        meta = write_module(mid, v, f, c, (float(v[:, 0].min()), 0, float(v[:, 2].min())),
-                            float(v[:, 1].max()),
-                            extra={'service': 'modelado manual', 'label': label, 'note': why})
-        entries.append(meta)
-        print(mid, meta['vertices'], meta['triangles'], meta['bytes'])
-
+    entries = []
+    for original in old['monuments']:
+        mid = original['id']
+        if mid not in pieces:
+            entries.append(original)
+            continue
+        (v, f, c), extra = pieces[mid]
+        # Cuantizar antes de calcular bounds/height: coinciden exactamente con el módulo.
+        # El prefijo municipal de Cibeles ya está cuantizado y se conserva sin filtrar caras.
+        v = np.round(v / Q) * Q
+        start = split['triangles'] if mid == 'cibeles' else 0
+        # La cuantización puede colapsar detalles subdecimétricos. Sólo se filtra
+        # geometría procedural; ninguna cara municipal se modifica.
+        procedural = f[start:]
+        area = np.linalg.norm(np.cross(v[procedural[:, 1]] - v[procedural[:, 0]],
+                                       v[procedural[:, 2]] - v[procedural[:, 0]]), axis=1)
+        f = np.concatenate([f[:start], procedural[area > 1e-7]])
+        origin = (float(v[:, 0].min()), 0, float(v[:, 2].min()))
+        height = float(np.ptp(v[:, 1]))
+        if not 0 < height <= 120:
+            raise ValueError(f'{mid}: altura fuera de contrato')
+        entry = write_module(mid, v, f, np.clip(c, 0, 255), origin, height, extra)
+        if entry['bytes'] > 250 * 1024:
+            raise ValueError(f'{mid}: módulo sobre presupuesto')
+        entries.append(entry)
+        print(mid, entry['vertices'], entry['triangles'], entry['bytes'])
     total = sum(e['bytes'] for e in entries)
-    manifest = {
-        'monuments': entries,
-        'totals': {'monuments': len(entries), 'bytes': total,
-                   'triangles': sum(e['triangles'] for e in entries)},
-        'missing': [],
-        'notes': ('Escultura de Cibeles, Neptuno, Debod y Cervantes low-poly: los SceneServer municipales '
-                  'dedicados a esas piezas no contienen malla utilizable (vacíos o fotogrametría sin silueta). '
-                  'La fachada histórica de Atocha no está en el LOD2 municipal; el módulo lleva la cubierta de vías real.'),
-    }
+    if total > 2 * 1024 * 1024:
+        raise ValueError('El conjunto supera 2 MiB')
+    manifest = {**old, 'monuments': entries,
+                'totals': {'monuments': len(entries), 'bytes': total,
+                           'triangles': sum(e['triangles'] for e in entries)}}
     with open(OUT_MANIFEST, 'w') as fh:
         json.dump(manifest, fh, indent=2, ensure_ascii=False)
-    if os.path.exists(MANIFEST):
-        os.remove(MANIFEST)
-    print('TOTAL', len(entries), 'monumentos', total, 'bytes', f'{time.time()-t0:.0f}s')
+        fh.write('\n')
+    print('TOTAL', len(entries), 'monumentos', total, 'bytes')
 
 
 if __name__ == '__main__':
