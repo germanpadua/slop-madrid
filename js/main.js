@@ -20,7 +20,9 @@ import { NYCMapSystem } from './nyc-map.js';
 import { setupSceneCulling, updateSceneCulling } from './scene-culling.js';
 import { CityAudioSystem } from './audio-system.js';
 import { createTileWorld, createOutOfMapFloor } from './madrid-tile-world.js';
-import { createTileStreamer } from './madrid-tiles.js';
+import { createTileStreamer, SEED_TILE_ID } from './madrid-tiles.js';
+import { createMonumentLoader } from './monumentos.js';
+import { buildMonumentMesh } from './monument-mesh.js';
 
 // js/main.js
 // Main entry point for Madrid (centro) in Three.js WebGPURenderer & TSL (three.js dev, see index.html)
@@ -151,10 +153,31 @@ async function initApp() {
     console.warn('[madrid-tiles] tile streaming disabled:', err.message);
   }
 
+  // 4c. Monumentos con malla municipal: Cibeles, Puerta de Alcalá, Palacio Real + Almudena and Banco de España are real
+  //     Ayuntamiento i3s meshes (the other four hitos have no municipal mesh; tools/madrid/monumentos.json documents
+  //     them). They load with the same deferred-module system as the tiles: only while their geodata tile is resident
+  //     and the camera is close (js/monumentos.js).
+  let monumentLoader = null;
+  try {
+    monumentLoader = await createMonumentLoader({
+      scene,
+      colliders: allColliders,
+      buildMesh: buildMonumentMesh,
+      manifestUrl: new URL('../tools/madrid/monumentos.json', import.meta.url).href,
+      baseUrl: new URL('..', import.meta.url).href,
+      isTileResident: (id) => !tileStreamer || id === SEED_TILE_ID || tileStreamer.loaded.has(id),
+      onStatus: () => controllerManager.refreshColliders()
+    });
+    monumentLoader.update(cameraSystem.currentPos.x, cameraSystem.currentPos.z);
+    markInit('monuments');
+  } catch (err) {
+    console.warn('[monumentos] loader disabled:', err.message);
+  }
+
   // Opt-in diagnostics (?debug): the measurement harness (tools/madrid/measure.mjs) reads the streamer, renderer
   // stats and the controller from the page. Nothing is exposed on a normal visit.
   if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug')) {
-    window.__madrid = { renderer, scene, tileStreamer, tileWorld, controllerManager, cameraSystem };
+    window.__madrid = { renderer, scene, tileStreamer, tileWorld, monumentLoader, controllerManager, cameraSystem };
   }
 
   const touchControls = new TouchControls(controllerManager);
@@ -711,6 +734,7 @@ async function initApp() {
     if (boroughs.update) boroughs.update(elapsed); // Roosevelt Island Tramway cabins
     cityBlocks.update(cameraSystem.currentPos.x, cameraSystem.currentPos.z);
     if (tileStreamer) tileStreamer.update(cameraSystem.currentPos.x, cameraSystem.currentPos.z, now);
+    if (monumentLoader) monumentLoader.update(cameraSystem.currentPos.x, cameraSystem.currentPos.z, now);
     if (cityBlocks.updateLights) cityBlocks.updateLights(cameraSystem.camera);
     if (streetDetails.update) streetDetails.update(cameraSystem.camera);
     lightingSystem.update(cameraSystem.currentPos);
