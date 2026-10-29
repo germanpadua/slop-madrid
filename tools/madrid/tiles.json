@@ -1309,7 +1309,7 @@
   "ready": 14,
   "pending": 71,
   "failed": 0,
-  "readyBytes": 9083181,
+  "readyBytes": 9096240,
   "readyKm2": 20.8
  },
  "tiles": [
@@ -3907,11 +3907,11 @@
    "module": "js/geodata/tile-k3j-1.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": 229533,
-   "md5": "0231ad0a93bef5408d1d8df0169178f6",
+   "bytes": 242592,
+   "md5": "2c0b7742023e2a266441df93bdd92de0",
    "counts": {
     "blocks": 72,
-    "parcels": 1390,
+    "parcels": 1387,
     "parks": 42,
     "water": 2,
     "roads": 261,
