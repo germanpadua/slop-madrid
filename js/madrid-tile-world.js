@@ -194,6 +194,13 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     // Named monuments get their own material (caliza blanca / granito berroqueno), not one blanket tone.
     landmarkByName: new Map()
   };
+  // Deterministic park-ground ordering (aerial depth-race fix): the 5/10 cm y-gaps between deck (0), park dirt
+  // (0.05) and lawn (0.10) sit far below the far-camera depth resolution (~13 cm at 1050 m), so the old winner was
+  // effectively random per region (tan wedge over Nuevos Ministerios, dark voids/patches over Retiro - proven by
+  // same-camera visibility toggles + altitude series, 2026-10-29). Tiers: deck (0) < dirt (-1/-1) < lawn (-1/-2)
+  // < park road ribbons (-1/-3, emitted only inside park rings - spatially disjoint from ballast's -1/-3).
+  mats.dirt.polygonOffset = true; mats.dirt.polygonOffsetFactor = -1; mats.dirt.polygonOffsetUnits = -1;
+  mats.lawn.polygonOffset = true; mats.lawn.polygonOffsetFactor = -1; mats.lawn.polygonOffsetUnits = -2;
   const groups = new Map(); // tile id -> { group, colliders }
   // Footprints already in the scene: the ownership rules keep each building in exactly one tile, and this guard makes
   // that a hard invariant of the renderer (a doubled ring would be two coplanar facades in the same place).
@@ -343,6 +350,111 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       mesh.receiveShadow = true;
       mesh.name = 'TileParks';
       group.add(mesh);
+    }
+
+    // 2c. Road ribbons over park floors: with deterministic ordering the park ground no longer loses the aerial
+    //     depth race, so a roadway crossing a park/grass ring would vanish under dirt/lawn (the deck is only 0).
+    //     Redraw exactly those in-park stretches as real geometry: the source polyline clipped against each
+    //     painting ground ring - segments SPLIT at boundary crossings, never midpoint-only - with width from the
+    //     source class field road[1] (the field bridge decks use; class-derived, approximate where OSM lacks
+    //     width). Water-covered pieces are skipped (bridge decks own those), nested/overlapping ground rings emit
+    //     each stretch once (first painter wins) and octagon caps at kept polyline joints keep turns joined.
+    //     The deck stays the road surface outside parks: nothing changes there.
+    {
+      const groundRings = allParkRings.filter((r) => r.paintsDirt || r.paintsLawn);
+      let ribbonMat = null;
+      const ribbonGeos = [];
+      const inWater = (x, z) => waterBoxes.some((wb) => x >= wb.bb[0] && x <= wb.bb[2] && z >= wb.bb[1] && z <= wb.bb[3] && pointInRingPts(wb.ring, x, z));
+      const segT = (a, b, c, d) => {
+        const rx = b.x - a.x, rz = b.z - a.z, sx = d.x - c.x, sz = d.z - c.z;
+        const den = rx * sz - rz * sx;
+        if (Math.abs(den) < 1e-12) return null;
+        const t = ((c.x - a.x) * sz - (c.z - a.z) * sx) / den;
+        const u = ((c.x - a.x) * rz - (c.z - a.z) * rx) / den;
+        return t > 1e-9 && t < 1 - 1e-9 && u >= -1e-9 && u <= 1 + 1e-9 ? t : null;
+      };
+      const pushQuad = (a, b, wHalf) => {
+        const dx = b.x - a.x, dz = b.z - a.z;
+        const len = Math.hypot(dx, dz);
+        if (len < 2) return;
+        const nx = (-dz / len) * wHalf, nz = (dx / len) * wHalf;
+        let quad = [
+          { x: a.x + nx, z: a.z + nz }, { x: b.x + nx, z: b.z + nz },
+          { x: b.x - nx, z: b.z - nz }, { x: a.x - nx, z: a.z - nz }
+        ];
+        if (shoelace(quad) < 0) quad = quad.reverse();
+        ribbonGeos.push(createFlatPolygonMesh(quad, 0.13, ribbonMat, true).geometry);
+      };
+      const pushCap = (p, wHalf) => {
+        const oct = [];
+        for (let k = 0; k < 8; k++) {
+          const ang = (Math.PI * 2 * k) / 8;
+          oct.push({ x: p.x + Math.cos(ang) * wHalf * 1.05, z: p.z + Math.sin(ang) * wHalf * 1.05 });
+        }
+        if (shoelace(oct) < 0) oct.reverse();
+        ribbonGeos.push(createFlatPolygonMesh(oct, 0.13, ribbonMat, true).geometry);
+      };
+      for (const road of tile.roads || []) {
+        const pts = toPts(road[5] || []);
+        if (pts.length < 2) continue;
+        const wHalf = (road[1] || 6) / 2;
+        let rx0 = Infinity, rz0 = Infinity, rx1 = -Infinity, rz1 = -Infinity;
+        for (const p of pts) { rx0 = Math.min(rx0, p.x); rz0 = Math.min(rz0, p.z); rx1 = Math.max(rx1, p.x); rz1 = Math.max(rz1, p.z); }
+        const prevRings = [];
+        for (const g of groundRings) {
+          if (g.bb[2] < rx0 || g.bb[0] > rx1 || g.bb[3] < rz0 || g.bb[1] > rz1) continue;
+          if (!ribbonMat) {
+            ribbonMat = mats.road.clone();
+            ribbonMat.polygonOffset = true; ribbonMat.polygonOffsetFactor = -1; ribbonMat.polygonOffsetUnits = -3;
+          }
+          const R = g.ring;
+          const kept = [];
+          for (let i = 1; i < pts.length; i++) {
+            const a = pts[i - 1], b = pts[i];
+            if (Math.max(a.x, b.x) < g.bb[0] || Math.min(a.x, b.x) > g.bb[2] || Math.max(a.z, b.z) < g.bb[1] || Math.min(a.z, b.z) > g.bb[3]) continue;
+            const ts = [];
+            for (let j = 0, k = R.length - 1; j < R.length; k = j++) {
+              const t = segT(a, b, R[k], R[j]);
+              if (t !== null) ts.push(t);
+            }
+            ts.sort((p, q) => p - q);
+            const cuts = [0, ...ts, 1];
+            for (let s = 0; s + 1 < cuts.length; s++) {
+              const t0 = cuts[s], t1 = cuts[s + 1];
+              if (t1 - t0 < 1e-6) continue;
+              const p0 = { x: a.x + (b.x - a.x) * t0, z: a.z + (b.z - a.z) * t0 };
+              const p1 = { x: a.x + (b.x - a.x) * t1, z: a.z + (b.z - a.z) * t1 };
+              const mx = (p0.x + p1.x) / 2, mz = (p0.z + p1.z) / 2;
+              if (!pointInRingPts(R, mx, mz)) continue;
+              if (inWater(mx, mz)) continue;
+              if (prevRings.some((o) => pointInRingPts(o.ring, mx, mz))) continue;
+              kept.push({ a: p0, b: p1, endV: t1 >= 1 - 1e-9 ? i : -1 });
+            }
+          }
+          if (kept.length) {
+            for (let i = 0; i < kept.length; i++) pushQuad(kept[i].a, kept[i].b, wHalf);
+            // caps: a vertex where two kept pieces meet (one ends, another starts) gets an octagon joint
+            const verts = new Map();
+            for (const p of kept) {
+              for (const [key, pt] of [['a', p.a], ['b', p.b]]) {
+                let vi = -1;
+                for (let v = 0; v < pts.length; v++) if (Math.abs(pts[v].x - pt.x) < 1e-6 && Math.abs(pts[v].z - pt.z) < 1e-6) { vi = v; break; }
+                if (vi >= 0) verts.set(vi, (verts.get(vi) || 0) + 1);
+              }
+            }
+            for (const [vi, n] of verts) if (n >= 2) pushCap(pts[vi], wHalf);
+          }
+          prevRings.push(g);
+        }
+      }
+      if (ribbonGeos.length) {
+        const merged = mergeGeometries(ribbonGeos, false);
+        for (const g of ribbonGeos) g.dispose();
+        const mesh = new THREE.Mesh(merged, ribbonMat);
+        mesh.receiveShadow = true;
+        mesh.name = 'TileRoadRibbons';
+        group.add(mesh);
+      }
     }
 
     // 2b. Park trees (Warsaw-simple): deterministic grove scatter on the real park landuse.
