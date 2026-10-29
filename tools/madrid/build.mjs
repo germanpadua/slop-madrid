@@ -169,6 +169,23 @@ for (const e of els) {
 // Same ownership rule for roads (they carry the bridge decks over the water): keep the ones that enter the core.
 roadLines.splice(0, roadLines.length, ...roadLines.filter((r) => r.pts.some(([x, z]) => inCore(x, z))));
 
+// Foot-path-class ways (footway/path/pedestrian way/cycleway; steps & area-plazas excluded): kept whole when
+// they enter the core, carrying the OSM surface tag so park paths can paint SOURCE-GROUNDED pavement or earth
+// instead of an assumed dirt floor. Ways without a surface tag stay unpainted (source gap preserved).
+const PATH_W = { footway: 2, path: 1.5, pedestrian: 4, cycleway: 3 };
+const pathLines = [];
+for (const e of els) {
+  if (e.type !== 'way' || !e.geometry) continue;
+  const t = e.tags || {};
+  if (!PATH_W[t.highway] || t.area === 'yes' || t.area === 'true') continue;
+  const pts = e.geometry.filter((p) => p).map((p) => toWorld(p.lon, p.lat));
+  const kept = pts.filter(([x, z]) => x >= wx0 - 20 && x <= wx1 + 20 && z >= wz0 - 20 && z <= wz1 + 20);
+  if (kept.length < 2) continue;
+  const wSrc = t.width ? parseFloat(String(t.width).replace(',', '.')) : NaN;
+  pathLines.push({ name: t.name || '', cls: t.highway, surf: t.surface || '', w: Number.isFinite(wSrc) && wSrc > 0 ? wSrc : PATH_W[t.highway], pts: rdp(kept, 0.6) });
+}
+pathLines.splice(0, pathLines.length, ...pathLines.filter((r) => r.pts.some(([x, z]) => inCore(x, z))));
+
 // Rail ways (railway=rail): kept whole when they enter the core, same ownership rule as roads. The k3j-1
 // corridor void (Atocha / Méndez Álvaro) was traced to this class missing from the fetch (see MADRID.md).
 const railLines = [];
@@ -1035,6 +1052,7 @@ if (IS_TILE) {
     parks: parksClipped.map((p) => ({ name: p.name, cat: p.cat, acres: p.acres, rings: p.rings.map(flat) })),
     water: waterClipped.map(flat),
     roads: roadLines.map((r) => [r.name, r1(r.w), r.dir, r.lanes, r.hw, flat(r.pts)]),
+    paths: pathLines.map((r) => [r.name, r.cls, r.surf, r1(r.w), flat(r.pts)]),
     lots: cpLots.map((l) => ({ r: l.ring.flatMap(([x, z]) => [r1(x), r1(z)]), ...(l.holes.length ? { h: l.holes.map((h) => h.flatMap(([x, z]) => [r1(x), r1(z)])) } : {}) })),
     rails: railLines.map((r) => r.pts.flatMap(([x, z]) => [r1(x), r1(z)])),
     railLand: railLand.map((l) => ({ r: l.ring.flatMap(([x, z]) => [r1(x), r1(z)]), ...(l.holes.length ? { h: l.holes.map((h) => h.flatMap(([x, z]) => [r1(x), r1(z)])) } : {}) })),
@@ -1046,6 +1064,7 @@ if (IS_TILE) {
 ${credits}
 export const TILE = ${JSON.stringify(TILE)};
 `);
+  log(`paths kept: ${pathLines.length} (${pathLines.filter((r) => r.surf).length} with surface)`);
   log(`wrote ${path.basename(OUT)} (${(fs.statSync(OUT).size / 1024).toFixed(0)} KB): ${TILE.blocks.length} blocks, ${TILE.parcels.length} parcels, ${TILE.parks.length} parks, ${TILE.water.length} water, ${TILE.roads.length} roads, ${Object.keys(TILE.landmarks).length} landmarks`);
   process.exit(0);
 }

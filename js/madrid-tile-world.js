@@ -377,11 +377,12 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     //     width). Water-covered pieces are skipped (bridge decks own those), nested/overlapping ground rings emit
     //     each stretch once (first painter wins) and octagon caps at kept polyline joints keep turns joined.
     //     The deck stays the road surface outside parks: nothing changes there.
+    const ribbonSegs = []; // kept ribbon stretches (shared with 2d: path ribbons yield to these)
+    const groundRings = allParkRings.filter((r) => r.paintsDirt || r.paintsLawn);
+    const inWater = (x, z) => waterBoxes.some((wb) => x >= wb.bb.x0 && x <= wb.bb.x1 && z >= wb.bb.z0 && z <= wb.bb.z1 && pointInRingPts(wb.ring, x, z));
     {
-      const groundRings = allParkRings.filter((r) => r.paintsDirt || r.paintsLawn);
       let ribbonMat = null;
       const ribbonGeos = [];
-      const inWater = (x, z) => waterBoxes.some((wb) => x >= wb.bb[0] && x <= wb.bb[2] && z >= wb.bb[1] && z <= wb.bb[3] && pointInRingPts(wb.ring, x, z));
       const pushQuad = (a, b, wHalf) => {
         const dx = b.x - a.x, dz = b.z - a.z;
         const len = Math.hypot(dx, dz);
@@ -413,7 +414,7 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
           ribbonMat = mats.road.clone();
           ribbonMat.polygonOffset = true; ribbonMat.polygonOffsetFactor = -1; ribbonMat.polygonOffsetUnits = -3;
         }
-        for (const p of pieces) pushQuad(p.a, p.b, wHalf);
+        for (const p of pieces) { pushQuad(p.a, p.b, wHalf); ribbonSegs.push({ a: p.a, b: p.b, wHalf }); }
         for (const j of joints) pushCap(j, wHalf);
       }
       if (ribbonGeos.length) {
@@ -422,6 +423,70 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
         const mesh = new THREE.Mesh(merged, ribbonMat);
         mesh.receiveShadow = true;
         mesh.name = 'TileRoadRibbons';
+        group.add(mesh);
+      }
+    }
+
+    // 2d. Park footways (tile.paths): OSM footway/path/pedestrian/cycleway ways clipped to the painting ground
+    //     rings with the same split-at-boundary machinery as 2c. Painted ONLY when the way carries a surface
+    //     tag: paved surfaces read as pavement, unpaved as packed earth - a way WITHOUT surface stays the park
+    //     floor (source gap preserved: no assumed dirt, no assumed asphalt). Road ribbons win crossings.
+    {
+      const PAVED = new Set(['asphalt', 'paved', 'paving_stones', 'concrete', 'concrete:plates', 'sett', 'pebblestone', 'unhewn_cobblestone', 'metal', 'wood']);
+      const segDist = (p, s) => {
+        const dx = s.b.x - s.a.x, dz = s.b.z - s.a.z;
+        const l2 = dx * dx + dz * dz;
+        const t = l2 > 0 ? Math.max(0, Math.min(1, ((p.x - s.a.x) * dx + (p.z - s.a.z) * dz) / l2)) : 0;
+        return Math.hypot(p.x - (s.a.x + dx * t), p.z - (s.a.z + dz * t));
+      };
+      const pathGeos = { paved: [], earth: [] };
+      const pushPathQuad = (arr, a, b, wHalf) => {
+        const dx = b.x - a.x, dz = b.z - a.z;
+        const len = Math.hypot(dx, dz);
+        if (len < 1) return;
+        const nx = (-dz / len) * wHalf, nz = (dx / len) * wHalf;
+        let quad = [
+          { x: a.x + nx, z: a.z + nz }, { x: b.x + nx, z: b.z + nz },
+          { x: b.x - nx, z: b.z - nz }, { x: a.x - nx, z: a.z - nz }
+        ];
+        if (shoelace(quad) < 0) quad = quad.reverse();
+        arr.push(createFlatPolygonMesh(quad, 0.13, null, true).geometry);
+      };
+      for (const way of tile.paths || []) {
+        const surf = way[2];
+        if (!surf) continue; // no surface source: leave the park floor
+        const pts = toPts(way[4] || []);
+        if (pts.length < 2) continue;
+        const wHalf = (way[3] || 2) / 2;
+        const { pieces, joints } = clipRoadToRings(pts, groundRings, { inWater });
+        const bucket = PAVED.has(surf) ? pathGeos.paved : pathGeos.earth;
+        for (const p2 of pieces) {
+          const mx = (p2.a.x + p2.b.x) / 2, mz = (p2.a.z + p2.b.z) / 2;
+          if (ribbonSegs.some((s) => segDist({ x: mx, z: mz }, s) < s.wHalf + wHalf * 0.5)) continue; // road ribbon owns the crossing
+          pushPathQuad(bucket, p2.a, p2.b, wHalf);
+        }
+        for (const j of joints) {
+          if (ribbonSegs.some((s) => segDist(j, s) < s.wHalf + wHalf * 0.5)) continue;
+          const oct = [];
+          for (let k = 0; k < 8; k++) {
+            const ang = (Math.PI * 2 * k) / 8;
+            oct.push({ x: j.x + Math.cos(ang) * wHalf * 1.05, z: j.z + Math.sin(ang) * wHalf * 1.05 });
+          }
+          if (shoelace(oct) < 0) oct.reverse();
+          bucket.push(createFlatPolygonMesh(oct, 0.13, null, true).geometry);
+        }
+      }
+      for (const [kind, geos] of Object.entries(pathGeos)) {
+        if (!geos.length) continue;
+        const mat = new THREE.MeshStandardNodeMaterial({
+          color: kind === 'paved' ? 0x9d968a : 0xc2ad7c, // granite-grey pavement / packed earth (both source-tagged)
+          roughness: 1, metalness: 0, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -3
+        });
+        const merged = mergeGeometries(geos, false);
+        for (const g of geos) g.dispose();
+        const mesh = new THREE.Mesh(merged, mat);
+        mesh.receiveShadow = true;
+        mesh.name = kind === 'paved' ? 'TileParkPathsPaved' : 'TileParkPathsEarth';
         group.add(mesh);
       }
     }
