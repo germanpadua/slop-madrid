@@ -156,6 +156,9 @@ export function createTileWorld(scene, { colliders = null, materials = null, see
     scene.add(seedTrees);
   }
   const groups = new Map(); // tile id -> { group, colliders }
+  // The source data of every mounted tile, for systems that need geometry outside the meshes:
+  // resident routing (blocks/parcels/core) and the pedestrian block lookup. Removed with the tile.
+  const tileData = new Map();
   // Footprints already in the scene: the ownership rules keep each building in exactly one tile, and this guard makes
   // that a hard invariant of the renderer (a doubled ring would be two coplanar facades in the same place).
   const drawnParcels = new Set();
@@ -573,6 +576,7 @@ export function createTileWorld(scene, { colliders = null, materials = null, see
     scene.add(group);
     if (colliders && tileColliders.length) colliders.push(...tileColliders);
     groups.set(tile.id, { group, colliders: tileColliders });
+    tileData.set(tile.id, { id: tile.id, core, blocks: tile.blocks || [], parcels: tile.parcels || [], streetFeatures: tile.streetFeatures || null });
     return groups.get(tile.id);
   }
 
@@ -593,6 +597,7 @@ export function createTileWorld(scene, { colliders = null, materials = null, see
     }
     groups.delete(id);
     streetFeatures.delete(id);
+    tileData.delete(id);
     return true;
   }
 
@@ -637,6 +642,7 @@ export function createTileWorld(scene, { colliders = null, materials = null, see
     has: (id) => groups.has(id),
     ids: () => [...groups.keys()],
     residentStreetFeatures: () => new Map(streetFeatures),
+    residentGeometry: () => new Map(tileData),
     residentBytes: () => [...groups.values()].reduce((n, g) => n + (g.group.userData.bytes || 0), 0),
     meshCount: () => [...groups.values()].reduce((n, g) => n + g.group.children.length, 0),
     disposeAll() {

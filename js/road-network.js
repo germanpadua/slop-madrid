@@ -23,7 +23,10 @@ const LANE_CLEAR = 1.2; // half width each lane keeps free of obstacles
 const CROSSWALK = 2.5; // depth between an intersection box and its stop lines
 const SHORE_MARGIN = 6;
 
-function buildRoadNetwork(sidewalks, obstacles, signalIntersections = [], options = {}) {
+// Ground queries shared by the synchronous builder and the rehydrated worker network: the
+// spatial hash of curbs/obstacles, land coverage and the street-level clearance tests are pure
+// functions of the built geometry, so the worker only has to ship the resulting graph.
+export function createGroundQueries(sidewalks, obstacles, options = {}) {
   // 1. Spatial hash of ground footprints: curbs bound the roads, everything else also blocks pedestrians
   const hash = new Map();
   const cellKey = (ix, iz) => (ix + 512) * 1024 + iz + 512;
@@ -107,6 +110,13 @@ function buildRoadNetwork(sidewalks, obstacles, signalIntersections = [], option
     query(x - 0.3, x + 0.3, z - 0.3, z + 0.3, (r) => r.curb) ||
     nearMedian(x, z, clear) ||
     query(x - clear, x + clear, z - clear, z + clear, (r) => !r.curb && !r.pedestrianOnly && (r.maxX - r.minX < 50 || r.maxZ - r.minZ < 50) && !medianBox(r));
+  const isRoadClear = (x, z, clear = 0.15) => !blockedOnStreet(x, z, clear);
+  return { query, blocked, walkable, onSidewalk, onLand, blockedOnStreet, isRoadClear };
+}
+
+function buildRoadNetwork(sidewalks, obstacles, signalIntersections = [], options = {}) {
+  const { query, blocked, walkable, onSidewalk, blockedOnStreet, isRoadClear } =
+    createGroundQueries(sidewalks, obstacles, options);
 
   // 2. Avenue corridors: the most common curb-to-curb gap around each avenue's nominal x along its own stretches
   //    (CSCL: an avenue only exists between its ends, e.g. Irving Pl 14th-20th St, so it never claims a neighbour's
@@ -428,6 +438,15 @@ function buildRoadNetwork(sidewalks, obstacles, signalIntersections = [], option
       stations.push(B);
       const lanes = lanesOf(l);
       for (let k = 0; k + 1 < stations.length; k++) runs.push({ from: stations[k], to: stations[k + 1], ...lanes });
+    }
+    // Signalised junctions come from the source nodes themselves, never from proximity: an OSM
+    // traffic-signal node marks its own routing junction only when that ID survived simplification.
+    if (RG.signals && RG.osmNodeIds) {
+      const sourceIndex = new Map(RG.osmNodeIds.map((id, i) => [id, i]));
+      for (const signal of RG.signals) {
+        const i = sourceIndex.get(signal.id);
+        if (i !== undefined) junction(find(i)).signal = true;
+      }
     }
     console.info(`[roads] centreline streets: ${links.length} links not on the grid, ${runs.length} straight runs`);
     return runs;
@@ -1112,8 +1131,7 @@ function buildRoadNetwork(sidewalks, obstacles, signalIntersections = [], option
     return c;
   }
 
-  const isRoadClear = (x, z, clear = 0.15) => !blockedOnStreet(x, z, clear);
-  return { nodes, edges, paintEdges, connector, curvePoint, walkable, onSidewalk, isRoadClear };
+  return hydrateRoadNetwork({ nodes, edges, paintEdges, walkable, onSidewalk, isRoadClear });
 }
 
 // The largest strongly connected set of `list` (a Set), going on from item e to the items next(e)
@@ -1175,7 +1193,7 @@ function largestComponent(list, next) {
 // Cubic Bézier from the end of lane i on edge e to the start of lane j on edge f: a quarter-circle-like
 // arc around the corner for turns, an S-bend for straight lane shifts. Includes an arc-length table and
 // the sharpest curvature along it (1 / tightest radius).
-function makeCurve(e, i, f, j) {
+export function makeCurve(e, i, f, j) {
   const x0 = e.sx + e.dx * e.len + e.rx * e.lanes[i];
   const z0 = e.sz + e.dz * e.len + e.rz * e.lanes[i];
   const x3 = f.sx + f.rx * f.lanes[j];
@@ -1234,6 +1252,79 @@ function curvePoint(c, s, out) {
   out.dx = dx / l;
   out.dz = dz / l;
   return out;
+}
+
+// Serialise a prepared network into plain index-addressed arrays so it can cross a worker boundary.
+// The live graph is cyclic (node <-> edge <-> move <-> arm <-> node); structured clone of that
+// object graph overflows the stack, while flat indirection clones in a few milliseconds.
+export function encodeRoadNetwork(network) {
+  const nodes = network.nodes.map((n) => ({
+    x: n.x, z: n.z, hx: n.hx, hz: n.hz, signal: !!n.signal, general: !!n.general, mixed: !!n.mixed,
+    sideCount: n.sideCount, groupCount: n.groupCount,
+    arms: n.arms.map((a) => ({
+      ux: a.ux, uz: a.uz, half: a.half, ave: !!a.ave, order: a.order, wide: a.wide, side: a.side, group: a.group,
+      lead: n.arms.indexOf(a.lead), in: a.in ? a.in.id : -1, out: a.out ? a.out.id : -1
+    }))
+  }));
+  const edges = network.edges.map((e) => ({
+    from: e.from.id, to: e.to.id, axis: e.axis, x0: e.x0, z0: e.z0, dx: e.dx, dz: e.dz, rx: e.rx, rz: e.rz,
+    span: e.span, half: e.half, lanes: e.lanes, general: !!e.general, divided: !!e.divided, oneWay: e.oneWay,
+    live: !!e.live, squeezed: !!e.squeezed, sx: e.sx, sz: e.sz, len: e.len,
+    inSide: e.inSide, outSide: e.outSide, axisIndex: e.axisIndex, clx: e.clx, clz: e.clz,
+    opposite: e.opposite ? e.opposite.id : -1,
+    inArm: e.inArm ? e.to.arms.indexOf(e.inArm) : -1,
+    outArm: e.outArm ? e.from.arms.indexOf(e.outArm) : -1,
+    moves: e.moves.map((m) => ({ to: m.to.id, out: m.out, turn: m.turn }))
+  }));
+  return { nodes, edges };
+}
+
+// Rebuild the live object graph from the worker's index-addressed form, then attach the lane-curve
+// runtime. Adjacency (n.in/n.out), moves and arms are reconstructed with the original ordering, so
+// lane indices, turn rules and pedestrian ports describe the same intersections as in the builder.
+export function decodeRoadNetwork({ nodes: nodeData, edges: edgeData, walkable, onSidewalk, isRoadClear }) {
+  const nodes = nodeData.map((raw, id) => ({
+    id, x: raw.x, z: raw.z, hx: raw.hx, hz: raw.hz, signal: raw.signal, general: raw.general, mixed: raw.mixed,
+    sideCount: raw.sideCount, groupCount: raw.groupCount, arms: [], in: [], out: []
+  }));
+  const edges = edgeData.map((raw, id) => ({
+    id, from: nodes[raw.from], to: nodes[raw.to], axis: raw.axis, x0: raw.x0, z0: raw.z0, dx: raw.dx, dz: raw.dz,
+    rx: raw.rx, rz: raw.rz, span: raw.span, half: raw.half, lanes: raw.lanes, moves: [], general: raw.general,
+    divided: raw.divided, oneWay: raw.oneWay, live: raw.live, squeezed: raw.squeezed, sx: raw.sx, sz: raw.sz,
+    len: raw.len, inSide: raw.inSide, outSide: raw.outSide, axisIndex: raw.axisIndex, clx: raw.clx, clz: raw.clz,
+    opposite: null, inArm: null, outArm: null
+  }));
+  for (let i = 0; i < nodes.length; i++) {
+    const raw = nodeData[i], node = nodes[i];
+    node.arms = raw.arms.map((a) => ({
+      ux: a.ux, uz: a.uz, half: a.half, ave: a.ave, order: a.order, wide: a.wide, side: a.side, group: a.group,
+      lead: null, in: a.in >= 0 ? edges[a.in] : null, out: a.out >= 0 ? edges[a.out] : null
+    }));
+    for (let k = 0; k < node.arms.length; k++) node.arms[k].lead = node.arms[raw.arms[k].lead] || node.arms[k];
+  }
+  for (let i = 0; i < edges.length; i++) {
+    const raw = edgeData[i], e = edges[i];
+    e.moves = raw.moves.map((m) => ({ to: edges[m.to], out: m.out, turn: m.turn }));
+    e.opposite = raw.opposite >= 0 ? edges[raw.opposite] : null;
+    e.outArm = raw.outArm >= 0 ? e.from.arms[raw.outArm] : null;
+    e.inArm = raw.inArm >= 0 ? e.to.arms[raw.inArm] : null;
+    e.from.out.push(e);
+    e.to.in.push(e);
+  }
+  return hydrateRoadNetwork({ nodes, edges, paintEdges: [], walkable, onSidewalk, isRoadClear });
+}
+
+// Rebuild the runtime half (lane-to-lane curves) of a network whose nodes/edges were prepared
+// elsewhere, e.g. in the road worker. Curves stay lazy and keyed by the edge ids assigned there.
+export function hydrateRoadNetwork({ nodes, edges, paintEdges = [], walkable, onSidewalk, isRoadClear }) {
+  const curves = new Map();
+  function connector(e, i, f, j) {
+    const k = ((e.id * 8 + i) * 16384 + f.id) * 8 + j;
+    let c = curves.get(k);
+    if (!c) curves.set(k, (c = makeCurve(e, i, f, j)));
+    return c;
+  }
+  return { nodes, edges, paintEdges, connector, curvePoint, walkable, onSidewalk, isRoadClear, curves };
 }
 
 export { buildRoadNetwork, CROSSWALK };
