@@ -160,7 +160,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
     const g = sceneOf.getObjectByName(`MadridTile:${id}`);
     if (!g) return { id, missing: true };
     let meshes = 0, instances = 0, sharedFacades = 0, unsharedFacades = 0, deckMinY = Infinity, deckMaxY = -Infinity;
-    const kinds = new Set();
+    const kinds = new Set(); const trisByName = {};
     g.traverse((o) => {
       if (!o.isMesh) return;
       meshes++;
@@ -168,6 +168,18 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
         if (seedFacadeMaterials.has(o.userData.madridDetailedMaterial || o.material)) sharedFacades++; else unsharedFacades++;
       }
       kinds.add(o.name);
+      {
+        const gm = o.geometry;
+        const per = gm?.index ? gm.index.count / 3 : (gm?.attributes?.position?.count || 0) / 3;
+        const n = per * (o.isInstancedMesh ? o.count : 1);
+        const key = o.name.replace(/[:#]?\d+$/, '') || 'unnamed';
+        const e = trisByName[key] ||= { meshes: 0, tris: 0, visibleTris: 0, geomBytes: 0 };
+        e.meshes++; e.tris += n;
+        let vis = o.visible; for (let a = o.parent; a && vis; a = a.parent) vis = a.visible;
+        if (vis) e.visibleTris += n;
+        for (const at of Object.values(gm?.attributes || {})) e.geomBytes += at.array.byteLength;
+        if (gm?.index) e.geomBytes += gm.index.array.byteLength;
+      }
       if (o.isInstancedMesh) instances += o.count;
       if (o.name === 'TileDeck') {
         o.geometry.computeBoundingBox();
@@ -175,7 +187,13 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
         deckMaxY = Math.max(deckMaxY, o.geometry.boundingBox.max.y);
       }
     });
-    return { id, meshes, instances, sharedFacades, unsharedFacades, farGeometry: g.userData.farGeometry, farVisible: g.getObjectByName('TileFarBuildings')?.visible, deckMinY, deckMaxY, colliders: g.userData.colliders?.length ?? 0, kinds: [...kinds] };
+    return { id, meshes, instances, sharedFacades, unsharedFacades, farGeometry: g.userData.farGeometry, farVisible: g.getObjectByName('TileFarBuildings')?.visible, deckMinY, deckMaxY, trisByName, colliders: g.userData.colliders?.length ?? 0, kinds: [...kinds] };
+  });
+  const sceneTris = {};
+  sceneOf.children.forEach((c) => {
+    let tris = 0, vis = 0, meshes = 0;
+    c.traverse((o) => { if (!o.isMesh) return; const gm = o.geometry; const per = gm?.index ? gm.index.count / 3 : (gm?.attributes?.position?.count || 0) / 3; const n = per * (o.isInstancedMesh ? o.count : 1); tris += n; meshes++; let v = o.visible; for (let a = o.parent; a && v; a = a.parent) v = a.visible; if (v) vis += n; });
+    if (tris) sceneTris[c.name || c.type] = { meshes, tris: Math.round(tris), visibleTris: Math.round(vis), visible: c.visible };
   });
   const routeFrames = (window.__madrid.frameSamples || []).filter((s) => s.at >= routeStart);
   const intervals = routeFrames.map((s) => s.intervalMs).sort((a, b) => a - b);
@@ -191,7 +209,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
     distanceDetail: window.__madrid.distanceDetail?.status(),
     shaderWarmupHidden: sceneOf.getObjectByName('MadridTileShaderWarmup')?.visible === false,
     backend: renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2',
-    tileStats,
+    tileStats, sceneTris,
     tiles: before,
     after: tileSet,
     tileMs,
