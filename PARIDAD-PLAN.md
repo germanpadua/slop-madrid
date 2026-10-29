@@ -12,7 +12,7 @@ Prohibido push/deploy/merge a main. Auditoría detallada y checklists: `MADRID-P
 | B2. Mundo activo y mapa | **avance entregado** | Alta/baja real de capas, calles, búsqueda, límites y aceras; grafo activo y rutas por vértices reales. Simulación de tráfico todavía usa semilla (B3) |
 | B3. Tráfico y LOD | pendiente | Adaptar red/simulación, LOD0; preservar movimiento cercano y no resetear todos los actores en cada carga |
 | C. Muestras de acabado fiel | **avance entregado** | Huellas reales cóncavas + 3.504 patios interiores nuevos, 5.989 nodos OSM de árboles/farolas/señales, relleno nocturno estilizado y cartel de bus Madrid. Falta acabado completo/LOD y QC del propietario |
-| D. Medir y cerrar | pendiente | Suite completa antes de cada commit de cierre, verify hashes, harness CPU, presupuesto y limitaciones; GPU/FPS los valida propietario |
+| D. Medir y cerrar | **CPU y contratos hechos; GPU bloqueada aquí** | 152/152 tests, verify 18/85, siete mediciones archivadas y smoke real Path2D/workers sin renderer; FPS y veredicto visual pendientes de GPU del propietario |
 
 Se ejecuta A1 primero para detectar disponibilidad de fuentes; B1 puede continuar durante descargas. Datos antes de
 decoración, presupuesto antes de cargar más, geometría fiel antes de variar fachadas. Costes en informe son estimaciones,
@@ -30,5 +30,21 @@ no promesa de cierre de todos los subsistemas. Cada commit deja estado concreto;
    Regenerar las diez nuevas: `python3 tools/madrid/pbf.py --pbf /tmp/slop-paridad-cache/madrid-261028.osm.pbf --rebuild --clean-tile-cache k0j2 k1j2 k2j2 k3j2 k3j0 k1j-1 k3j-1 k1j3 k2j3 k3j3`.
 2. `node tools/madrid/tiles.mjs verify`; suite completa; `node tools/madrid/measure.mjs --cpu` (sin GPU).
 3. Ampliar cobertura requiere revisar el test histórico que exige que TODOS los módulos publicados quepan juntos
-   en 12 MiB. No se ha debilitado: total actual 11.077.635 B. La política residente sí cuenta semilla completa.
-4. Terminar B y C, actualizar mediciones y límites con evidencia antes de cerrar.
+   en 12 MiB. No se ha debilitado: total final 11.395.022 B. La política residente sí cuenta semilla completa.
+4. Prioridad siguiente: B3 (migración incremental de carriles/ocupación/peatones) y LOD0, antes de aumentar radios.
+   Faltan 67 celdas; no es una ciudad en paridad completa. La cobertura y el acabado ya entregados son el mínimo
+   avanzado A/B + muestras C, no un cierre de esas brechas.
+
+## Cierre de esta entrega
+
+- `1aafbe5`: PBF + diez celdas, test del adaptador, dedupe incluyendo semilla; 140/140 tests sobre el índice exportado.
+- `2789b9f`: workers y presupuesto real, cancelaciones/cargas concurrentes; 144/144.
+- `2757093`: mundo activo, mapa, rutas y límites; 150/150.
+- `98a2132`: geometría compacta con patios y puntos OSM, noche y alturas de hitos; 152/152.
+- Harness: `node tools/madrid/measure.mjs --cpu`; comparación `--cpu --baseline-ref feat/monumentos`.
+  Archivos en `tools/madrid/measurements/2026-10-29-*.json`. Para GPU real, sólo en entorno compatible:
+  `node tools/madrid/measure.mjs --native-gpu --tiles k0j2,k1j2,k2j2,k3j2,k1j3,k2j3,k3j3`.
+- Inspección manual: servir este checkout con `python3 -m http.server 8000`, abrir
+  `http://localhost:8000/?debug=1` con GPU (o reenviar ese puerto). Pages sigue en fase 3 hasta orden explícita.
+- No push, no deploy, no merge a main, ningún secreto leído. Cache PBF + alturas 114 MiB en /tmp para reanudar;
+  los extractos intermedios de cada celda se eliminaron. Las verificaciones temporales del índice se limpian al cierre.

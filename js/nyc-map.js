@@ -760,6 +760,8 @@ class NYCMapSystem {
     LAYERS = null;
     rebuildRoadLabels();
     ROAD_NAME_COUNT = new Set(ROAD_LABELS.map((l) => l.text)).size;
+    const counts = document.getElementById('fullmap-counts');
+    if (counts) counts.textContent = `${ROAD_NAME_COUNT} streets · ${BLOCKS.length.toLocaleString('en-US')} blocks`;
     this.miniCache = null;
     this.fullStaticKey = null;
     this.routeCache = null;

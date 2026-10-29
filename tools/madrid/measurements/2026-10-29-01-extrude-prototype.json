@@ -1,0 +1,155 @@
+{
+  "mode": "cpu-no-renderer",
+  "importMs": 608.3,
+  "tileTimes": [
+    {
+      "id": "k0j-1",
+      "bytes": 287174,
+      "ok": true,
+      "importBuildMs": 376,
+      "graphMs": 38.4,
+      "graphLinks": 6295
+    },
+    {
+      "id": "k0j2",
+      "bytes": 230378,
+      "ok": true,
+      "importBuildMs": 177.3,
+      "graphMs": 38.3,
+      "graphLinks": 6520
+    },
+    {
+      "id": "k0j3",
+      "bytes": 450984,
+      "ok": true,
+      "importBuildMs": 312.9,
+      "graphMs": 91.6,
+      "graphLinks": 7277
+    },
+    {
+      "id": "k1j-1",
+      "bytes": 387732,
+      "ok": true,
+      "importBuildMs": 301.2,
+      "graphMs": 33.5,
+      "graphLinks": 8082
+    },
+    {
+      "id": "k1j2",
+      "bytes": 326120,
+      "ok": true,
+      "importBuildMs": 209.5,
+      "graphMs": 28.7,
+      "graphLinks": 8581
+    },
+    {
+      "id": "k1j3",
+      "bytes": 715501,
+      "ok": true,
+      "importBuildMs": 351.4,
+      "graphMs": 34.7,
+      "graphLinks": 9009
+    },
+    {
+      "id": "k2j-1",
+      "bytes": 500191,
+      "ok": true,
+      "importBuildMs": 340.9,
+      "graphMs": 40.4,
+      "graphLinks": 9384
+    },
+    {
+      "id": "k2j2",
+      "bytes": 312388,
+      "ok": true,
+      "importBuildMs": 161.4,
+      "graphMs": 46.8,
+      "graphLinks": 9721
+    },
+    {
+      "id": "k2j3",
+      "bytes": 722294,
+      "ok": true,
+      "importBuildMs": 348.3,
+      "graphMs": 35,
+      "graphLinks": 10173
+    },
+    {
+      "id": "k2j4",
+      "bytes": 424999,
+      "ok": true,
+      "importBuildMs": 231,
+      "graphMs": 47.6,
+      "graphLinks": 10936
+    },
+    {
+      "id": "k3j-1",
+      "bytes": 291379,
+      "ok": true,
+      "importBuildMs": 274.4,
+      "graphMs": 47.5,
+      "graphLinks": 11615
+    },
+    {
+      "id": "k3j0",
+      "bytes": 210903,
+      "ok": true,
+      "importBuildMs": 116.4,
+      "graphMs": 43.8,
+      "graphLinks": 11277
+    },
+    {
+      "id": "k3j1",
+      "bytes": 121670,
+      "ok": true,
+      "importBuildMs": 73.7,
+      "graphMs": 32.4,
+      "graphLinks": 11299
+    },
+    {
+      "id": "k3j2",
+      "bytes": 552050,
+      "ok": true,
+      "importBuildMs": 300.6,
+      "graphMs": 32.7,
+      "graphLinks": 10849
+    },
+    {
+      "id": "k3j3",
+      "bytes": 539997,
+      "ok": true,
+      "importBuildMs": 232.9,
+      "graphMs": 39.5,
+      "graphLinks": 10596
+    },
+    {
+      "id": "k4j1",
+      "bytes": 399280,
+      "ok": true,
+      "importBuildMs": 201.6,
+      "graphMs": 33.7,
+      "graphLinks": 10940
+    },
+    {
+      "id": "k4j2",
+      "bytes": 693314,
+      "ok": true,
+      "importBuildMs": 368.2,
+      "graphMs": 39.3,
+      "graphLinks": 10938
+    }
+  ],
+  "peakBytes": 8701933,
+  "peakTiles": 12,
+  "peakGeometryBufferBytes": 92982058,
+  "remainingMeshes": 0,
+  "geometryChecks": {
+    "roofHeight": 12,
+    "emptyPatioHeight": 2.3841863594498136e-08
+  },
+  "note": "No WebGPU renderer, no FPS. Geometry buffers exclude seed, textures, JS heap, driver allocations and shadow passes.",
+  "pageErrors": [],
+  "failedRequests": [],
+  "experiment": "ExtrudeGeometry exacta, antes de compactar; datos 1aafbe5",
+  "recordedAt": "2026-10-29T11:38:32.871931+00:00"
+}

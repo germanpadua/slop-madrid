@@ -1,0 +1,156 @@
+{
+  "mode": "cpu-no-renderer",
+  "baselineRef": null,
+  "importMs": 523,
+  "tileTimes": [
+    {
+      "id": "k0j-1",
+      "bytes": 287174,
+      "ok": true,
+      "importBuildMs": 167.4,
+      "graphMs": 23.5,
+      "graphLinks": 6295
+    },
+    {
+      "id": "k0j2",
+      "bytes": 230378,
+      "ok": true,
+      "importBuildMs": 88.2,
+      "graphMs": 24.6,
+      "graphLinks": 6520
+    },
+    {
+      "id": "k0j3",
+      "bytes": 450984,
+      "ok": true,
+      "importBuildMs": 148.5,
+      "graphMs": 32.3,
+      "graphLinks": 7277
+    },
+    {
+      "id": "k1j-1",
+      "bytes": 387732,
+      "ok": true,
+      "importBuildMs": 163.6,
+      "graphMs": 30.7,
+      "graphLinks": 8082
+    },
+    {
+      "id": "k1j2",
+      "bytes": 326120,
+      "ok": true,
+      "importBuildMs": 136.3,
+      "graphMs": 30.8,
+      "graphLinks": 8581
+    },
+    {
+      "id": "k1j3",
+      "bytes": 715501,
+      "ok": true,
+      "importBuildMs": 187.8,
+      "graphMs": 26.5,
+      "graphLinks": 9009
+    },
+    {
+      "id": "k2j-1",
+      "bytes": 500191,
+      "ok": true,
+      "importBuildMs": 154.5,
+      "graphMs": 27.5,
+      "graphLinks": 9384
+    },
+    {
+      "id": "k2j2",
+      "bytes": 312388,
+      "ok": true,
+      "importBuildMs": 91.3,
+      "graphMs": 30.3,
+      "graphLinks": 9721
+    },
+    {
+      "id": "k2j3",
+      "bytes": 722294,
+      "ok": true,
+      "importBuildMs": 193.6,
+      "graphMs": 35.8,
+      "graphLinks": 10173
+    },
+    {
+      "id": "k2j4",
+      "bytes": 424999,
+      "ok": true,
+      "importBuildMs": 119.5,
+      "graphMs": 33.7,
+      "graphLinks": 10936
+    },
+    {
+      "id": "k3j-1",
+      "bytes": 291379,
+      "ok": true,
+      "importBuildMs": 78.6,
+      "graphMs": 38.8,
+      "graphLinks": 11615
+    },
+    {
+      "id": "k3j0",
+      "bytes": 210903,
+      "ok": true,
+      "importBuildMs": 62.6,
+      "graphMs": 41,
+      "graphLinks": 11277
+    },
+    {
+      "id": "k3j1",
+      "bytes": 121670,
+      "ok": true,
+      "importBuildMs": 46.3,
+      "graphMs": 33.5,
+      "graphLinks": 11299
+    },
+    {
+      "id": "k3j2",
+      "bytes": 552050,
+      "ok": true,
+      "importBuildMs": 174.7,
+      "graphMs": 37.4,
+      "graphLinks": 10849
+    },
+    {
+      "id": "k3j3",
+      "bytes": 539997,
+      "ok": true,
+      "importBuildMs": 146,
+      "graphMs": 34.1,
+      "graphLinks": 10596
+    },
+    {
+      "id": "k4j1",
+      "bytes": 399280,
+      "ok": true,
+      "importBuildMs": 132.4,
+      "graphMs": 36,
+      "graphLinks": 10940
+    },
+    {
+      "id": "k4j2",
+      "bytes": 693314,
+      "ok": true,
+      "importBuildMs": 187.5,
+      "graphMs": 33.1,
+      "graphLinks": 10938
+    }
+  ],
+  "peakBytes": 8701933,
+  "peakTiles": 12,
+  "peakGeometryBufferBytes": 55955988,
+  "remainingMeshes": 0,
+  "geometryChecks": {
+    "roofHeight": 12,
+    "emptyPatioHeight": 2.3841863594498136e-08
+  },
+  "note": "No WebGPU renderer, no FPS. Geometry buffers exclude seed, textures, JS heap, driver allocations and shadow passes.",
+  "pageErrors": [],
+  "failedRequests": [],
+  "experiment": "Techo y paredes indexados, datos 1aafbe5",
+  "recordedAt": "2026-10-29T11:41:41.247269+00:00"
+}

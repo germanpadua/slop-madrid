@@ -1,0 +1,173 @@
+{
+  "mode": "cpu-no-renderer",
+  "baselineRef": "feat/monumentos",
+  "importMs": 545.1,
+  "tileTimes": [
+    {
+      "id": "k0j-1",
+      "bytes": 287174,
+      "ok": true,
+      "importBuildMs": 137.6,
+      "graphMs": 28.3,
+      "graphLinks": 6295
+    },
+    {
+      "id": "k0j2",
+      "bytes": 249114,
+      "ok": true,
+      "importBuildMs": 50,
+      "graphMs": 28,
+      "graphLinks": 6520
+    },
+    {
+      "id": "k0j3",
+      "bytes": 450984,
+      "ok": true,
+      "importBuildMs": 83.2,
+      "graphMs": 27.9,
+      "graphLinks": 7277
+    },
+    {
+      "id": "k1j-1",
+      "bytes": 401590,
+      "ok": true,
+      "importBuildMs": 116.7,
+      "graphMs": 25.6,
+      "graphLinks": 8082
+    },
+    {
+      "id": "k1j2",
+      "bytes": 346458,
+      "ok": true,
+      "importBuildMs": 55.4,
+      "graphMs": 32.7,
+      "graphLinks": 8581
+    },
+    {
+      "id": "k1j3",
+      "bytes": 781574,
+      "ok": true,
+      "importBuildMs": 126.5,
+      "graphMs": 39,
+      "graphLinks": 9009
+    },
+    {
+      "id": "k2j-1",
+      "bytes": 500191,
+      "ok": true,
+      "importBuildMs": 107.5,
+      "graphMs": 26.5,
+      "graphLinks": 9384
+    },
+    {
+      "id": "k2j2",
+      "bytes": 332905,
+      "ok": true,
+      "importBuildMs": 79.2,
+      "graphMs": 29,
+      "graphLinks": 9721
+    },
+    {
+      "id": "k2j3",
+      "bytes": 779812,
+      "ok": true,
+      "importBuildMs": 148.3,
+      "graphMs": 52.9,
+      "graphLinks": 10173
+    },
+    {
+      "id": "k2j4",
+      "bytes": 424999,
+      "ok": true,
+      "importBuildMs": 74,
+      "graphMs": 37.1,
+      "graphLinks": 10936
+    },
+    {
+      "id": "k3j-1",
+      "bytes": 304725,
+      "ok": true,
+      "importBuildMs": 55.7,
+      "graphMs": 31.5,
+      "graphLinks": 11615
+    },
+    {
+      "id": "k3j0",
+      "bytes": 226837,
+      "ok": true,
+      "importBuildMs": 52.3,
+      "graphMs": 30,
+      "graphLinks": 11277
+    },
+    {
+      "id": "k3j1",
+      "bytes": 121670,
+      "ok": true,
+      "importBuildMs": 78,
+      "graphMs": 30.1,
+      "graphLinks": 11299
+    },
+    {
+      "id": "k3j2",
+      "bytes": 604136,
+      "ok": true,
+      "importBuildMs": 85.5,
+      "graphMs": 30.3,
+      "graphLinks": 10849
+    },
+    {
+      "id": "k3j3",
+      "bytes": 578978,
+      "ok": true,
+      "importBuildMs": 90.5,
+      "graphMs": 31.2,
+      "graphLinks": 10596
+    },
+    {
+      "id": "k4j1",
+      "bytes": 399280,
+      "ok": true,
+      "importBuildMs": 71.3,
+      "graphMs": 32.1,
+      "graphLinks": 10940
+    },
+    {
+      "id": "k4j2",
+      "bytes": 693314,
+      "ok": true,
+      "importBuildMs": 99.8,
+      "graphMs": 30.1,
+      "graphLinks": 10938
+    }
+  ],
+  "peakBytes": 8966388,
+  "peakTiles": 12,
+  "peakGeometryBufferBytes": 17356554,
+  "remainingMeshes": 0,
+  "geometryChecks": {
+    "roofHeight": 12.00000000000001,
+    "emptyPatioHeight": 12,
+    "innerCourtyardHeight": 12
+  },
+  "mapSmoke": {
+    "residentTiles": 12,
+    "roadCount": 5140,
+    "blockCount": 1257,
+    "afterDisposal": {
+      "residentTiles": 1,
+      "roadCount": 2796,
+      "blockCount": 488
+    }
+  },
+  "note": "No WebGPU renderer, no FPS. Geometry buffers exclude seed, textures, JS heap, driver allocations and shadow passes.",
+  "runtime": {
+    "arch": "arm64",
+    "cpus": 2,
+    "node": "v26.7.0",
+    "chromium": "156.0.8078.4"
+  },
+  "pageErrors": [],
+  "failedRequests": [],
+  "experiment": "Renderer feat/monumentos, datos 98a2132, smoke Path2D, GPU desactivada",
+  "recordedAt": "2026-10-29T11:58:57.897578+00:00"
+}

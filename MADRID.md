@@ -1,5 +1,10 @@
 # slop-madrid — plan de adaptación (fork de mrdoob/slop-newyork)
 
+> Avance local de paridad (29-10-2026, `feat/paridad`, sin publicar): auditoría y mediciones en
+> [MADRID-PARIDAD.md](MADRID-PARIDAD.md), estado reanudable en [PARIDAD-PLAN.md](PARIDAD-PLAN.md).
+> 18/85 teselas listas, workers, mapa activo y muestras de acabado con fuente. Tráfico activo, LOD0,
+> 67 celdas y validación GPU siguen pendientes. Las fases publicadas descritas abajo conservan su historial.
+
 Fork del simulador GTA-style de Manhattan (three.js WebGPURenderer + TSL, 1:1) a Madrid.
 Objetivo por fases: **fase 1** centro (~1,9 km²: Sol, Gran Vía, Cibeles, Alcalá) — completada;
 **fase 2** almendra central oeste (8,45 km²: Manzanares, Debod, Palacio Real, Atocha) — completada el

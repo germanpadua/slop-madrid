@@ -222,3 +222,80 @@ Inspección C (`http://localhost:8000/?debug=1`):
 - [ ] Árboles y farolas en celdas nuevas: posiciones coherentes con calles/parques; no se espera arbolado nuevo en Retiro antiguo.
 - [ ] Cambiar a noche en Cibeles/Alcalá/Debod: mallas legibles y brillo tenue; comparar con día, sin confundirlo con luz real de proyectores.
 - [ ] Autobuses: cartel Madrid sin destino NYC; revisar posibles masas bajo los monumentos y reportarlas como pendientes.
+
+### D — mediciones y verificación de entrega
+
+Entorno: ARM64, 2 vCPU, Node v26.7.0, Chromium 156.0.8078.4. `--cpu` usa `--disable-gpu`: **no crea renderer**.
+Importa los módulos reales, solicita las 17 vecinas mediante el worker de producción y construye la geometría.
+El mismo conjunto de datos final se usa para comparar contra el renderer de `feat/monumentos`. No se confunden
+bytes de red, buffers geométricos y memoria total. Los materiales de fachada nuevos requieren compilar variantes
+GPU al entrar; ese coste no está incluido en CPU.
+
+| Medición archivada en `tools/madrid/measurements/` | import + construcción por tesela, mín / mediana / máx (ms) | Máx. buffers geométricos (B) | Nota |
+|---|---|---|---|
+| `2026-10-29-01-extrude-prototype.json` | 73,7 / 274,4 / 376,0 | 92.982.058 | Primera extrusión fiel sin compactar, datos A |
+| `2026-10-29-02-box-baseline.json` | 44,7 / 98,8 / 203,3 | 17.356.554 | Cajas del renderer anterior, mismos datos A |
+| `2026-10-29-03-compact-prototype.json` | 46,3 / 146,0 / 193,6 | 55.955.988 | Techo y paredes indexados, sin patios interiores |
+| `2026-10-29-04-compact-confirmation.json` | 45,7 / 141,2 / 229,2 | 55.955.988 | Segunda pasada compacta |
+| `2026-10-29-05-courtyards.json` | 54,2 / 188,5 / 378,7 | 58.868.742 | Incluye patios interiores de datos C |
+| `2026-10-29-06-release-box-baseline.json` | 50,0 / 83,2 / 148,3 | 17.356.554 | Cajas sobre los datos finales, GPU desactivada |
+| `2026-10-29-07-release.json` | 79,0 / 147,0 / 265,2 | 58.868.742 | Entrega final + smoke de mapa, GPU desactivada |
+
+La fidelidad geométrica **tiene coste**: en la comparación final la mediana de construcción sube 83,2→147 ms y
+los buffers 17,36→58,87 MB. Compactar evita los 93 MB del primer prototipo, pero no iguala la ligereza de las cajas.
+Estas cifras no incluyen geometría de semilla, heap JS, texturas, materiales ni VRAM/driver; no son una medición
+de memoria GPU. Se mantiene el presupuesto de módulos, sin subirlo para esconder el coste.
+
+En la pasada final: máximo **12 teselas**, **8.966.388 B** de módulos residentes contando semilla completa,
+0 errores de página/red y 0 mallas de tesela tras expulsión. El grafo activo alcanzó 10.938 segmentos en ese
+recorrido (no es una medida de carriles simulados). Reconstrucción del grafo: mediana 33,7 ms; queda en main.
+Smoke Path2D real: 5.140 polilíneas y 1.257 manzanas activas → 2.796 y 488 al volver a la semilla. Raycast sobre
+la geometría de producción: cubierta +12 m, patio cóncavo e interior ~0 m. En el renderer anterior ambos patios
+quedan a +12 m, demostrando la ocupación indebida por bbox. FPS y coste por frame: **no medidos**.
+
+| Celda nueva | Bytes de módulo final | Parcelas |
+|---|---:|---:|
+| k0j2 | 249.114 | 1.168 |
+| k1j-1 | 401.590 | 2.209 |
+| k1j2 | 346.458 | 1.570 |
+| k1j3 | 781.574 | 4.216 |
+| k2j2 | 332.905 | 1.805 |
+| k2j3 | 779.812 | 4.459 |
+| k3j-1 | 304.725 | 1.383 |
+| k3j0 | 226.837 | 1.147 |
+| k3j2 | 604.136 | 3.672 |
+| k3j3 | 578.978 | 3.104 |
+
+Final de datos: **18/85 listas, 67 pendientes, 23 km² de cores, 11.395.022 B publicados**. Las nuevas celdas suman
+24.733 parcelas; puntos OSM: 4.454 árboles, 878 farolas, 657 señales. Monumentos: mismos diez módulos/hash,
+1.125.998 B totales; presupuesto 2 MiB y 250 KiB/módulo conservados. Suite completa **152/152**, incluidos los
+contratos previos sin debilitarlos. Cada commit se verificó además sobre una copia del índice para no depender
+de cambios todavía sin commitear. `tiles.mjs verify`: 18/85 correctas.
+
+## Handoff y brechas que siguen abiertas
+
+No se ha alcanzado paridad global con NYC/TinyWarsaw. Prioridades de continuación:
+
+1. **Tráfico/peatones activos**: migrar carriles, conectores, ocupación y rutas sin reiniciar actores cercanos.
+   Llevar acceso, identidad y niveles al grafo antes de declararlo drivable; el GPS actual no valida esas restricciones.
+2. **LOD0 y 67 celdas restantes**: aún se ve fuera-de-mapa. Completar esquinas de bloques >50 %, bordes del fetch,
+   y el solape de 100 m del suelo/agua de semilla con el core vecino. Dedupe de huellas no demuestra continuidad
+   perfecta de todas las superficies. El test histórico suma todos los módulos listos contra 12 MiB: el próximo
+   escalado necesita resolver ese contrato respecto al presupuesto de residentes, sin perder las pruebas de topes.
+3. **Acabado restante**: pintura vial fuera de semilla, mobiliario y señales operativas, LOD de árboles, aparcados
+   con fuente, interiores/patios de las teselas antiguas, reservas de hitos en semilla, cámaras y nuevos POIs con fuente,
+   libreas Madrid y limpieza de contenido NYC aparcado. No se ha añadido estadio ni arquitectura sin datos.
+4. **GPU del propietario**: validar imagen, compilación de nuevos materiales, sombras, FPS y p95 de frame/long tasks.
+   El harness acepta `--native-gpu` para no forzar SwiftShader; sólo tiene sentido con WebGPU funcionando en ese entorno.
+
+Para reanudar: comandos y commits en `PARIDAD-PLAN.md`. Cache público 114 MiB en `/tmp/slop-paridad-cache`;
+disco libre al cierre ~7,2 GiB. No se ha leído ninguna clave ni usado servicio de pago. **Sin push ni deploy.**
+
+Inspección final del propietario (no validada visualmente aquí):
+
+- [ ] Servir `feat/paridad` y abrir `http://localhost:8000/?debug=1`; Pages `https://germanpadua.github.io/slop-madrid/`
+  sigue mostrando la fase 3 anterior, no esta entrega.
+- [ ] Sol → Chamberí → Salamanca: cobertura nueva, ventanas y patios abiertos; M muestra las mismas calles/huellas que el mundo activo.
+- [ ] Volver y repetir tres veces: `tileStreamer.status()` dentro de 12 MiB/12; monumentos intactos; sin fugas ni fallos de red.
+- [ ] Día/noche en Cibeles, Alcalá, Palacio y Debod: conservar siluetas; verificar brillo, apoyo, sombras y posibles masas genéricas debajo.
+- [ ] Registrar hardware, navegador, FPS y p95 en ese recorrido. La mayor memoria de geometría y compilación de materiales requiere esta validación.

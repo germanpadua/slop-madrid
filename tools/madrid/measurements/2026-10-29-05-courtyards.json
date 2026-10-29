@@ -1,0 +1,157 @@
+{
+  "mode": "cpu-no-renderer",
+  "baselineRef": null,
+  "importMs": 742,
+  "tileTimes": [
+    {
+      "id": "k0j-1",
+      "bytes": 287174,
+      "ok": true,
+      "importBuildMs": 276.3,
+      "graphMs": 31,
+      "graphLinks": 6295
+    },
+    {
+      "id": "k0j2",
+      "bytes": 249114,
+      "ok": true,
+      "importBuildMs": 129.3,
+      "graphMs": 33.9,
+      "graphLinks": 6520
+    },
+    {
+      "id": "k0j3",
+      "bytes": 450984,
+      "ok": true,
+      "importBuildMs": 234.9,
+      "graphMs": 66.6,
+      "graphLinks": 7277
+    },
+    {
+      "id": "k1j-1",
+      "bytes": 401590,
+      "ok": true,
+      "importBuildMs": 202.8,
+      "graphMs": 38.6,
+      "graphLinks": 8082
+    },
+    {
+      "id": "k1j2",
+      "bytes": 346458,
+      "ok": true,
+      "importBuildMs": 149.6,
+      "graphMs": 61.4,
+      "graphLinks": 8581
+    },
+    {
+      "id": "k1j3",
+      "bytes": 781574,
+      "ok": true,
+      "importBuildMs": 378.7,
+      "graphMs": 53.1,
+      "graphLinks": 9009
+    },
+    {
+      "id": "k2j-1",
+      "bytes": 500191,
+      "ok": true,
+      "importBuildMs": 222.7,
+      "graphMs": 32.7,
+      "graphLinks": 9384
+    },
+    {
+      "id": "k2j2",
+      "bytes": 332905,
+      "ok": true,
+      "importBuildMs": 151.3,
+      "graphMs": 65.9,
+      "graphLinks": 9721
+    },
+    {
+      "id": "k2j3",
+      "bytes": 779812,
+      "ok": true,
+      "importBuildMs": 297.3,
+      "graphMs": 34.3,
+      "graphLinks": 10173
+    },
+    {
+      "id": "k2j4",
+      "bytes": 424999,
+      "ok": true,
+      "importBuildMs": 168.8,
+      "graphMs": 32.8,
+      "graphLinks": 10936
+    },
+    {
+      "id": "k3j-1",
+      "bytes": 304725,
+      "ok": true,
+      "importBuildMs": 122.1,
+      "graphMs": 46,
+      "graphLinks": 11615
+    },
+    {
+      "id": "k3j0",
+      "bytes": 226837,
+      "ok": true,
+      "importBuildMs": 99.2,
+      "graphMs": 36.8,
+      "graphLinks": 11277
+    },
+    {
+      "id": "k3j1",
+      "bytes": 121670,
+      "ok": true,
+      "importBuildMs": 54.2,
+      "graphMs": 52.5,
+      "graphLinks": 11299
+    },
+    {
+      "id": "k3j2",
+      "bytes": 604136,
+      "ok": true,
+      "importBuildMs": 188.5,
+      "graphMs": 35.5,
+      "graphLinks": 10849
+    },
+    {
+      "id": "k3j3",
+      "bytes": 578978,
+      "ok": true,
+      "importBuildMs": 179.1,
+      "graphMs": 32.5,
+      "graphLinks": 10596
+    },
+    {
+      "id": "k4j1",
+      "bytes": 399280,
+      "ok": true,
+      "importBuildMs": 208.8,
+      "graphMs": 33.9,
+      "graphLinks": 10940
+    },
+    {
+      "id": "k4j2",
+      "bytes": 693314,
+      "ok": true,
+      "importBuildMs": 228,
+      "graphMs": 42.9,
+      "graphLinks": 10938
+    }
+  ],
+  "peakBytes": 8966388,
+  "peakTiles": 12,
+  "peakGeometryBufferBytes": 58868742,
+  "remainingMeshes": 0,
+  "geometryChecks": {
+    "roofHeight": 12,
+    "emptyPatioHeight": 2.3841863594498136e-08,
+    "innerCourtyardHeight": 2.3841863594498136e-08
+  },
+  "note": "No WebGPU renderer, no FPS. Geometry buffers exclude seed, textures, JS heap, driver allocations and shadow passes.",
+  "pageErrors": [],
+  "failedRequests": [],
+  "experiment": "Compacta con patios interiores, datos 98a2132; sin smoke de mapa",
+  "recordedAt": "2026-10-29T11:55:51.870262+00:00"
+}
