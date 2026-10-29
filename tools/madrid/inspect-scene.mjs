@@ -55,7 +55,7 @@ if (await page.locator('#loading-status button').count()) throw new Error(await 
 const out = await page.evaluate(async ({ place, gridN, waitMs, ndcPoint, shotPath, at, view, zoom }) => {
   const THREE = await import('three');
   const api = window.__madrid;
-  const { footprintsOverlap } = await import(new URL('./js/madrid-landmark-reserves.js', location.href).href);
+  const { footprintsOverlap, createMadridLandmarkReserves, overlapsMadridLandmark } = await import(new URL('./js/madrid-landmark-reserves.js', location.href).href);
   const { TELEPORT_LOCATIONS, LANDMARK_SITES } = await import(new URL('./js/city-config.js', location.href).href);
   document.querySelector('#mode-person').click();
   document.querySelector(`#cam-${view}`).click();
@@ -71,8 +71,11 @@ const out = await page.evaluate(async ({ place, gridN, waitMs, ndcPoint, shotPat
   const palace = LANDMARK_SITES['Palacio de Cibeles'];
   const ring = Array.from({ length: palace.ring.length / 2 }, (_, i) => [palace.ring[i * 2], palace.ring[i * 2 + 1]]);
   const overlappingPalace = [];
+  const reserves = createMadridLandmarkReserves(LANDMARK_SITES);
+  const overlappingLandmarks = Object.fromEntries(reserves.map((r) => [r.name, 0]));
   for (const block of api.cityBlocks?.allBlocks || []) for (const f of block.footprints) {
     const pts = f.pts ? f.pts.map((p) => [p.x, p.z]) : [[f.x0,f.z0],[f.x1,f.z0],[f.x1,f.z1],[f.x0,f.z1]];
+    for (const reserve of reserves) if (overlapsMadridLandmark(pts, [reserve])) overlappingLandmarks[reserve.name]++;
     if (footprintsOverlap(pts, ring)) overlappingPalace.push({ block: block.id, pts, height: f.h });
   }
   const entity = api.controllerManager.getActiveEntity?.();
@@ -113,7 +116,7 @@ const out = await page.evaluate(async ({ place, gridN, waitMs, ndcPoint, shotPat
   const gl = document.querySelector('canvas').getContext('webgl2');
   const debugInfo = gl?.getExtension('WEBGL_debug_renderer_info');
   const glRenderer = debugInfo ? gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) : null;
-  return { view, zoom, overlappingPalace, glRenderer, framesAfterTeleport: (api.renderedFrames || 0) - startFrames, place, target, mode, entity: entityPos, camera: { x: +cameraPos.x.toFixed(1), y: +cameraPos.y.toFixed(1), z: +cameraPos.z.toFixed(1) }, occluders, shot,
+  return { overlappingLandmarks, view, zoom, overlappingPalace, glRenderer, framesAfterTeleport: (api.renderedFrames || 0) - startFrames, place, target, mode, entity: entityPos, camera: { x: +cameraPos.x.toFixed(1), y: +cameraPos.y.toFixed(1), z: +cameraPos.z.toFixed(1) }, occluders, shot,
     roadPaintStats: api.roadPaintStats || null, roadStats: api.roadStats ? { routingNodes: api.roadStats.routingNodes, routingEdges: api.roadStats.routingEdges } : null };
 }, { place, gridN, waitMs, ndcPoint, shotPath, at, view, zoom });
 if (jsonOut) fs.writeFileSync(path.resolve(ROOT, jsonOut), JSON.stringify({ ...out, shot: undefined }, null, 2));

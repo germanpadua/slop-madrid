@@ -393,7 +393,7 @@ function buildCityBlocks(scene) {
   // Storey height of each facade: buildings are massed in whole storeys so every window row lines up across tiers
   const storeys = facades.map(([, opts]) => opts.floorHeight);
 
-  const madridLandmarkReserves = GEO.frame?.madrid ? createMadridLandmarkReserves({ 'Palacio de Cibeles': LANDMARK_SITES['Palacio de Cibeles'] }) : [];
+  const madridLandmarkReserves = GEO.frame?.madrid ? createMadridLandmarkReserves(LANDMARK_SITES) : [];
   const buckets = materials.map(() => []);
   const broadwayBillboards = [];
 
@@ -677,7 +677,7 @@ function buildCityBlocks(scene) {
    *      ground floor, the others get a residential entrance), freestanding, walls (see wallKinds) }
    */
   function commit(blk, b, o = {}) {
-    // Omit a whole generic building when a physical mass overlaps the palace's source ring.
+    // Omit a whole generic building when a physical mass overlaps a landmark's source ring.
     // Test in world space, leaving neighboring buildings and empty patios outside the ring intact.
     const reserved = madridLandmarkReserves.length && b.parts.some((p) => overlapsMadridLandmark([
       toWorld(p.x0, p.z0), toWorld(p.x1, p.z0), toWorld(p.x1, p.z1), toWorld(p.x0, p.z1)

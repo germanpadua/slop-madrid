@@ -210,7 +210,7 @@ function buildLandmarks(scene) {
       body.castShadow = true;
       body.receiveShadow = true;
       g.add(body);
-      const roof = new THREE.Mesh(new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2).translate(0, H, 0), slateMat);
+      const roof = new THREE.Mesh(new THREE.ShapeGeometry(shape).rotateX(-Math.PI / 2).translate(0, H + 0.03, 0), slateMat);
       g.add(roof);
       g.position.set(lm.cx, 0, lm.cz);
       group.add(g);
