@@ -46,3 +46,13 @@ Rollback E0: revertir instrumentación de tools/madrid/measure.mjs y sus informe
 E0 validado: segundo arranque passed=true, 17244 ms; 72583390 bytes de atributos CPU (69,22 MiB), 4808 geometrías y 10267 arrays únicos. 199 compileShader, 109 linkProgram, 5484 bufferData. Consulta getProgramParameter: 3328,1 ms acumulados, máximo 931,9 ms; bufferData máximo 294 ms. Estos tiempos no son GPU timers. 711 draws, 4288613 triángulos; pequeñas diferencias de triángulos por simulación viva. No se atribuye la diferencia 18,5→17,2 s a mejora de rendimiento: solo cambió la instrumentación, son muestras únicas.
 
 Evidencia persistente: tools/madrid/measurements/2026-10-29-{baseline,instrumented}.json y 2026-10-29-sol.png. La captura corresponde al primer arranque. No se alteró el render entre ambos. Suite final 160/160, cero fallos; node --check y git diff --check correctos. No se ejecutaron A/B/C/D/E1. El objetivo general permanece pendiente.
+
+## A0 — distinguir revoco y ladrillo (hecho)
+
+Exploración Chromium real con teclado: paseo de ~35 m desde Sol, después maqueta y viewport 390×844. Sin pageerrors. Defecto observado: la retícula de ladrillo NYC se aplicaba también a caliza/revoco; ahora la opción uniforme brickwork conserva juntas en la paleta roja y las elimina de los otros tres acabados. Ambos caminos ya comparten estas opciones. Paletas ilustrativas, no clasificación material por parcela.
+
+Evidencia en docs/validation/2026-10-29-revoco/: before/after, móvil, paseo y medición. Veredicto local Sol/Preciados: superficies claras más legibles; ladrillo conserva su textura; pendiente revisión por manzana y patios. 160/160 tests, detector sin hallazgos, harness passed=true sin errores gráficos. Atributos idénticos: 72583390 bytes, 711 draws. Arranque 20490 ms en esta muestra; no afirmar mejora de FPS. Rollback: brickwork en tsl-materials y opciones Madrid.
+
+Checklist A0: http://localhost:8080/?debug=1, caminar desde Sol hacia Preciados; las fachadas claras deben ser lisas y la roja conservar juntas. Confirmar lo mismo en móvil. La maqueta revela un defecto siguiente: tejados del centro limitados al radio de detalle 560 m.
+
+Adquisición de árboles OSM: endpoint principal devuelve 406; dos espejos agotaron timeout sin datos. No se añadieron árboles inventados. Reintentar con extracto PBF o endpoint disponible antes de ampliar vegetación.

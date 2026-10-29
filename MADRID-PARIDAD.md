@@ -44,3 +44,7 @@ Propietario: se conserva su validación previa de ausencia de monstruos/solapes 
 Captura local `/tmp/paridad-baseline.png`: Sol desde taxi, fachadas legibles pero repetitivas, gran superficie de calle/plaza vacía y taxi amarillo heredado. No demuestra fidelidad de alturas ni valida todo Sol. No se ha aplicado cambio visual, por tanto no hay un antes/después de fachadas que declarar aprobado.
 
 Medición reproducible y siguiente orden en PARIDAD-PLAN.md. Las notas de TinyWarsaw indican que sus cifras de teléfono son emulación sobre GPU desktop salvo indicación explícita: no compararlas como FPS de móvil real con este harness.
+
+### Avance A0 posterior a auditoría
+
+Paseo local automatizado con teclado (~35 m), maqueta y viewport móvil: cero pageerrors. Corregida apariencia de revoco/caliza, antes cubierta por retícula de ladrillo heredada. No altera fuentes ni geometría. Evidencia docs/validation/2026-10-29-revoco/. La continuidad de tejados en maqueta sigue pendiente: el centro los incluye en detalle de radio 560 m. Vegetación bloqueada de momento por 406/timeouts Overpass; no se ha inventado densidad.

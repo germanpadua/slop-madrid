@@ -223,6 +223,7 @@ export async function createTileStreamer({
 export const MADRID_FACADE_OPTS = Object.freeze([
   Object.freeze({ // 0: caliza blanca (Gran Via / Palacio Real limestone)
     stoneColor: 0xe7ddc6,
+    brickwork: false,
     trimColor: 0xcfc2a6,
     windowGlassColor: 0x202e3a,
     windowWidth: 1.5,
@@ -233,6 +234,7 @@ export const MADRID_FACADE_OPTS = Object.freeze([
   }),
   Object.freeze({ // 1: ladrillo visto rojizo (residencial / neomudejar)
     stoneColor: 0xa45538,
+    brickwork: true,
     trimColor: 0xd8c39a,
     windowGlassColor: 0x1c2833,
     windowWidth: 1.5,
@@ -242,6 +244,7 @@ export const MADRID_FACADE_OPTS = Object.freeze([
     seed: 33.2
   }),
   Object.freeze({ // 2: revoco ocre claro (La Latina / Lavapies - el ocre luminoso de Tiny-Madrid)
+    brickwork: false,
     stoneColor: 0xe0ba7f,
     trimColor: 0xf0e2c2,
     windowGlassColor: 0x243441,
@@ -253,6 +256,7 @@ export const MADRID_FACADE_OPTS = Object.freeze([
   }),
   Object.freeze({ // 3: revoco salmon rosado (acentos del casco antiguo en Tiny-Madrid)
     stoneColor: 0xdc9d7e,
+    brickwork: false,
     trimColor: 0xecd3b8,
     windowGlassColor: 0x223038,
     windowWidth: 1.4,

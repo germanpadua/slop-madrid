@@ -700,10 +700,11 @@ function createPreWarBuildingMaterial(opts = {}) {
     boxLocal = false,
     cornerPier = 1.2, // solid masonry at both ends of every wall above the shopfronts (box-local mode)
     madrid = false, // Madrid dialect: iron balcony rails instead of sash bars, stone zocalo ground floor, no AC units, no 6-floor cornice belt
+    brickwork = true, // illustrated finish: false for smooth Madrid revoco/caliza
     vertexTint = false // multiply masonry by the geometry color attribute (merged-zone illustrative tints)
   } = opts;
 
-  const cacheKey = `${stoneColor}_${trimColor}_${windowWidth}_${floorHeight}_${litProbability}_${warmth}_${crownGlowHeight}_${seed}_${boxLocal}_${cornerPier}_${madrid}_${vertexTint}`;
+  const cacheKey = `${stoneColor}_${trimColor}_${windowWidth}_${floorHeight}_${litProbability}_${warmth}_${crownGlowHeight}_${seed}_${boxLocal}_${cornerPier}_${madrid}_${brickwork}_${vertexTint}`;
   if (_preWarCache.has(cacheKey)) {
     return _preWarCache.get(cacheKey);
   }
@@ -726,6 +727,7 @@ function createPreWarBuildingMaterial(opts = {}) {
   const uCrownGlowHeight = uniform(crownGlowHeight);
   const uSeed = uniform(seed);
   const uMadrid = uniform(madrid ? 1.0 : 0.0);
+  const uBrickwork = uniform(brickwork ? 1.0 : 0.0);
   const cSoot = color(0x4a4236);
   const cWarmWindow = color(0xffcf86);
   const cCoolWindow = color(0xcfe2ff);
@@ -842,11 +844,11 @@ function createPreWarBuildingMaterial(opts = {}) {
     const mortarJoint = max(
       gridLine(colCoord.mul(brickL), brickL, 0.016),
       gridLine(vCoord, brickH, 0.016)
-    ).mul(float(1.0).sub(isRoof)).mul(float(1.0).sub(parged)).mul(float(1.0).sub(coping));
+    ).mul(float(1.0).sub(isRoof)).mul(float(1.0).sub(parged)).mul(float(1.0).sub(coping)).mul(uBrickwork);
 
     // Per-brick tint fades out once bricks shrink to a pixel (and soot streaks once they do), so neither can shimmer
     const uFw = fwidth(uCoord);
-    const brickVar = float(1.0).sub(smoothstep(0.5, 1.0, max(uFw.div(brickL), fwidth(rowCoord))));
+    const brickVar = float(1.0).sub(smoothstep(0.5, 1.0, max(uFw.div(brickL), fwidth(rowCoord)))).mul(uBrickwork);
     const brickCell = vec2(floor(colCoord), courseRow);
     const brickRnd = hash2D(brickCell.add(vec2(uSeed, 5.3))).sub(0.5).mul(brickVar);
     const brickWarmShift = hash2D(brickCell.add(vec2(17.1, uSeed))).sub(0.5).mul(0.12).mul(brickVar);
