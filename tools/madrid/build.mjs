@@ -870,7 +870,7 @@ if (IS_TILE) {
 ${credits}
 export const TILE = ${JSON.stringify(TILE)};
 `);
-  log(`wrote ${path.basename(OUT)} (${(fs.statSync(OUT).size / 1024).toFixed(0)} KB): ${TILE.blocks.length} blocks, ${TILE.parcels.reduce((t, b) => t + b.length, 0)} parcels, ${TILE.parks.length} parks, ${TILE.water.length} water, ${TILE.roads.length} roads, ${Object.keys(TILE.landmarks).length} landmarks`);
+  log(`wrote ${path.basename(OUT)} (${(fs.statSync(OUT).size / 1024).toFixed(0)} KB): ${TILE.blocks.length} blocks, ${TILE.parcels.length} parcels, ${TILE.parks.length} parks, ${TILE.water.length} water, ${TILE.roads.length} roads, ${Object.keys(TILE.landmarks).length} landmarks`);
   process.exit(0);
 }
 
