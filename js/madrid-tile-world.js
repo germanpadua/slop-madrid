@@ -69,6 +69,30 @@ const toPts = (flat) => {
   for (let i = 0; i + 1 < flat.length; i += 2) out.push({ x: flat[i], z: flat[i + 1] });
   return out;
 };
+// earcut corrupts triangulation when a "hole" is not fully inside the outer ring (external or
+// edge-crossing): it eats huge irregular wedges out of the face. Only pass holes strictly contained.
+const pointInRingPts = (pts, x, z) => {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const xi = pts[i].x, zi = pts[i].z, xj = pts[j].x, zj = pts[j].z;
+    if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+  }
+  return inside;
+};
+const segsCrossPts = (a, b, c, d) => {
+  const o = (p, q, r) => (q.x - p.x) * (r.z - p.z) - (q.z - p.z) * (r.x - p.x);
+  const o1 = o(a, b, c), o2 = o(a, b, d), o3 = o(c, d, a), o4 = o(c, d, b);
+  return ((o1 > 0 && o2 < 0) || (o1 < 0 && o2 > 0)) && ((o3 > 0 && o4 < 0) || (o3 < 0 && o4 > 0));
+};
+const ringsCrossPts = (a, b) => {
+  for (let i = 0; i < a.length; i++) for (let j = 0; j < b.length; j++)
+    if (segsCrossPts(a[i], a[(i + 1) % a.length], b[j], b[(j + 1) % b.length])) return true;
+  return false;
+};
+const holesWithin = (ring, ringBb, boxes) => boxes
+  .filter((w) => w.bb.x1 > ringBb.x0 && w.bb.x0 < ringBb.x1 && w.bb.z1 > ringBb.z0 && w.bb.z0 < ringBb.z1)
+  .filter((w) => w.ring.every((q) => pointInRingPts(ring, q.x, q.z)) && !ringsCrossPts(ring, w.ring))
+  .map((w) => w.ring);
 const rectPts = ([x0, z0, x1, z1]) => [{ x: x0, z: z0 }, { x: x1, z: z0 }, { x: x1, z: z1 }, { x: x0, z: z1 }];
 const shoelace = (pts) => {
   let s = 0;
@@ -210,7 +234,7 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
         const ring = toPts(flat);
         if (ring.length < 3) continue;
         const bb = bboxOf(ring);
-        const holes = waterBoxes.filter((w) => w.bb.x1 > bb.x0 && w.bb.x0 < bb.x1 && w.bb.z1 > bb.z0 && w.bb.z0 < bb.z1).map((w) => w.ring);
+        const holes = holesWithin(ring, bb, waterBoxes);
         dirtGeos.push(createFlatPolygonMesh(ring, 0.05, mats.dirt, true, holes.length ? holes : null).geometry);
       }
     }
@@ -229,7 +253,7 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
         const ring = toPts(flat);
         if (ring.length < 3) continue;
         const bb = bboxOf(ring);
-        const holes = waterBoxes.filter((w) => w.bb.x1 > bb.x0 && w.bb.x0 < bb.x1 && w.bb.z1 > bb.z0 && w.bb.z0 < bb.z1).map((w) => w.ring);
+        const holes = holesWithin(ring, bb, waterBoxes);
         lawnGeos.push(createFlatPolygonMesh(ring, 0.10, mats.lawn, true, holes.length ? holes : null).geometry);
       }
     }
