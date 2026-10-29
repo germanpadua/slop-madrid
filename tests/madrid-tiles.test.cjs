@@ -389,12 +389,41 @@ test('landmark styles match named monuments, not blanket tones', async () => {
   assert.ok(colors.size >= 4, 'styles must not collapse into one blanket color');
 });
 
-test('every Madrid facade tier uses the pre-war masonry factory, never tier-indexed NYC glass', () => {
-  // Regression 407dabf: FACADE_DEFS[3+] are NYC curtain-wall factories that ignore the Madrid palette;
-  // tier-indexing turned tier-3 (salmón) parcels into dark glass towers. The tile renderer must always
-  // use FACADE_DEFS[0][0] (pre-war masonry) for every Madrid tier.
-  const { readFileSync } = require('node:fs');
-  const src = readFileSync(require('node:path').join(__dirname, '..', 'js', 'madrid-tile-world.js'), 'utf8');
-  assert.ok(src.includes('MADRID_FACADE_OPTS.map((opts) => FACADE_DEFS[0][0]'), 'tile renderer must bind every Madrid tier to FACADE_DEFS[0][0] (pre-war masonry)');
-  assert.ok(!/FACADE_DEFS\[i\s*%/.test(src), 'tier-indexed FACADE_DEFS selects NYC curtain-wall for tier >= 3');
+test('seed and tile facade tables bind the shared Madrid masonry options', async () => {
+  const { MADRID_FACADE_OPTS } = await import('../js/madrid-facades.js');
+  const legacyAPI = await import('../js/madrid-tiles.js');
+  assert.equal(legacyAPI.MADRID_FACADE_OPTS, MADRID_FACADE_OPTS);
+  for (const o of MADRID_FACADE_OPTS) {
+    assert.equal(o.madrid, true);
+    assert.equal(o.boxLocal, true);
+    assert.equal(o.parcelWalls, true);
+    assert.ok(o.litProbability >= 0.45 && o.warmth >= 0.85);
+    assert.notEqual(o.stoneColor, 0xd8cdb8);
+    assert.ok(Object.isFrozen(o));
+  }
+  for (const file of ['buildings.js', 'madrid-tile-world.js']) {
+    const src = readFileSync(join(root, 'js', file), 'utf8');
+    assert.ok(src.includes("from './madrid-facades.js'"));
+    assert.ok(!src.includes('createCurtainWallMaterial'));
+    assert.ok(src.includes('madridFacadeTier('));
+  }
+});
+
+test('Madrid palette selection is stable under parcel reordering and tile ownership', async () => {
+  const { madridFacadeTier } = await import('../js/madrid-facades.js');
+  const points = [[450, 400], [800, -200], [-1200, 1150], [0, 0]];
+  const expected = new Map(points.map(([x, z]) => [`${x},${z}`, madridFacadeTier(x, z)]));
+  for (const [x, z] of points.reverse()) {
+    assert.equal(madridFacadeTier(x, z), expected.get(`${x},${z}`));
+    assert.ok(Number.isInteger(madridFacadeTier(x, z)));
+    assert.ok(madridFacadeTier(x, z) >= 0 && madridFacadeTier(x, z) < 4);
+  }
+});
+
+test('Madrid palette mix favours caliza/brick and keeps both revoco accents', async () => {
+  const { madridFacadeTier, MADRID_FACADE_WEIGHTS } = await import('../js/madrid-facades.js');
+  const counts = [0, 0, 0, 0];
+  for (let x = -2000; x < 2000; x += 17) for (let z = -2000; z < 2000; z += 19) counts[madridFacadeTier(x, z)]++;
+  const total = counts.reduce((a,b) => a+b);
+  for (let i = 0; i < counts.length; i++) assert.ok(Math.abs(counts[i]/total - MADRID_FACADE_WEIGHTS[i]) < 0.015, `palette ${i}: ${counts[i]/total}`);
 });

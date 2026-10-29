@@ -1,0 +1,81 @@
+{
+  "revision": "187dev",
+  "target": {
+    "id": 1,
+    "district": "Cortes",
+    "cx": 485.39372641295984,
+    "cz": 349.64308550914825
+  },
+  "palettes": [
+    {
+      "madrid": true,
+      "boxLocal": true,
+      "parcelWalls": true,
+      "stoneColor": 15195590,
+      "trimColor": 13615782,
+      "windowGlassColor": 2108986,
+      "windowWidth": 1.5,
+      "floorHeight": 3.4,
+      "litProbability": 0.5,
+      "warmth": 0.85,
+      "seed": 21.7
+    },
+    {
+      "madrid": true,
+      "boxLocal": true,
+      "parcelWalls": true,
+      "stoneColor": 10769720,
+      "trimColor": 14205850,
+      "windowGlassColor": 1845299,
+      "windowWidth": 1.5,
+      "floorHeight": 3.3,
+      "litProbability": 0.48,
+      "warmth": 0.9,
+      "seed": 33.2
+    },
+    {
+      "madrid": true,
+      "boxLocal": true,
+      "parcelWalls": true,
+      "stoneColor": 14727807,
+      "trimColor": 15786690,
+      "windowGlassColor": 2372673,
+      "windowWidth": 1.4,
+      "floorHeight": 3.1,
+      "litProbability": 0.45,
+      "warmth": 0.95,
+      "seed": 47.9
+    },
+    {
+      "madrid": true,
+      "boxLocal": true,
+      "parcelWalls": true,
+      "stoneColor": 14458238,
+      "trimColor": 15520696,
+      "windowGlassColor": 2240568,
+      "windowWidth": 1.4,
+      "floorHeight": 3.2,
+      "litProbability": 0.45,
+      "warmth": 0.95,
+      "seed": 58.3
+    }
+  ],
+  "calls": 2,
+  "shaderProbe": {
+    "seedPalettes": 4,
+    "tilePalettes": 4,
+    "sharedMaterials": [
+      true,
+      true,
+      true,
+      true
+    ],
+    "programsBefore": null,
+    "programsAfter": null,
+    "additionalPrograms": 0
+  },
+  "baseline": null,
+  "backend": "webgl",
+  "geometrySHA256": "8411e5d3c3000dc33b611f513ca6c30ed39e75523cd0c9b329d7b6d4600f429a",
+  "errors": []
+}

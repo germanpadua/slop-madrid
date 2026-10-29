@@ -1,0 +1,76 @@
+{
+  "revision": "187dev",
+  "target": {
+    "id": 1,
+    "district": "Cortes",
+    "cx": 485.39372641295984,
+    "cz": 349.64308550914825
+  },
+  "palettes": [
+    {
+      "stoneColor": 14208440,
+      "trimColor": 10392447,
+      "windowGlassColor": 1714230,
+      "windowWidth": 2.6,
+      "floorHeight": 3.7,
+      "litProbability": 0.54,
+      "warmth": 0.8,
+      "seed": 12.4
+    },
+    {
+      "stoneColor": 10771013,
+      "trimColor": 13285792,
+      "windowGlassColor": 1450542,
+      "windowWidth": 2.4,
+      "floorHeight": 3.5,
+      "litProbability": 0.56,
+      "warmth": 0.86,
+      "seed": 27.8
+    },
+    {
+      "stoneColor": 7754819,
+      "trimColor": 5257774,
+      "windowGlassColor": 1383974,
+      "windowWidth": 2.2,
+      "floorHeight": 3.4,
+      "litProbability": 0.6,
+      "warmth": 0.9,
+      "seed": 41.2
+    },
+    {
+      "glassTint": 1718866,
+      "frameTint": 3886171,
+      "windowWidth": 2.7,
+      "floorHeight": 3.9,
+      "litProbability": 0.6,
+      "warmth": 0.52,
+      "reflectivity": 0.92,
+      "seed": 63.5
+    },
+    {
+      "glassTint": 2368032,
+      "frameTint": 3946033,
+      "windowWidth": 2.5,
+      "floorHeight": 3.8,
+      "litProbability": 0.64,
+      "warmth": 0.72,
+      "reflectivity": 0.88,
+      "seed": 81.9
+    },
+    {
+      "glassTint": 2508388,
+      "frameTint": 11582664,
+      "windowWidth": 2.9,
+      "floorHeight": 4.1,
+      "litProbability": 0.58,
+      "warmth": 0.48,
+      "reflectivity": 0.95,
+      "seed": 94.3
+    }
+  ],
+  "calls": 2,
+  "baseline": "HEAD",
+  "backend": "webgl",
+  "geometrySHA256": "8411e5d3c3000dc33b611f513ca6c30ed39e75523cd0c9b329d7b6d4600f429a",
+  "errors": []
+}

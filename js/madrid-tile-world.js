@@ -11,6 +11,7 @@ import { Fn, abs, color, fract, max, mix, positionGeometry, positionWorld, smoot
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createExtrudedPolygonMesh, createFlatPolygonMesh, offsetPolygonInward } from './city-grid.js';
 import {
+  createPreWarBuildingMaterial,
   createCurbMaterial,
   createParkLawnMaterial,
   createRoadSurfaceMaterial,
@@ -18,14 +19,13 @@ import {
   createWaterMaterial,
   WALL_KINDS
 } from './tsl-materials.js';
-import { FACADE_DEFS } from './buildings.js';
 import { OPEN_SPACE, landmarkExtrusions } from './monument-sites.js';
 import { buildMadridStreetPoints } from './madrid-street-points.js';
 import { createParcelGeometry, createParcelRoofGeometry } from './madrid-parcel-geometry.js';
 import { buildProceduralMonument, buildProceduralColliders, hasProceduralMonument } from './monuments.js';
 import { partyWallHeights } from './madrid-adjacency.js';
 import { roofDecision } from './madrid-roofs.js';
-import { MADRID_FACADE_OPTS, MADRID_LANDMARK_STYLES } from './madrid-tiles.js';
+import { MADRID_FACADE_OPTS, MADRID_LANDMARK_STYLES, madridFacadeTier } from './madrid-facades.js';
 
 // Tejados: shared terracotta material + palette (Tiny-Madrid illustrated references, user-chosen).
 // Geometry is per tile (eviction disposes mesh.geometry); materials stay alive like facades.
@@ -102,7 +102,7 @@ function createOutOfMapFloor(scene, bbox) {
 export function createTileWorld(scene, { colliders = null, materials = null } = {}) {
   // All contour parcels use Madrid masonry, with world-space projection and per-wall treatments.
   // Never tier-indexed NYC curtain-wall factories: every palette binds to the pre-war factory.
-  const facades = MADRID_FACADE_OPTS.map((opts) => FACADE_DEFS[0][0]({ ...opts, boxLocal: false, parcelWalls: true, madrid: true }));
+  const facades = MADRID_FACADE_OPTS.map((opts) => createPreWarBuildingMaterial(opts));
   const mats = {
     road: materials?.road || createRoadSurfaceMaterial(),
     curb: materials?.curb || createCurbMaterial(),
@@ -220,7 +220,7 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     for (let pi = 0; pi < pabs.length; pi++) {
       const P = pabs[pi];
       const cx = (P.x0 + P.x1) / 2, cz = (P.z0 + P.z1) / 2;
-      const tier = Math.floor(hash(cx, cz, P.index) * facades.length) % facades.length;
+      const tier = madridFacadeTier(cx, cz);
       const tone = hash(cz, cx, 3);
       items[tier].push(createParcelGeometry(P.ring, P.h, P.holes, {
         bbox: P, partyHeights: nHArr[pi], tone, front: WALL_KINDS.entry
@@ -230,7 +230,11 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
       if (!list.length) return;
       const geometry = mergeGeometries(list, false);
       for (const g of list) g.dispose();
-      const mesh = new THREE.Mesh(geometry, facades[i]);
+      // One identity instance uses the same vertex pipeline as seed boxes, avoiding a second shader variant.
+      geometry.setAttribute('box', new THREE.InstancedBufferAttribute(new Float32Array(4), 4));
+      geometry.setAttribute('faces', new THREE.InstancedBufferAttribute(new Float32Array(4), 4));
+      const mesh = new THREE.InstancedMesh(geometry, facades[i], 1);
+      mesh.setMatrixAt(0, new THREE.Matrix4());
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       mesh.name = `TileBuildings${i}`;

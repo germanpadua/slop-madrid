@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><title>Madrid seed facade capture</title>
+<style>body{margin:0;background:#333}canvas{display:block}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.webgpu.js","three/webgpu":"https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.webgpu.js","three/tsl":"https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/build/three.tsl.js","three/addons/":"https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three/webgpu';
+import { BLOCKS } from '../../js/city-config.js';
+import { buildCityBlocks, FACADE_DEFS } from '../../js/buildings.js';
+import { cityUniforms } from '../../js/tsl-materials.js';
+const target = BLOCKS.filter(b => !b.park && !b.median).sort((a,b) => Math.hypot(a.cx-450,a.cz-400)-Math.hypot(b.cx-450,b.cz-400))[0];
+BLOCKS.splice(0,BLOCKS.length,target);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x8295a6);
+const seed = buildCityBlocks(scene); seed.update(target.cx,target.cz,true);
+const hemi = new THREE.HemisphereLight(0x9abbe6,0xc88a62,1.48); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xffca92,5.8); sun.position.set(-440,580,-680); scene.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(500,500),new THREE.MeshStandardNodeMaterial({color:0x77716a,roughness:1}));
+ground.rotation.x=-Math.PI/2; ground.position.set(target.cx,-0.04,target.cz); scene.add(ground);
+const span = Math.max(target.maxX-target.minX,target.maxZ-target.minZ)*0.88;
+const camera = new THREE.OrthographicCamera(-span,span,span*0.75,-span*0.75,0.1,2000);
+camera.position.set(target.cx+110,95,target.cz+140);camera.lookAt(target.cx,10,target.cz);
+const renderer = new THREE.WebGPURenderer({forceWebGL: !new URLSearchParams(location.search).has('webgpu'),antialias:true});
+renderer.setSize(1200,900);renderer.setPixelRatio(1);renderer.toneMapping=THREE.ACESFilmicToneMapping;
+await renderer.init(); document.body.appendChild(renderer.domElement);
+await renderer.renderAsync(scene,camera);
+window.probe = {THREE,scene,seed,target,camera,renderer,FACADE_DEFS};
+window.captureNight = async () => {hemi.intensity=0.12;sun.intensity=0.08;cityUniforms.uInteriorGlow.value=1.3;await renderer.renderAsync(scene,camera);};
+window.captureDetail = async () => {camera.left=-span*0.43;camera.right=span*0.43;camera.top=span*0.3225;camera.bottom=-span*0.3225;camera.updateProjectionMatrix();await renderer.renderAsync(scene,camera);};
+window.result = {revision:THREE.REVISION, target:{id:target.id,district:target.district,cx:target.cx,cz:target.cz},palettes:FACADE_DEFS.map(([,opts])=>opts),colliders:seed.colliders,blocks:seed.allBlocks.map(b=>({footprints:b.footprints,cornices:b.cornices,roofs:b.hipRoofs,awnings:b.awnings})),calls:renderer.info.render.calls};
+</script>

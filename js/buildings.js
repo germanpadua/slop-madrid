@@ -37,13 +37,13 @@ import { OPEN_SPACE } from './monument-sites.js';
 import { buildLandmarkReserves, clipRectByRings } from './landmark-reserve.js';
 import {
   createPreWarBuildingMaterial,
-  createCurtainWallMaterial,
   createFacadeBoxes,
   createBillboardMaterial,
   WALL_KINDS
 } from './tsl-materials.js';
 import { GEO } from './madrid-geodata.js';
 import { roofDecision } from './madrid-roofs.js';
+import { MADRID_FACADE_OPTS, madridFacadeTier } from './madrid-facades.js';
 import { fdrViaduct, pavedPlazaRects, parkTreeSites, sidewalkBlocks } from './city-grid.js';
 
 // js/buildings.js
@@ -257,76 +257,11 @@ function carve(r, holes, axis = 'x') {
   return out.map(([u0, u1, v0, v1]) => (flip ? rect(v0, v1, u0, u1) : rect(u0, u1, v0, v1)));
 }
 
-// Facade materials of the procedural buildings. Exported so the phase-3 tile renderer (js/madrid-tile-world.js)
-// builds its blocks with the same facades — createPreWarBuildingMaterial caches by options, so both share one compile.
-const FACADE_DEFS = [
-  // 0: Pre-War Limestone & Buff Brick (5th Ave / Madison Ave / Upper East Side style)
-  [createPreWarBuildingMaterial, {
-    stoneColor: 0xd8cdb8,
-    trimColor: 0x9e937f,
-    windowGlassColor: 0x1a2836,
-    windowWidth: 2.6,
-    floorHeight: 3.7,
-    litProbability: 0.54,
-    warmth: 0.80,
-    seed: 12.4
-  }],
-  // 1: Historic Warm Red/Terracotta Brick (Garment District / Chelsea / SoHo / Upper West Side)
-  [createPreWarBuildingMaterial, {
-    stoneColor: 0xa45a45,
-    trimColor: 0xcab9a0,
-    windowGlassColor: 0x16222e,
-    windowWidth: 2.4,
-    floorHeight: 3.5,
-    litProbability: 0.56,
-    warmth: 0.86,
-    seed: 27.8
-  }],
-  // 2: Classic NYC Brownstone & Dark Masonry (Cross-street rowhouses, Village & Harlem)
-  [createPreWarBuildingMaterial, {
-    stoneColor: 0x765443,
-    trimColor: 0x503a2e,
-    windowGlassColor: 0x151e26,
-    windowWidth: 2.2,
-    floorHeight: 3.4,
-    litProbability: 0.60,
-    warmth: 0.90,
-    seed: 41.2
-  }],
-  // 3: Blue-Teal Curtain-Wall Glass (Park Ave / 6th Ave / Financial District modernism)
-  [createCurtainWallMaterial, {
-    glassTint: 0x1a3a52,
-    frameTint: 0x3b4c5b,
-    windowWidth: 2.7,
-    floorHeight: 3.9,
-    litProbability: 0.60,
-    warmth: 0.52,
-    reflectivity: 0.92,
-    seed: 63.5
-  }],
-  // 4: Dark Bronze / Charcoal Miesian Glass (Avenue of the Americas / Midtown West)
-  [createCurtainWallMaterial, {
-    glassTint: 0x242220,
-    frameTint: 0x3c3631,
-    windowWidth: 2.5,
-    floorHeight: 3.8,
-    litProbability: 0.64,
-    warmth: 0.72,
-    reflectivity: 0.88,
-    seed: 81.9
-  }],
-  // 5: Silver / Ice-Blue Contemporary Supertall Glass (Billionaires' Row / Hudson Yards / WTC)
-  [createCurtainWallMaterial, {
-    glassTint: 0x264664,
-    frameTint: 0xb0bcc8,
-    windowWidth: 2.9,
-    floorHeight: 4.1,
-    litProbability: 0.58,
-    warmth: 0.48,
-    reflectivity: 0.95,
-    seed: 94.3
-  }]
-];
+// Shared Madrid skins, independent of the generator's original massing archetypes.
+const FACADE_DEFS = Object.freeze(MADRID_FACADE_OPTS.map((opts) =>
+  Object.freeze([createPreWarBuildingMaterial, opts])));
+// Preserve existing heights, IDEAM caps, setbacks, roof choices and RNG sequence when changing skin.
+const MASSING_STOREYS = Object.freeze([3.7, 3.5, 3.4, 3.9, 3.8, 4.1]);
 
 function buildCityBlocks(scene) {
   const group = new THREE.Group();
@@ -383,9 +318,9 @@ function buildCityBlocks(scene) {
   const allBlocks = [];
 
   const facades = FACADE_DEFS;
-  const materials = facades.map(([create, opts]) => create({ ...opts, boxLocal: true }));
-  // Storey height of each facade: buildings are massed in whole storeys so every window row lines up across tiers
-  const storeys = facades.map(([, opts]) => opts.floorHeight);
+  const materials = facades.map(([create, opts]) => create(opts));
+  // Structural storeys stay fixed: selecting a skin must not change building volume.
+  const storeys = MASSING_STOREYS;
 
   const buckets = materials.map(() => []);
   const broadwayBillboards = [];
@@ -677,6 +612,8 @@ function buildCityBlocks(scene) {
       return;
     }
     const mat = b.mat;
+    const [skinX, skinZ] = toWorld((b.lot.x0 + b.lot.x1) * 0.5, (b.lot.z0 + b.lot.z1) * 0.5);
+    const skin = madridFacadeTier(skinX, skinZ);
     const storey = storeys[mat];
     const tone = rand();
     let shopsOn = o.shops ?? 'all';
@@ -702,7 +639,7 @@ function buildCityBlocks(scene) {
       const d = p.z1 - p.z0;
       const h = p.y1 - p.y0;
       const box = { x: p.x0 + w * 0.5, y: p.y0 + h * 0.5, z: p.z0 + d * 0.5, w, h, d, faces: wallKinds(b, p, shops, o), tone };
-      buckets[mat].push(box);
+      buckets[skin].push(box);
       blk.facadeBoxes.push(box);
       blk.footprints.push({ x0: p.x0, x1: p.x1, z0: p.z0, z1: p.z1, h: p.y1, tone });
       if (p.y1 > blk.maxH) blk.maxH = p.y1;
@@ -2241,7 +2178,7 @@ function buildCityBlocks(scene) {
   }
 
   // ============================================================================
-  // C. STATIC ISLAND-WIDE ARCHITECTURAL MASSING (6 TSL Facade Materials)
+  // C. STATIC ARCHITECTURAL MASSING (4 shared Madrid facade materials)
   // ============================================================================
   const unitBox = new THREE.BoxGeometry(1, 1, 1);
   const dummy = new THREE.Object3D();

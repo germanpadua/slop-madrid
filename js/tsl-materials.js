@@ -409,7 +409,7 @@ function facadeCell(windowWidth, floorHeight, boxLocal, cornerPier = 0, parcelWa
   if (boxLocal) {
     const box = attribute('box', 'vec4'); // width, height, depth, seed (+ the building's tone in its fraction)
     const faces = attribute('faces', 'vec4'); // WALL_KINDS of the -x, +x, -z & +z walls
-    const wallWidth = mix(box.x, box.z, alongZ);
+    const wallWidth = max(mix(box.x, box.z, alongZ), 0.001);
     // The box-local normal's sign tells which wall this is
     kind = mix(
       mix(faces.z, faces.w, step(0.0, nWall.z)),
@@ -444,6 +444,28 @@ function facadeCell(windowWidth, floorHeight, boxLocal, cornerPier = 0, parcelWa
       gridU = along.mul(bays).add(wallSeed);
     }
     uCoord = gridU.mul(bayWidth);
+  }
+
+  if (parcelWalls && boxLocal) {
+    // Shared Madrid layout: box.x > 0 marks a seed box; zero marks an identity-instanced contour.
+    // Both geometries supply all attributes, so one cached material AND one vertex/fragment pipeline
+    // serve the two paths. Keep seed whole-bay corners and contour world projection unchanged.
+    const isContour = float(1.0).sub(step(0.001, attribute('box', 'vec4').x));
+    const frame = attribute('wallFrame', 'vec4');
+    kind = mix(kind, attribute('facadeKind', 'float'), isContour);
+    tone = mix(tone, attribute('facadeTone', 'float'), isContour);
+    wallS = mix(wallS, frame.x, isContour);
+    wallW = mix(wallW, frame.y, isContour);
+    wallH = mix(wallH, frame.z, isContour);
+    fromTop = mix(fromTop, frame.w, isContour);
+    boxSeed = mix(boxSeed, 0.0, isContour);
+    inPier = mix(inPier, 0.0, isContour);
+    bayWidth = mix(bayWidth, windowWidth, isContour);
+    bays = mix(bays, max(floor(wallW.div(windowWidth)), 1.0), isContour);
+    bayIdx = mix(bayIdx, floor(wallS.div(windowWidth)), isContour);
+    const worldU = mix(positionWorld.x, positionWorld.z, facadeAlongZ);
+    uCoord = mix(uCoord, worldU, isContour);
+    gridU = mix(gridU, worldU.div(windowWidth), isContour);
   }
 
   if (parcelWalls && !boxLocal) {
@@ -712,7 +734,7 @@ function createPreWarBuildingMaterial(opts = {}) {
     madrid = false // Madrid dialect: iron balcony rails instead of sash bars, stone zocalo ground floor, no AC units, no 6-floor cornice belt
   } = opts;
 
-  const cacheKey = `${stoneColor}_${trimColor}_${windowWidth}_${floorHeight}_${litProbability}_${warmth}_${crownGlowHeight}_${seed}_${boxLocal}_${cornerPier}_${madrid}_${parcelWalls}`;
+  const cacheKey = `${stoneColor}_${trimColor}_${windowGlassColor}_${windowWidth}_${floorHeight}_${windowRatioX}_${windowRatioY}_${litProbability}_${warmth}_${crownGlowHeight}_${crownGlowColor}_${seed}_${boxLocal}_${cornerPier}_${madrid}_${parcelWalls}`;
   if (_preWarCache.has(cacheKey)) {
     return _preWarCache.get(cacheKey);
   }
@@ -922,7 +944,7 @@ function createPreWarBuildingMaterial(opts = {}) {
     });
 
     const wallTint = mix(mix(cStone, backTint, back), signPaint.xyz, signPaint.w);
-    const wallTintZ = mix(wallTint, cTrim.mul(0.82), isGroundFloor.mul(front).mul(uMadrid).mul(0.55)); // Madrid stone zocalo
+    const wallTintZ = mix(wallTint, cTrim.mul(0.82), facade.floor0.mul(front).mul(uMadrid).mul(0.55)); // Madrid stone zocalo
     // Trim stone on the band courses, the storefront fascia and the coping capping every wall
     const trimMix = max(isCornice.mul(0.62).add(isGroundFloor.mul(0.28)), coping.mul(0.8));
     const masonryTint = mix(wallTintZ, cTrim, trimMix)
@@ -1092,6 +1114,7 @@ function createPreWarBuildingMaterial(opts = {}) {
     return winEmit.add(crownFlood).add(doorEmit);
   })();
 
+  mat.userData.madridSharedWalls = boxLocal && parcelWalls;
   _preWarCache.set(cacheKey, mat);
   return mat;
 }
@@ -1108,6 +1131,13 @@ function createFacadeBoxes(material, boxes) {
   const faces = new THREE.InstancedBufferAttribute(new Float32Array(boxes.length * 4), 4);
   geometry.setAttribute('box', box);
   geometry.setAttribute('faces', faces);
+  if (material.userData.madridSharedWalls) {
+    // Unused on boxes, but part of the shared seed/contour vertex layout.
+    const count = geometry.getAttribute('position').count;
+    geometry.setAttribute('wallFrame', new THREE.Float32BufferAttribute(new Float32Array(count * 4), 4));
+    geometry.setAttribute('facadeKind', new THREE.Float32BufferAttribute(new Float32Array(count), 1));
+    geometry.setAttribute('facadeTone', new THREE.Float32BufferAttribute(new Float32Array(count), 1));
+  }
 
   const mesh = new THREE.InstancedMesh(geometry, material, boxes.length);
   const matrix = new THREE.Matrix4();
