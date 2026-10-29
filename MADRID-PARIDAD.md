@@ -48,3 +48,7 @@ Medición reproducible y siguiente orden en PARIDAD-PLAN.md. Las notas de TinyWa
 ### Avance A0 posterior a auditoría
 
 Paseo local automatizado con teclado (~35 m), maqueta y viewport móvil: cero pageerrors. Corregida apariencia de revoco/caliza, antes cubierta por retícula de ladrillo heredada. No altera fuentes ni geometría. Evidencia docs/validation/2026-10-29-revoco/. La continuidad de tejados en maqueta sigue pendiente: el centro los incluye en detalle de radio 560 m. Vegetación bloqueada de momento por 406/timeouts Overpass; no se ha inventado densidad.
+
+### Avance A1 — silueta aérea
+
+Cubiertas del centro desacopladas del detalle cercano: desaparece el círculo de 560 m sin tejados. Son las decisiones ilustrativas ya existentes, persistentes por celdas con culling; no nuevas huellas ni alturas. Coste medido +0,47 MiB de atributos CPU, +29 draws en arranque. Comparación aérea y móvil guardada en docs/validation/2026-10-29-roofs/. Pendiente revisión amplia de patios y simulación fuera de semilla.

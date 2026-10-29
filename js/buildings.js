@@ -42,6 +42,7 @@ import {
 } from './tsl-materials.js';
 import { GEO } from './madrid-geodata.js';
 import { roofDecision } from './madrid-roofs.js';
+import { collectRoofBatches } from './madrid-roof-batches.js';
 import { MADRID_FACADE_OPTS } from './madrid-tiles.js';
 import { fdrViaduct, pavedPlazaRects, parkTreeSites, sidewalkBlocks } from './city-grid.js';
 
@@ -2486,6 +2487,27 @@ function buildCityBlocks(scene) {
   for (let i = 0; i < MAX_HIP_ROOFS; i++) ringInst.setColorAt(i, hipPalette[0]);
   group.add(ringInst);
 
+  // Madrid roofs persist at every distance. Per-cell bounds let the normal frustum culler
+  // skip unseen roofs; exact-sized instance buffers avoid the nearby pool's 1600-roof cap.
+  if (GEO.frame?.madrid) {
+    for (const batch of collectRoofBatches(allBlocks)) {
+      const mesh = new THREE.InstancedMesh(batch.ring ? ringGeo : hipGeo, hipMat, batch.roofs.length);
+      mesh.name = `MadridRoofCell:${batch.key}`;
+      mesh.castShadow = mesh.receiveShadow = true;
+      for (const [i, roof] of batch.roofs.entries()) {
+        dummy.position.set(roof.x, roof.y, roof.z);
+        dummy.rotation.set(0, roof.yaw, 0);
+        dummy.scale.set(roof.width, roof.height, roof.depth);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+        mesh.setColorAt(i, roof.slate ? hipSlate : hipPalette[roof.ci % hipPalette.length]);
+      }
+      mesh.computeBoundingSphere();
+      group.add(mesh);
+    }
+    dummy.rotation.set(0, 0, 0);
+  }
+
   // 3. Rooftop mechanical penthouses & HVAC chillers with top exhaust fans & side louvers
   const hvacMat = new THREE.MeshStandardNodeMaterial({ roughness: 0.52, metalness: 0.45 });
   hvacMat.colorNode = Fn(() => {
@@ -2689,8 +2711,9 @@ function buildCityBlocks(scene) {
       }
 
       // 3b. Madrid terracotta hip roofs (per-instance rotation: block turn + ridge along the long axis)
-      for (let i = 0; i < blk.hipRoofs.length && hipCount + ringCount < MAX_HIP_ROOFS * 2; i++) {
+      for (let i = 0; !GEO.frame?.madrid && i < blk.hipRoofs.length; i++) {
         const r = blk.hipRoofs[i];
+        if ((r.ring ? ringCount : hipCount) >= MAX_HIP_ROOFS) continue;
         dummy.rotation.set(0, (blk.ry || 0) + r.rot, 0);
         dummy.position.set(r.x, r.y, r.z);
         dummy.scale.set((r.rot ? r.d : r.w) + 0.6, r.h, (r.rot ? r.w : r.d) + 0.6);

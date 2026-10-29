@@ -56,3 +56,11 @@ Evidencia en docs/validation/2026-10-29-revoco/: before/after, móvil, paseo y m
 Checklist A0: http://localhost:8080/?debug=1, caminar desde Sol hacia Preciados; las fachadas claras deben ser lisas y la roja conservar juntas. Confirmar lo mismo en móvil. La maqueta revela un defecto siguiente: tejados del centro limitados al radio de detalle 560 m.
 
 Adquisición de árboles OSM: endpoint principal devuelve 406; dos espejos agotaron timeout sin datos. No se añadieron árboles inventados. Reintentar con extracto PBF o endpoint disponible antes de ampliar vegetación.
+
+## A1 — continuidad de tejados de semilla (hecho, revisión amplia pendiente)
+
+La maqueta demostraba un radio circular de tejados de solo 560 m: la cubierta compartía pool con detalles cercanos. Ahora las decisiones de cubierta ya existentes se conservan en lotes estáticos de 512 m, con buffers del tamaño exacto y frustum culling. No se generan cubiertas nuevas ni se alteran alturas/huellas. La regla de tejado sigue siendo una aproximación ilustrativa heredada, no una medición municipal de cada faldón. Corregido también límite por tipo del pool heredado para evitar sobrepasar su capacidad individual.
+
+Comparación docs/validation/2026-10-29-roofs/: desaparece el límite circular en maqueta, patio visible y paleta terracota continua. Harness passed=true, cero errores gráficos/pageerrors. Atributos CPU 72583390→73075186 bytes (+491796; ~0,47 MiB); draws 711→740; triángulos de muestra 4289107→4310035. No se eleva presupuesto de datos. Muestras concurrentes de navegador: NO usar tiempos/FPS para atribuir aceleración. Tests nuevos: 4000 cubiertas sin pérdida/duplicación, separación hip/ring y conservación de transformaciones. Suite 162/162 al resolver precarga del nuevo módulo. Rollback: collectRoofBatches, lotes estáticos y exclusión de Madrid del pool dinámico.
+
+Checklist A1: http://localhost:8080/?debug=1, abrir maqueta y alejarse de Sol: tejados terracota deben continuar más allá del antiguo círculo cercano. Revisar móvil y k3j0, especialmente cubiertas de patios y bordes. No se declara aún A completo por esta vista general.
