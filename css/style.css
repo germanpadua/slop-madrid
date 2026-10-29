@@ -1453,3 +1453,13 @@ body.touch-enabled .pop-item { min-height: 44px; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Keep source attribution readable in the map without extending its status line. */
+.fullmap-status small {
+  display: block;
+  white-space: normal;
+  font-size: 10px;
+  line-height: 1.35;
+  margin-bottom: 4px;
+}
+.fullmap-status a { color: inherit; text-underline-offset: 2px; }

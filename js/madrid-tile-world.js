@@ -8,7 +8,7 @@
 // clipped by the builder, so adjacent tiles never draw the same surface twice.
 import * as THREE from 'three/webgpu';
 import { createMappedParkPaths } from './madrid-park-paths.js';
-import { createSourcedStreetTrees } from './madrid-street-trees.js';
+import { createParkAndStreetTrees } from './madrid-municipal-park-trees.js';
 import { Fn, abs, color, fract, max, mix, positionGeometry, positionWorld, smoothstep } from 'three/tsl';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createExtrudedPolygonMesh, createFlatPolygonMesh, offsetPolygonInward } from './city-grid.js';
@@ -139,7 +139,7 @@ export function createTileWorld(scene, { colliders = null, materials = null, see
     landmarkByName: new Map()
   };
   const streetFeatures = new Map();
-  const seedTrees = createSourcedStreetTrees(seedStreetFeatures?.trees);
+  const seedTrees = createParkAndStreetTrees('fase2',seedStreetFeatures?.trees);
   if (seedStreetFeatures) {
     streetFeatures.set('fase2', seedStreetFeatures);
     scene.add(seedTrees);
@@ -562,7 +562,7 @@ export function createTileWorld(scene, { colliders = null, materials = null, see
     group.userData.detailBounds = [Math.min(...core.map(r => r[0])), Math.min(...core.map(r => r[1])),
       Math.max(...core.map(r => r[2])), Math.max(...core.map(r => r[3]))];
     if (tile.streetFeatures) {
-      group.add(createSourcedStreetTrees(tile.streetFeatures.trees));
+      group.add(createParkAndStreetTrees(tile.id,tile.streetFeatures.trees));
       streetFeatures.set(tile.id, tile.streetFeatures);
     }
     scene.add(group);

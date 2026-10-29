@@ -26,7 +26,7 @@ test('city module preloads start after the import map and before stylesheets', (
 
 test('native module entry and imports share canonical preloaded URLs on GitHub Pages', () => {
   const links = preloads.map((match) => match[1]);
-  assert.equal(links.length, 54);
+  assert.equal(links.length, 57);
   assert.ok(links.includes('./js/madrid-street-trees.js'), 'sourced trees are preloaded');
   assert.ok(links.includes('./js/madrid-roof-batches.js'), 'persistent roof batches are preloaded');
   assert.ok(links.includes('./js/madrid-road-worker.js'), 'the circulation network worker is preloaded');

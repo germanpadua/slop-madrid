@@ -20,8 +20,8 @@ export function createSourcedStreetTrees(points = []) {
   for (const [i, point] of points.entries()) {
     const taggedHeight = metres(point.tags?.height);
     const taggedDiameter = metres(point.tags?.diameter_crown);
-    const height = taggedHeight > 1 && taggedHeight < 60 ? taggedHeight : 7;
-    const radius = taggedDiameter > 0 && taggedDiameter < 40 ? taggedDiameter / 2 : Math.min(2.2, height * 0.32);
+    const height = taggedHeight >= 0.3 && taggedHeight < 60 ? taggedHeight : 7;
+    const radius = taggedDiameter > 0 && taggedDiameter < 40 ? taggedDiameter / 2 : point.crownGlyphDiameter > 0 ? point.crownGlyphDiameter / 2 : Math.min(2.2, height * 0.32);
     const trunkHeight = height * 0.52;
     transform.position.set(point.x, trunkHeight / 2 + 0.18, point.z);
     transform.scale.set(1, trunkHeight, 1);
