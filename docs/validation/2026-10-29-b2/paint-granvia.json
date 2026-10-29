@@ -1,0 +1,244 @@
+{
+  "place": "granvia",
+  "target": {
+    "x": 28,
+    "z": -374,
+    "heading": -1.68
+  },
+  "mode": "person",
+  "entity": {
+    "x": 28,
+    "y": 0,
+    "z": -374
+  },
+  "camera": {
+    "x": 32.3,
+    "y": 2.3,
+    "z": -373.5
+  },
+  "occluders": [
+    {
+      "ndc": {
+        "x": -0.67,
+        "y": 0.67
+      },
+      "name": "",
+      "parentChain": [
+        "Mesh",
+        "ManhattanCityBlocks",
+        "Scene"
+      ],
+      "distance": 42.8,
+      "point": {
+        "x": -3.4,
+        "y": 17.5,
+        "z": -355.5
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "ffffff"
+      },
+      "geometry": "BufferGeometry"
+    },
+    {
+      "ndc": {
+        "x": -0.67,
+        "y": 0
+      },
+      "name": "",
+      "parentChain": [
+        "Mesh",
+        "ManhattanCityBlocks",
+        "Scene"
+      ],
+      "distance": 35.5,
+      "point": {
+        "x": 0.5,
+        "y": 4.9,
+        "z": -358
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "ffffff"
+      },
+      "geometry": "BufferGeometry"
+    },
+    {
+      "ndc": {
+        "x": -0.67,
+        "y": -0.67
+      },
+      "name": "MadridDeck",
+      "parentChain": [
+        "MadridDeck",
+        "ManhattanCityGrid",
+        "Scene"
+      ],
+      "distance": 10.5,
+      "point": {
+        "x": 23,
+        "y": 0,
+        "z": -369.1
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "ffffff"
+      },
+      "geometry": "ExtrudeGeometry"
+    },
+    {
+      "ndc": {
+        "x": 0,
+        "y": 0.67
+      },
+      "name": "",
+      "parentChain": [
+        "Mesh",
+        "Scene"
+      ],
+      "distance": 110562,
+      "point": {
+        "x": -100000,
+        "y": 45797.7,
+        "z": -11341.1
+      },
+      "material": {
+        "name": "",
+        "type": "NodeMaterial"
+      },
+      "geometry": "BoxGeometry"
+    },
+    {
+      "ndc": {
+        "x": 0,
+        "y": 0
+      },
+      "name": "",
+      "parentChain": [
+        "Mesh",
+        "Landmarks",
+        "Scene"
+      ],
+      "distance": 256.7,
+      "point": {
+        "x": -221.9,
+        "y": 24.4,
+        "z": -401.4
+      },
+      "material": {
+        "name": "LandmarkFacade",
+        "type": "MeshStandardNodeMaterial",
+        "color": "ffffff"
+      },
+      "geometry": "BufferGeometry"
+    },
+    {
+      "ndc": {
+        "x": 0,
+        "y": -0.67
+      },
+      "name": "MadridDeck",
+      "parentChain": [
+        "MadridDeck",
+        "ManhattanCityGrid",
+        "Scene"
+      ],
+      "distance": 9.1,
+      "point": {
+        "x": 23.5,
+        "y": 0,
+        "z": -374.5
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "ffffff"
+      },
+      "geometry": "ExtrudeGeometry"
+    },
+    {
+      "ndc": {
+        "x": 0.67,
+        "y": 0.67
+      },
+      "name": "",
+      "parentChain": [
+        "Mesh",
+        "ManhattanCityBlocks",
+        "Scene"
+      ],
+      "distance": 24.4,
+      "point": {
+        "x": 14.6,
+        "y": 11,
+        "z": -388
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "ffffff"
+      },
+      "geometry": "BufferGeometry"
+    },
+    {
+      "ndc": {
+        "x": 0.67,
+        "y": 0
+      },
+      "name": "",
+      "parentChain": [
+        "Mesh",
+        "ManhattanCityBlocks",
+        "Scene"
+      ],
+      "distance": 23.3,
+      "point": {
+        "x": 14.1,
+        "y": 4,
+        "z": -388
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "ffffff"
+      },
+      "geometry": "BufferGeometry"
+    },
+    {
+      "ndc": {
+        "x": 0.67,
+        "y": -0.67
+      },
+      "name": "MadridDeck",
+      "parentChain": [
+        "MadridDeck",
+        "ManhattanCityGrid",
+        "Scene"
+      ],
+      "distance": 10.5,
+      "point": {
+        "x": 24.1,
+        "y": 0,
+        "z": -379.8
+      },
+      "material": {
+        "name": "",
+        "type": "MeshStandardNodeMaterial",
+        "color": "ffffff"
+      },
+      "geometry": "ExtrudeGeometry"
+    }
+  ],
+  "roadPaintStats": {
+    "rebuildMs": 20.9,
+    "vertices": 32648,
+    "triangles": 16324
+  },
+  "roadStats": {
+    "routingNodes": 1857,
+    "routingEdges": 2884
+  }
+}

@@ -3,6 +3,7 @@
 // The chase camera keeps smoothing after a teleport: on software GL the reported camera may still be
 // travelling, so treat hits as "what is on screen now", not as a fixed-camera verdict.
 // usage: node tools/madrid/inspect-scene.mjs --place cibeles [--grid 3] [--wait 6000] [--json-out file]
+//        [--shot file.jpg] [--ndc "x,y;x,y"] [--at "x,z,heading"]  (--at for spots not in TELEPORT_LOCATIONS)
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,6 +22,7 @@ const waitMs = Number(arg('--wait', '6000'));
 const jsonOut = arg('--json-out', null);
 const shotPath = arg('--shot', null);
 const ndcPoint = arg('--ndc', null);
+const at = arg('--at', null);
 
 const server = http.createServer((req, res) => {
   const url = decodeURIComponent(req.url.split('?')[0]);
@@ -39,13 +41,14 @@ const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 page.on('pageerror', (e) => console.error('[pageerror]', String(e)));
 await page.goto('http://127.0.0.1:' + port + '/?debug=1&capture=1', { waitUntil: 'load', timeout: 120000 });
 await page.waitForFunction(() => window.__madrid && document.querySelector('#loading-overlay.hidden'), null, { timeout: 180000 });
-const out = await page.evaluate(async ({ place, gridN, waitMs, ndcPoint, shotPath }) => {
+const out = await page.evaluate(async ({ place, gridN, waitMs, ndcPoint, shotPath, at }) => {
   const THREE = await import('three');
   const api = window.__madrid;
   const { TELEPORT_LOCATIONS } = await import(new URL('./js/city-config.js', location.href).href);
   document.querySelector('#mode-person').click();
   document.querySelector('#cam-chase').click();
-  const target = TELEPORT_LOCATIONS[place] || { x: 0, z: 0, heading: 0 };
+  const custom = at ? { x: Number(at.split(',')[0]), z: Number(at.split(',')[1]), heading: Number(at.split(',')[2] || 0) } : null;
+  const target = custom || TELEPORT_LOCATIONS[place] || { x: 0, z: 0, heading: 0 };
   const startFrames = api.renderedFrames || 0;
   api.controllerManager.teleportActiveTo(target.x, target.z, target.heading);
   const t0 = performance.now();
@@ -89,7 +92,7 @@ const out = await page.evaluate(async ({ place, gridN, waitMs, ndcPoint, shotPat
   const cameraPos = camera.getWorldPosition(new THREE.Vector3());
   return { place, target, mode, entity: entityPos, camera: { x: +cameraPos.x.toFixed(1), y: +cameraPos.y.toFixed(1), z: +cameraPos.z.toFixed(1) }, occluders, shot,
     roadPaintStats: api.roadPaintStats || null, roadStats: api.roadStats ? { routingNodes: api.roadStats.routingNodes, routingEdges: api.roadStats.routingEdges } : null };
-}, { place, gridN, waitMs, ndcPoint, shotPath });
+}, { place, gridN, waitMs, ndcPoint, shotPath, at });
 if (jsonOut) fs.writeFileSync(path.resolve(ROOT, jsonOut), JSON.stringify({ ...out, shot: undefined }, null, 2));
 if (shotPath && out.shot) fs.writeFileSync(path.resolve(ROOT, shotPath), Buffer.from(out.shot.split(',')[1], 'base64'));
 console.log(JSON.stringify({ place: out.place, target: out.target, mode: out.mode, entity: out.entity, camera: out.camera, hits: out.occluders.length, jsonOut, shotPath, roadPaintStats: out.roadPaintStats }));

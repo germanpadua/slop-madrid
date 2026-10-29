@@ -25,6 +25,12 @@ conectarla a coches/peatones y retirar rutas al descargar teselas sin dejar agen
   bordillos, cierra conversaciones y remapea/retira peatones.
 - `js/main.js`: crea el servicio tras el streamer, refresca con `onStatus` y aplica la red al tráfico
   (`window.__madrid.roadStats` para QA).
+- `js/road-paint.js` + `js/main.js`: las marcas de calzada siguen a la red viva. `createRoadPaint` adopta
+  la malla de arranque y en cada swap cambia solo la geometría (un material, sin recompilar shader,
+  geometría anterior liberada, grupo único). El residente decodificado trae `paintEdges: []`, así que
+  se pintan las aristas de routing y se reconstruye la bandera de curva desde los brazos.
+- `roadStats.timings`: `snapshotMs`, `workerMs` (ida y vuelta del worker), `applyMs` y su reparto en main
+  (`queriesMs`, `decodeMs`, `blockLookupMs`), medidos en el mismo swap que mueve agentes.
 
 ## Cómo se verificó
 
@@ -33,7 +39,7 @@ sandbox; por tanto no hay mediciones de FPS de Iris Xe en esta pasada y las capt
 1–3 FPS. Los datos de red, migración y continuidad sí son deterministas (CPU).
 
 ```sh
-node --test tests/*.test.cjs                       # 179/179
+node --test tests/*.test.cjs                       # 180/180
 PLAYWRIGHT_MODULE=... CHROME_PATH=... node tools/madrid/check-circulation.mjs --timeout 240000
 ```
 
@@ -53,8 +59,14 @@ Resultados de la última pasada (`circulation.json`):
 - Coherencia de simulación: `badS=0` (ningún vehículo con `s` fuera de su arista), `laneOverhang=0`
   (ningún carril sobresale >0,5 m de la anchura OSM de la vía).
 - `roadStats` típicos con 5 teselas: `graphNodes 3526, routingNodes 1857, routingEdges 2884,
-  graphSignals 686, assembledMs ~35-45, layoutMs 140-310, lanes 1857 nodos vivos`. Benchmark 12 teselas
+  graphSignals 686, assembledMs 18-41, layoutMs 92-310, lanes 1857 nodos vivos`. Benchmark 12 teselas
   del handoff: 2559 nodos / 3992 aristas.
+- Coste medido del swap (`boot-timings.json`, mismo swap que aplica la red): worker 162 ms de ida y
+  vuelta, **main 4,2 ms** (consultas de suelo 1,9, decode 1,5, lookup de bloques 0,8). El coste de
+  rehidratar en main no es el fotograma caro; el layout del worker (~0,1-0,3 s) es el que manda.
+- Pintura residente (`paint-granvia.jpg`): en Gran Vía se ven línea doble amarilla, carriles
+  discontinuos y el paso de cebra del cruce siguiente, alineados con los carriles que usan los coches.
+  Coste por swap: 14-40 ms, 24-42k vértices / 1 malla, geometría anterior liberada.
 
 ## Hallazgo: la red heredada de la semilla ya estaba colapsada
 
@@ -75,14 +87,28 @@ la ronda de circulación son ilustrativas y `cibeles-fixed.jpg` es la única con
 
 Defectos visuales observados en el encuadre estable de Cibeles (para los bloques A/C, no de B2):
 
-- El "cubo blanco" a la izquierda del Palacio de Cibeles es una **extrusión genérica de huella OSM**
-  (`js/landmarks.js`) con material de cuerpo liso y sin ventanas; los edificios con monumento
-  procedural (Palacio de Cibeles, Puerta de Alcalá...) sí tienen detalle. Es la monotonía de fachadas
-  ya documentada, no un objeto suelto.
-- La **Fuente de Cibeles** no está modelada (`monuments.js` no la incluye; solo existe como punto OSM en
-  `GEO.landmarks`), así que la glorieta queda como pavimento liso.
-- El pavimento de la plaza (`Landmarks` color `bfb49f`, plano a y=0,12) no tiene juntas/textura a esta
-  distancia: candidato de detalle de calle (C).
+- El "cubo blanco" junto al Palacio de Cibeles era la **huella OSM de la Fuente de Cibeles** extruida
+  como edificio; ahora es pavimento plano (`landmarks-cibeles.jpg`, `65322f3`).
+- El pavimento de la plaza y del suelo en general no tiene juntas/textura a esta distancia (candidato
+  de detalle de calle, bloque C).
+
+## Landmarks genéricos: fachada y Fuente de Cibeles (`65322f3`)
+
+Los polígonos OSM de landmark sin monumento procedural (`js/landmarks.js`) se extrudaban con un color
+liso: la "monotonía de fachadas" y, en Cibeles, el **cubo blanco** que resultó ser la huella OSM de la
+propia **Fuente de Cibeles** extruida a su altura de escultura. Cambios:
+
+- Un material de fachada compartido para todos esos cuerpos: retícula de ventanas (bays 2,7 m, plantas
+  3,55 m), antepecho sólido en la última planta, juntas de forjado, zócalo de granito y cornisa, todo
+  derivado de la posición mundial del fragmento y del tinte/altura que viajan en los UV. Un solo
+  material y un solo shader para que `batchStaticGroupMeshes` siga fusionando (el batching conserva
+  position/normal/uv). Templos/monumentos/estatuas conservan el cuerpo plano: solo es trabajo de fachada.
+- `Fuente` deja de extruirse: se dibuja como pavimento plano (mantiene su collider) para no darle
+  fachada a una fuente. El cubo desaparece de la glorieta (`landmarks-cibeles.jpg`). En
+  `landmarks-linares.jpg` se ven las ventanas de un cuerpo genérico junto a manzanas con balcones.
+
+Riesgos: material de fachada validado a 1-3 FPS software; AA por `fwidth` y aspecto en GPU real sin
+veredicto; los landmark sin `ring` o con `h` dudoso siguen con la extrusión genérica.
 
 ## Riesgos y pendientes de este bloque
 
