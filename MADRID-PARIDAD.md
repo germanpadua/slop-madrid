@@ -144,3 +144,20 @@ Inspección A entregada (`http://localhost:8000/?debug=1`):
 - [ ] Desde Sol ir al norte por San Bernardo y Bravo Murillo: se completan los antiguos huecos intermedios.
 - [ ] Volar al sur desde Atocha y al este hacia Salamanca: continuidad de datos; las 67 pendientes siguen visibles.
 - [ ] En los bordes k0j2/k0j3 y k3j2/k4j2 no deben aparecer edificios dobles; verificar también en vista de calle.
+
+### B1 — carga y presupuesto entregados
+
+`madrid-tile-worker.js` importa cada módulo con su `?v=md5` y clona los datos; el cliente termina el worker al
+recibirlos, cancelar, fallar o agotar 30 s. La caché de módulos de tesela ya no queda retenida permanentemente en
+el hilo principal. **La clonación y construcción de mallas siguen costando CPU en el hilo principal.**
+
+Se cuentan ambos módulos de semilla (3.911.281 B), reservas y cargas directas; máximo 3 workers simultáneos.
+Los resultados tardíos no resucitan teselas canceladas. Un residente más lejano cede sitio al siguiente core
+cercano aunque siga dentro del radio de descarga (histéresis 200 m). Fallos: un reintento; después no se planifica
+esa celda hasta liberarla. Los topes siguen en **12 MiB y 12 teselas**, no se han aumentado.
+
+Inspección B1 (`http://localhost:8000/?debug=1`):
+
+- [ ] Network muestra módulos con md5; Performance sitúa su importación en un worker, con la geometría aún en main.
+- [ ] En `window.__madrid.tileStreamer.status()`, `bytes + reservedBytes` nunca supera 12 MiB; cargadas + inFlight ≤12.
+- [ ] Ir y volver a Chamberí con caché fría y luego caliente: sin crecimiento de módulos de tesela en main ni tormenta de reintentos.

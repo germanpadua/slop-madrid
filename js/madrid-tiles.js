@@ -7,6 +7,10 @@
 //
 // Budget: 12 MB of geodata modules resident (the size recorded in the manifest, i.e. what the browser downloaded),
 // at most 12 tiles, prefetch within 1 600 m of the camera's ground position and evict beyond 2 600 m.
+import { importTileModule } from './madrid-tile-import.js';
+
+export const tileBytes = (tile) => (tile.bytes || 0) + (tile.blocksBytes || 0);
+
 export const TILE_BUDGET = Object.freeze({
   maxResidentBytes: 12 * 1024 * 1024,
   maxResidentTiles: 12,
@@ -43,7 +47,7 @@ export function distanceToCore(tile, x, z) {
 export function planTiles({ tiles, loaded, x, z, bytes = 0, budget = TILE_BUDGET }) {
   const b = { ...TILE_BUDGET, ...budget };
   const has = (id) => loaded.has(id);
-  const sizeOf = (t) => t.bytes || 0;
+  const sizeOf = (t) => loaded.get?.(t.id)?.bytes ?? tileBytes(t);
   const distances = new Map();
   for (const t of tiles) distances.set(t.id, distanceToCore(t, x, z));
 
@@ -75,7 +79,15 @@ export function planTiles({ tiles, loaded, x, z, bytes = 0, budget = TILE_BUDGET
     .filter((t) => t.status === 'ready' && !has(t.id) && !dropped.has(t.id) && (distances.get(t.id) ?? Infinity) <= b.preloadRadius)
     .sort((p, q) => (distances.get(p.id) ?? Infinity) - (distances.get(q.id) ?? Infinity));
   for (const t of candidates) {
-    if (resident + sizeOf(t) > b.maxResidentBytes || count + 1 > b.maxResidentTiles) break;
+    const fits = () => resident + sizeOf(t) <= b.maxResidentBytes && count + 1 <= b.maxResidentTiles;
+    if (!fits()) {
+      // A full set must not strand the player outside an unloaded nearby core. Trade farther residents for nearer
+      // candidates, with hysteresis so standing on a seam does not churn the same tiles every update.
+      const farther = byDistanceDesc(tiles.filter((p) => has(p.id) && p.id !== SEED_TILE_ID && !dropped.has(p.id) &&
+        distances.get(p.id) > distances.get(t.id) + 200));
+      for (const p of farther) { evict(p); if (fits()) break; }
+    }
+    if (!fits()) continue;
     load.push(t.id);
     resident += sizeOf(t);
     count++;
@@ -91,29 +103,36 @@ export async function createTileStreamer({
   world,
   manifestUrl = './tools/madrid/tiles.json',
   baseUrl = globalThis.document?.baseURI ?? './',
-  budget = TILE_BUDGET,
+  budget = {},
   seedBytes = 0,
-  importModule = (url) => import(url),
+  importModule = importTileModule,
   fetchJson = async (url) => {
     const res = await fetch(url, { cache: 'no-cache' });
     if (!res.ok) throw new Error(`tiles manifest ${res.status}`);
     return res.json();
   },
-  onStatus = null
+  onStatus = null,
+  onTileAdded = null,
+  onTileRemoved = null
 } = {}) {
-  const budgetCfg = { ...TILE_BUDGET, ...(budget || {}) };
   const manifest = await fetchJson(new URL(manifestUrl, baseUrl).href);
+  const budgetCfg = { ...TILE_BUDGET, ...manifest.budget, ...(budget || {}) };
   const tiles = (manifest.tiles || []).filter((t) => t.status === 'ready');
   const loaded = new Map();
-  if (tiles.some((t) => t.id === SEED_TILE_ID)) loaded.set(SEED_TILE_ID, { bytes: seedBytes || tiles.find((t) => t.id === SEED_TILE_ID).bytes || 0 });
+  const seed = tiles.find((t) => t.id === SEED_TILE_ID);
+  if (seed) loaded.set(SEED_TILE_ID, { bytes: seedBytes || tileBytes(seed) });
+  if ((loaded.get(SEED_TILE_ID)?.bytes || 0) > budgetCfg.maxResidentBytes) throw new Error('Tile budget cannot hold the seed');
   const retries = new Map();
-  const inFlight = new Set();
+  const inFlight = new Map();
+  let disposed = false;
   let lastX = Infinity, lastZ = Infinity, lastAt = -Infinity;
   let failures = 0;
 
   const status = () => ({
     loaded: [...loaded.keys()],
     bytes: [...loaded.values()].reduce((n, v) => n + v.bytes, 0),
+    reservedBytes: [...inFlight.values()].reduce((n, v) => n + v.bytes, 0),
+    inFlight: [...inFlight.keys()],
     failures,
     available: tiles.length
   });
@@ -121,20 +140,33 @@ export async function createTileStreamer({
   async function loadTile(id) {
     const tile = tiles.find((t) => t.id === id);
     // One retry, then the tile is left alone (no request storms); at most three modules in flight at once.
-    if (!tile || loaded.has(id) || inFlight.has(id) || (retries.get(id) || 0) >= 2 || inFlight.size >= 3) return;
-    inFlight.add(id);
+    if (disposed || !tile || loaded.has(id) || inFlight.has(id) || (retries.get(id) || 0) >= 2 || inFlight.size >= 3) return false;
+    const bytes = tileBytes(tile);
+    const current = status();
+    if (current.bytes + current.reservedBytes + bytes > budgetCfg.maxResidentBytes ||
+        loaded.size + inFlight.size >= budgetCfg.maxResidentTiles) return false;
+    const controller = new AbortController();
+    const reservation = { bytes, controller };
+    inFlight.set(id, reservation);
     const t0 = performance.now();
     try {
       // The module URL carries the manifest hash: a deployed tile is fetched once and can never be served stale.
       const url = new URL(`${tile.module}?v=${tile.md5 || '0'}`, baseUrl).href;
-      const mod = await importModule(url);
+      const mod = await importModule(url, { signal: controller.signal });
       const data = mod.TILE;
       if (!data || data.id !== id) throw new Error(`module ${tile.module} does not export TILE ${id}`);
-      world.addTile({ ...data, bytes: tile.bytes || 0 });
-      loaded.set(id, { bytes: tile.bytes || 0, objects: world.meshCount() });
+      if (disposed || controller.signal.aborted) return false;
+      // A budget can change while a request is in flight. Recheck before allocating any scene objects.
+      if (status().bytes + bytes > budgetCfg.maxResidentBytes || loaded.size >= budgetCfg.maxResidentTiles) return false;
+      world.addTile({ ...data, bytes });
+      loaded.set(id, { bytes, objects: world.meshCount() });
+      inFlight.delete(id);
+      onTileAdded?.(data);
       console.info(`[madrid-tiles] +${id} ${Math.round(performance.now() - t0)}ms ${tile.bytes} B (${status().loaded.length} resident)`);
       onStatus?.(status());
+      return true;
     } catch (err) {
+      if (err.name === 'AbortError' || controller.signal.aborted) return false;
       const n = (retries.get(id) || 0) + 1;
       retries.set(id, n);
       if (n === 1) console.warn(`[madrid-tiles] ${id} failed, will retry once: ${err.message}`);
@@ -143,16 +175,20 @@ export async function createTileStreamer({
         console.warn(`[madrid-tiles] ${id} unavailable: ${err.message}`);
       }
       onStatus?.(status());
+      return false;
     } finally {
-      inFlight.delete(id);
+      if (inFlight.get(id) === reservation) inFlight.delete(id);
     }
   }
 
   function dropTile(id) {
     if (id === SEED_TILE_ID) return;
+    inFlight.get(id)?.controller.abort();
+    inFlight.delete(id);
     if (world.removeTile(id)) {
       loaded.delete(id);
       retries.delete(id);
+      onTileRemoved?.(id);
       console.info(`[madrid-tiles] -${id} (${status().loaded.length} resident, ${status().bytes} B)`);
       onStatus?.(status());
     }
@@ -160,11 +196,15 @@ export async function createTileStreamer({
 
   /** Call every frame (cheap) or a few times per second; it self-throttles to 20 m / 400 ms. */
   function update(x, z, now = performance.now()) {
+    if (disposed) return null;
     const moved = Math.hypot(x - lastX, z - lastZ);
     if (moved < 20 && now - lastAt < 400) return null;
     lastX = x; lastZ = z; lastAt = now;
+    for (const id of inFlight.keys()) {
+      if (distanceToCore(tiles.find((t) => t.id === id), x, z) > budgetCfg.dropRadius) dropTile(id);
+    }
     const plan = planTiles({
-      tiles,
+      tiles: tiles.filter((t) => loaded.has(t.id) || (retries.get(t.id) || 0) < 2),
       loaded,
       x,
       z,
@@ -176,5 +216,11 @@ export async function createTileStreamer({
     return plan;
   }
 
-  return { manifest, tiles, update, loadTile, dropTile, status, loaded, budget: budgetCfg };
+  return {
+    manifest, tiles, update, loadTile, dropTile, status, loaded, budget: budgetCfg,
+    dispose() {
+      disposed = true;
+      for (const id of [...inFlight.keys(), ...loaded.keys()]) dropTile(id);
+    }
+  };
 }
