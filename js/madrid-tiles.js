@@ -249,6 +249,7 @@ export const MADRID_FACADE_OPTS = Object.freeze([
     floorHeight: 3.1,
     litProbability: 0.45,
     warmth: 0.95,
+    plaster: true,
     seed: 47.9
   }),
   Object.freeze({ // 3: revoco salmon rosado (acentos del casco antiguo en Tiny-Madrid)
@@ -259,6 +260,7 @@ export const MADRID_FACADE_OPTS = Object.freeze([
     floorHeight: 3.2,
     litProbability: 0.45,
     warmth: 0.95,
+    plaster: true,
     seed: 58.3
   })
 ]);
