@@ -76,6 +76,52 @@ for (const [key, occ] of byKey) {
   }
 }
 
+// Sliver drop: a tiny parcel (< 25 m2) almost fully covered (>= 90% of sampled area) by a
+// bigger parcel (> 3x area) in ANOTHER carrier is a seam-split residue: the straddling source
+// volume is kept whole on the side holding most of it, and the sliver only z-fights with it.
+// Cross-carrier coverage only - intra-module overlaps (annexes) are out of scope.
+const ringArea = (r) => {
+  let a = 0;
+  for (let i = 0, j = r.length - 2; i < r.length; j = i, i += 2) a += r[j] * r[i + 1] - r[i] * r[j + 1];
+  return Math.abs(a / 2);
+};
+const pip = (ring, x, z) => {
+  let inside = false;
+  for (let i = 0, j = ring.length - 2; i < ring.length; j = i, i += 2) {
+    const xi = ring[i], zi = ring[i + 1], xj = ring[j], zj = ring[j + 1];
+    if ((zi > z) !== (zj > z) && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi) inside = !inside;
+  }
+  return inside;
+};
+const bbox = (r) => {
+  const xs = r.filter((_, i) => i % 2 === 0), zs = r.filter((_, i) => i % 2 === 1);
+  return [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)];
+};
+const allParcels = [];
+for (const c of carriers) {
+  const list = c.kind === 'seed' ? c.groups.flat() : c.tile.parcels;
+  for (const p of list) allParcels.push({ carrier: c, parcel: p, bb: bbox(p.ring), area: ringArea(p.ring) });
+}
+let slivers = 0;
+for (const e of allParcels) {
+  if (e.area >= 25) continue;
+  const [x0, z0, x1, z1] = e.bb;
+  const coverers = allParcels.filter((o) => o.carrier !== e.carrier && o.area > 3 * e.area &&
+    o.bb[0] <= x1 && o.bb[2] >= x0 && o.bb[1] <= z1 && o.bb[3] >= z0);
+  if (!coverers.length) continue;
+  let inside = 0, total = 0;
+  for (let x = x0; x <= x1; x += 0.5) for (let z = z0; z <= z1; z += 0.5) {
+    if (!pip(e.parcel.ring, x, z)) continue;
+    total++;
+    if (coverers.some((o) => pip(o.parcel.ring, x, z))) inside++;
+  }
+  if (total && inside / total >= 0.9) {
+    removeFrom(e.carrier, e.parcel.ring.join(','));
+    slivers++;
+    console.log(`  sliver dropped from ${e.carrier.id}: ${e.area.toFixed(1)} m2, ${(100 * inside / total).toFixed(0)}% covered`);
+  }
+}
+
 // Write back, preserving each generated file around the replaced JSON.
 for (const c of carriers) {
   let src = fs.readFileSync(c.file, 'utf8');
@@ -114,7 +160,7 @@ mf.totals = {
   readyKm2: Math.round(ready.reduce((n, t) => n + (t.areaKm2 || 0), 0) * 100) / 100
 };
 fs.writeFileSync(MANIFEST, `${JSON.stringify(mf, null, 1)}\n`);
-console.log(`rebalance: ${deduped} duplicate copies removed, ${moved} parcels moved to their centre's owner`);
+console.log(`rebalance: ${deduped} duplicate copies removed, ${moved} parcels moved to their centre's owner, ${slivers} seam slivers dropped`);
 for (const c of carriers) {
   const n = c.kind === 'seed' ? c.groups.reduce((x, g) => x + g.length, 0) : c.tile.parcels.length;
   console.log(`  ${c.id}: ${n} parcels`);
