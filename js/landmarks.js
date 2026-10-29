@@ -10,7 +10,10 @@ import {
   color,
   uv,
   positionWorld,
-  normalWorldGeometry,
+  normalLocal,
+  modelNormalMatrix,
+  normalize,
+  varying,
   abs,
   fract,
   floor,
@@ -45,6 +48,15 @@ const LANDMARK_TINT_INDEX = new Map(LANDMARK_TINTS.map((tint, i) => [tint, i]));
  * to end the window rows in a solid parapet instead of a sliced top row. One material and one shader
  * compile cover all landmarks; no image textures and no per-building materials.
  */
+// Compute the projection in the vertex stage: view-space normal round-trips can
+// flip the selected axis on diagonal walls when the camera moves.
+const landmarkNormalVertex = normalize(modelNormalMatrix.mul(normalLocal));
+const landmarkWorldNormal = varying(landmarkNormalVertex, 'vLandmarkWorldNormal');
+const landmarkAlongZ = varying(
+  step(abs(landmarkNormalVertex.z).sub(0.0001), abs(landmarkNormalVertex.x)),
+  'vLandmarkAlongZ'
+).setInterpolation(THREE.InterpolationSamplingType.FLAT, THREE.InterpolationSamplingMode.EITHER);
+
 function createLandmarkFacadeMaterial() {
   const mat=new THREE.MeshStandardNodeMaterial({roughness:1,metalness:0,flatShading:true});
   mat.name='LandmarkFacade';
@@ -52,8 +64,8 @@ function createLandmarkFacadeMaterial() {
     const data=uv(),tint=floor(data.x);
     let stone=color(LANDMARK_TINTS[0]);
     for(let i=1;i<LANDMARK_TINTS.length;i++) stone=mix(stone,color(LANDMARK_TINTS[i]),step(i-0.5,tint));
-    const n=abs(normalWorldGeometry),p=positionWorld;
-    const u=mix(p.x,p.z,step(n.z,n.x)).div(3.6);
+    const n=abs(landmarkWorldNormal),p=positionWorld;
+    const u=mix(p.x,p.z,landmarkAlongZ).div(3.6);
     const v=p.y.div(fract(data.x).mul(20).clamp(2.5,8));
     const au=fwidth(u).max(0.001),av=fwidth(v).max(0.001);
     const x=smoothstep(float(0.25).sub(au),float(0.25).add(au),fract(u))
