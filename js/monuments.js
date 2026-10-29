@@ -1,10 +1,74 @@
 import * as THREE from 'three/webgpu';
+import { MADRID_LANDMARK_MASSES } from './madrid-landmark-masses.js';
 
 // js/monuments.js
 // Procedural, stylized-but-recognizable Madrid monuments. The municipal i3s LOD2 model
 // was verified NOT to contain monument structures (MADRID.md, 2026-10-28), so the key
 // landmarks are hand-modelled from public photographic references. Own work, no licensing
 // friction, coherent with the game's look.
+
+// Source parcel massing. Rings are world coordinates, clipped offline to the landmark.
+export function buildSourcedLandmarkBody(name, lm, material) {
+  const data = MADRID_LANDMARK_MASSES[name];
+  if (!data) return null;
+  const group = new THREE.Group();
+  group.name = `SourcedBody:${name}`;
+  const roofMat = new THREE.MeshStandardNodeMaterial({color: 0x9a9386, roughness: 1});
+  const glassMat = new THREE.MeshStandardNodeMaterial({color: 0x739396, roughness: 0.85, metalness: 0});
+  const shape = (part) => {
+    const path = (ring, Type) => {
+      const p = new Type();
+      p.moveTo(ring[0]-lm.cx, -(ring[1]-lm.cz));
+      for(let i=2;i<ring.length;i+=2) p.lineTo(ring[i]-lm.cx, -(ring[i+1]-lm.cz));
+      p.closePath(); return p;
+    };
+    const p=path(part.ring, THREE.Shape);
+    for(const hole of part.holes || []) p.holes.push(path(hole, THREE.Path));
+    return p;
+  };
+  for(const part of data.parts) {
+    const outline=shape(part);
+    const bodyHeight=part.h-(part.roof?.height||0);
+    const body=new THREE.Mesh(new THREE.ExtrudeGeometry(outline,{depth:bodyHeight,bevelEnabled:false}).rotateX(-Math.PI/2),material);
+    body.castShadow=true; body.receiveShadow=true;
+    // Landmark facade batching stores tint/body height in UVs.
+    if(material.userData?.landmarkTint !== undefined) {
+      const uv=body.geometry.attributes.uv;
+      for(let i=0;i<uv.count;i++) uv.setXY(i,material.userData.landmarkTint+(data.facadeStorey||3.55)/20,bodyHeight);
+    }
+    group.add(body);
+    if(part.roof) {
+      const xs=part.ring.filter((_,i)=>i%2===0),zs=part.ring.filter((_,i)=>i%2===1);
+      const x0=Math.min(...xs),x1=Math.max(...xs),z0=Math.min(...zs),z1=Math.max(...zs);
+      const geometry=part.roof.shape==='dome'
+        ? new THREE.SphereGeometry(1,24,12,0,Math.PI*2,0,Math.PI/2)
+        : new THREE.ConeGeometry(1,1,4,1,false,Math.PI/4);
+      const cap=new THREE.Mesh(geometry,new THREE.MeshStandardNodeMaterial({color:0x545e64,roughness:1}));
+      cap.name=`MappedRoofProfile:${part.roof.osmWay}`;
+      cap.position.set((x0+x1)/2-lm.cx,part.roof.shape==='dome'?bodyHeight:bodyHeight+part.roof.height/2,(z0+z1)/2-lm.cz);
+      cap.scale.set((x1-x0)/(part.roof.shape==='dome'?2:Math.SQRT2),part.roof.height,(z1-z0)/(part.roof.shape==='dome'?2:Math.SQRT2));
+      cap.castShadow=cap.receiveShadow=true;group.add(cap);
+    } else {
+      const roof=new THREE.Mesh(new THREE.ShapeGeometry(outline).rotateX(-Math.PI/2).translate(0,part.h+0.025,0),roofMat);
+      roof.receiveShadow=true; group.add(roof);
+    }
+  }
+  for(const part of data.roofParts||[]) {
+    const xs=part.ring.filter((_,i)=>i%2===0),zs=part.ring.filter((_,i)=>i%2===1);
+    const x0=Math.min(...xs),x1=Math.max(...xs),z0=Math.min(...zs),z1=Math.max(...zs);
+    const cx=(x0+x1)/2-lm.cx,cz=(z0+z1)/2-lm.cz,base=part.h-part.roofHeight;
+    const lantern=new THREE.Mesh(new THREE.CylinderGeometry((x1-x0)/2,(x1-x0)/2,base,8),material);
+    lantern.position.set(cx,base/2,cz);group.add(lantern);
+    const cap=new THREE.Mesh(new THREE.ConeGeometry(1,1,8),roofMat);
+    cap.name=`MappedLantern:${part.osmWay}`;cap.position.set(cx,base+part.roofHeight/2,cz);
+    cap.scale.set((x1-x0)/2,part.roofHeight,(z1-z0)/2);cap.castShadow=true;group.add(cap);
+  }
+  for(const part of data.glass) {
+    const roof=new THREE.Mesh(new THREE.ShapeGeometry(shape(part)).rotateX(-Math.PI/2).translate(0,part.h+0.04,0),glassMat);
+    roof.name=`MappedGlassRoof:${part.osmWay}`; group.add(roof);
+  }
+  return group;
+}
 
 // Puerta de Alcalá (Sabater, 1778): 5 openings - 3 semicircular arches (central larger)
 // + 2 linteled outer doors; attic over the central body. Real size ~43.9 m wide (ring
@@ -200,12 +264,9 @@ function buildPalacioDeCibeles(mat, lm) {
     return mesh;
   };
 
-  // Granite plinth, main 5-floor body, recessed upper tier, cornices at both crown lines.
-  g.add(slab(ringShape(1.03), 0, 1.2, plinthMat));
-  g.add(slab(ringShape(1), 0, 28, mat));
-  g.add(slab(ringShape(1.015), 27.1, 0.9, trimMat));   // main cornice
-  g.add(slab(ringShape(0.8), 28, 10, mat));            // recessed upper body
-  g.add(slab(ringShape(0.815), 37.1, 0.9, trimMat));   // upper cornice
+  // Preserve parcel heights, setbacks and mapped roof voids instead of a full-site slab.
+  const sourcedBody=buildSourcedLandmarkBody('Palacio de Cibeles',lm,mat);
+  if(sourcedBody) g.add(sourcedBody);
 
   // --- Window rhythm: dark recessed openings, 5 floors, following the REAL ring
   // wall segment by segment (handles the zigzag/chamfer; windows sit proud of the wall).
@@ -268,6 +329,25 @@ function buildPalacioDeCibeles(mat, lm) {
   const steps = new THREE.Mesh(new THREE.BoxGeometry(10, 1.2, 3), plinthMat);
   steps.position.set(0, 0.6, 1);
   entrance.add(steps);
+  // Simplified central pavilion: portal surround, grouped bays and cornice.
+  // Qualitative reading of the official frontal photograph; detail dimensions illustrative.
+  const surround=new THREE.Shape();
+  surround.moveTo(-4.8,0);surround.lineTo(4.8,0);surround.lineTo(4.8,7);
+  surround.absarc(0,7,4.8,0,Math.PI,false);surround.closePath();
+  const opening=new THREE.Path();opening.moveTo(-3,0);opening.lineTo(-3,7);
+  opening.absarc(0,7,3,Math.PI,0,true);opening.lineTo(3,0);opening.closePath();surround.holes.push(opening);
+  const portal=new THREE.Mesh(new THREE.ExtrudeGeometry(surround,{depth:0.65,bevelEnabled:false}),trimMat);
+  portal.name='CibelesPortalSurround';portal.position.set(0,1.2,0.5);entrance.add(portal);
+  for(const y of [15.5,21,26.5]) for(const x of [-2.5,0,2.5]) {
+    const bay=new THREE.Mesh(new THREE.BoxGeometry(1.1,3.8,0.2),openMat);
+    bay.position.set(x,y,0.65);entrance.add(bay);
+  }
+  for(const y of [12.8,18.3,23.8,29.3]) {
+    const belt=new THREE.Mesh(new THREE.BoxGeometry(11,0.45,1.4),trimMat);
+    belt.position.set(0,y,0.5);entrance.add(belt);
+  }
+  const pavilionCornice=new THREE.Mesh(new THREE.BoxGeometry(13,1.1,2),trimMat);
+  pavilionCornice.position.set(0,31,0.3);entrance.add(pavilionCornice);
   frontage.add(entrance);
 
   // Pentagonal shafts stop BELOW the open gallery: the previous dark cylinder was
@@ -330,9 +410,9 @@ function buildPalacioDeCibeles(mat, lm) {
   const cimbX = 0, cimbZ = 0;
   // The NW tower anchor is outside the recessed upper tier. Start at the main
   // body roof (28 m), so the cimborrio remains attached rather than floating at 38 m.
-  const drum = new THREE.Mesh(new THREE.CylinderGeometry(9, 10, 16, 8), mat);
+  const drum = new THREE.Mesh(new THREE.CylinderGeometry(9, 10, 44, 8), mat);
   drum.name = 'CibelesClockLowerDrum';
-  drum.position.set(cimbX, 36, cimbZ);
+  drum.position.set(cimbX, 22, cimbZ);
   drum.castShadow = true;
   clockTower.add(drum);
   // The official frontal photograph places the clock BELOW the tall upper gallery.
@@ -346,18 +426,18 @@ function buildPalacioDeCibeles(mat, lm) {
   galleryCore.name = 'CibelesClockUpperGallery';
   galleryCore.position.y = 55;
   clockTower.add(galleryCore);
-  for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * Math.PI * 2 + Math.PI / 8;
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2 + Math.PI / 8;
     const col = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 10, 6), trimMat);
     col.name = 'CibelesClockGalleryColumn';
     col.position.set(cimbX + Math.sin(a) * 8.2, 55, cimbZ + Math.cos(a) * 8.2);
     clockTower.add(col);
   }
-  const clockGeo = new THREE.CylinderGeometry(2.6, 2.6, 0.3, 16);
+  const clockGeo = new THREE.CylinderGeometry(1.8, 1.8, 0.3, 16);
   const clockRadius = 8.6 * Math.cos(Math.PI / 8) + 0.16;
   for (let i = 0; i < 4; i++) {
     const a = (i / 4) * Math.PI * 2;
-    const face = new THREE.Mesh(clockGeo, openMat);
+    const face = new THREE.Mesh(clockGeo, trimMat);
     face.name = 'CibelesClockFace';
     // Three.js Euler XYZ transforms the cylinder's +Y axis into (sin(a),0,cos(a)):
     // local Z rotation is applied before X. The dials need the same orientation.
@@ -365,12 +445,17 @@ function buildPalacioDeCibeles(mat, lm) {
     face.rotation.z = -a;
     face.position.set(cimbX + Math.sin(a) * clockRadius, 47, cimbZ + Math.cos(a) * clockRadius);
     clockTower.add(face);
-    const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.34, 8), trimMat);
+    const dial = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.34, 8), openMat);
     dial.name = 'CibelesClockDial';
     dial.rotation.x = Math.PI / 2;
     dial.rotation.z = -a;
     dial.position.set(cimbX + Math.sin(a) * (clockRadius + 0.04), 47, cimbZ + Math.cos(a) * (clockRadius + 0.04));
     clockTower.add(dial);
+    for(const [length,angle] of [[1.25,-0.7],[0.9,0.8]]) {
+      const hand=new THREE.Mesh(new THREE.BoxGeometry(0.09,length,0.05),openMat);
+      hand.position.set(Math.sin(a)*(clockRadius+0.20),47,Math.cos(a)*(clockRadius+0.20));
+      hand.rotation.y=a;hand.rotation.z=angle;clockTower.add(hand);
+    }
   }
   const galleryCornice = new THREE.Mesh(new THREE.CylinderGeometry(8.8, 8.8, 0.8, 8), trimMat);
   galleryCornice.name = 'CibelesClockGalleryCornice';
@@ -419,7 +504,54 @@ function buildPalacioDeCibeles(mat, lm) {
   return g;
 }
 
+// Circular basins from the municipal inventory (32.4m,24m,21m diameter).
+// Sculpture is a low-poly symbol: two lions, four-wheel chariot and seated goddess.
+function buildFuenteDeCibeles(mat, lm) {
+  const group=new THREE.Group(); group.name='FuenteCibeles';
+  const stone=new THREE.MeshStandardNodeMaterial({color:0xc5bdab,roughness:1});
+  const marble=new THREE.MeshStandardNodeMaterial({color:0xe5ded0,roughness:1});
+  const water=new THREE.MeshStandardNodeMaterial({color:0x6e999d,roughness:1,metalness:0});
+  const add=(geometry,material,x,y,z,parent=group)=>{
+    const mesh=new THREE.Mesh(geometry,material);mesh.position.set(x,y,z);
+    mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;
+  };
+  for(const [radius,y] of [[16.2,0.25],[12,0.85],[10.5,1.45]]) {
+    const rim=new THREE.Shape();rim.absarc(0,0,radius,0,Math.PI*2,false);
+    const hole=new THREE.Path();hole.absarc(0,0,radius-0.35,0,Math.PI*2,true);rim.holes.push(hole);
+    const ring=add(new THREE.ExtrudeGeometry(rim,{depth:0.35,bevelEnabled:false,curveSegments:24}).rotateX(-Math.PI/2),stone,0,y,0);
+    ring.name='CibelesBasinRim';
+    const disk=new THREE.CircleGeometry(radius-0.35,48).rotateX(-Math.PI/2);
+    add(disk,water,0,y+0.22,0);
+  }
+  const sculpture=new THREE.Group();sculpture.name='CibelesChariotAndLions';
+  // Municipal account: the goddess faces Puerta del Sol.
+  sculpture.rotation.y=Math.atan2(-lm.cx,-lm.cz);group.add(sculpture);
+  const box=(w,h,d,x,y,z)=>add(new THREE.BoxGeometry(w,h,d),marble,x,y,z,sculpture);
+  box(4.7,0.6,12.5,0,2.1,0);
+  box(3.4,1.3,4.2,0,3,-2.6);
+  for(const x of [-1.9,1.9]) for(const z of [-4,-0.9]) {
+    const wheel=add(new THREE.CylinderGeometry(z< -2?1.1:0.85,z< -2?1.1:0.85,0.28,12),stone,x,2.8,z,sculpture);
+    wheel.rotation.z=Math.PI/2;
+  }
+  box(1.8,2.3,0.5,0,4.5,-4); // throne
+  const figure=new THREE.Group();figure.name='CibelesSeatedGoddess';sculpture.add(figure);
+  add(new THREE.ConeGeometry(0.85,2.5,8),marble,0,4.4,-2.8,figure);
+  add(new THREE.CylinderGeometry(0.58,0.75,1.1,8),marble,0,5.45,-2.8,figure);
+  add(new THREE.IcosahedronGeometry(0.46,1),marble,0,6.45,-2.8,figure);
+  add(new THREE.CylinderGeometry(0.5,0.5,0.35,8),stone,0,6.95,-2.8,figure);
+  for(const x of [-1.45,1.45]) {
+    const lion=new THREE.Group();lion.name='CibelesLion';lion.position.x=x;sculpture.add(lion);
+    const body=add(new THREE.IcosahedronGeometry(1,1),marble,0,3.1,2.9,lion);body.scale.set(0.7,0.75,1.65);
+    add(new THREE.IcosahedronGeometry(0.8,1),stone,0,3.75,4.2,lion);
+    add(new THREE.IcosahedronGeometry(0.55,1),marble,0,3.8,4.65,lion);
+    for(const lx of [-0.4,0.4]) for(const z of [1.8,3.8]) add(new THREE.CylinderGeometry(0.18,0.23,1.1,6),marble,lx,2.55,z,lion);
+  }
+  for(const x of [-6,6]) add(new THREE.ConeGeometry(0.24,6.4,8),water,x,4.8,0);
+  return group;
+}
+
 const PROCEDURAL = {
+  'Fuente de Cibeles': buildFuenteDeCibeles,
   'Puerta de Alcalá': buildPuertaDeAlcala,
   'Palacio de Cibeles': buildPalacioDeCibeles,
 };

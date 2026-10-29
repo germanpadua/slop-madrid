@@ -1,7 +1,7 @@
 import * as THREE from 'three/webgpu';
 import { LANDMARK_SITES } from './city-config.js';
 import { MADRID_LANDMARK_STYLES } from './madrid-tiles.js';
-import { buildProceduralMonument, buildProceduralColliders } from './monuments.js';
+import { buildProceduralMonument, buildProceduralColliders, buildSourcedLandmarkBody } from './monuments.js';
 import { batchStaticGroupMeshes } from './city-grid.js';
 import {
   Fn,
@@ -41,83 +41,29 @@ const LANDMARK_TINT_INDEX = new Map(LANDMARK_TINTS.map((tint, i) => [tint, i]));
  * axis, y for storeys), so batchStaticGroupMeshes() can still merge every body into a single draw.
  *
  * Per-landmark data rides in the geometry UVs, which are the only extra attribute batching keeps:
- * uv.x = stone tint index + 0.5 (floor() recovers the style) and uv.y = body height in metres, used
+ * uv.x = stone tint index + storey spacing / 20 (floor() recovers the style); uv.y = body height, used
  * to end the window rows in a solid parapet instead of a sliced top row. One material and one shader
  * compile cover all landmarks; no image textures and no per-building materials.
  */
 function createLandmarkFacadeMaterial() {
-  const mat = new THREE.MeshStandardNodeMaterial({ roughness: 0.8, metalness: 0.03 });
-  mat.name = 'LandmarkFacade';
-  const cGlass = color(0x1a2329);
-  const cGlassWarm = color(0x33424a);
-  const cTrim = color(0xefe7d6);
-  const BAY = 2.7; // m: grand civic bays (~1.6 m opening)
-  const STOREY = 3.55; // m: Madrid floor-to-floor
-
-  mat.colorNode = Fn(() => {
-    const uv0 = uv();
-    const tintIdx = floor(uv0.x);
-    let stone = color(LANDMARK_TINTS[0]);
-    for (let i = 1; i < LANDMARK_TINTS.length; i++) {
-      stone = mix(stone, color(LANDMARK_TINTS[i]), step(i - 0.5, tintIdx));
-    }
-
-    const p = positionWorld;
-    const n = abs(normalWorldGeometry);
-    const wall = float(1.0).sub(step(0.75, n.y)); // vertical faces only; the roof cap keeps stone
-    // Window bays run along whichever horizontal world axis the wall faces. Extrusion walls are flat,
-    // so the choice is constant per face (the same convention facadeCell() uses for world-space walls).
-    const alongZ = step(n.z, n.x);
-    const u = mix(p.x, p.z, alongZ);
-    const gu = u.div(BAY);
-    const gv = p.y.div(STOREY);
-    const cu = fract(gu);
-    const cv = fract(gv);
-    const aaU = fwidth(gu).max(0.001).mul(0.75);
-    const aaV = fwidth(gv).max(0.001).mul(0.75);
-
-    // Punched window opening [0.22, 0.78] x [0.32, 0.84] of its bay, with a stone frame (8-10 cm)
-    // and a sill. The fwidth ramps are the anti-aliasing: grids settle to their mean coverage when a
-    // bay shrinks below a pixel, so distant landmarks do not shimmer as the camera moves.
-    const inX = smoothstep(float(0.22).sub(aaU), float(0.22).add(aaU), cu)
-      .mul(smoothstep(float(0.78).add(aaU), float(0.78).sub(aaU), cu));
-    const inY = smoothstep(float(0.32).sub(aaV), float(0.32).add(aaV), cv)
-      .mul(smoothstep(float(0.84).add(aaV), float(0.84).sub(aaV), cv));
-    const glassX = smoothstep(float(0.255).sub(aaU), float(0.255).add(aaU), cu)
-      .mul(smoothstep(float(0.745).add(aaU), float(0.745).sub(aaU), cu));
-    const glassY = smoothstep(float(0.355).sub(aaV), float(0.355).add(aaV), cv)
-      .mul(smoothstep(float(0.805).add(aaV), float(0.805).sub(aaV), cv));
-
-    // Solid parapet in the last 0.75 m: the body height comes from uv.y, so a landmark whose height is
-    // not a whole number of storeys never ends in a sliced window row.
-    const fromTop = uv0.y.sub(p.y);
-    const topSolid = smoothstep(0.15, 0.75, fromTop);
-    const opening = inX.mul(inY).mul(wall).mul(topSolid);
-    const glass = glassX.mul(glassY).mul(wall).mul(topSolid);
-    const frame = opening.sub(glass).max(0.0);
-    const sill = inX.mul(smoothstep(0.245, 0.26, cv)).mul(smoothstep(0.315, 0.30, cv)).mul(wall).mul(topSolid);
-
-    // Storey joints: a thin recessed line every floor, a stronger string course every 4 floors and a
-    // granite plinth on the ground floor (flat Madrid palette, no image textures).
-    const floorLine = smoothstep(0.055, 0.0, cv).mul(wall);
-    const belt = smoothstep(0.035, 0.0, fract(gv.div(4.0))).mul(wall);
-    const zocalo = float(1.0).sub(smoothstep(1.1, 1.7, p.y));
-    const plinth = mix(float(1.0), float(0.74), zocalo);
-    const rnd = fract(sin(dot(vec2(floor(gu), floor(gv)), vec2(12.9898, 78.233))).mul(43758.5453));
-    const glassCol = mix(cGlass, cGlassWarm, rnd.mul(0.55));
-    const trim = mix(stone, cTrim, 0.45);
-
-    let col = stone.mul(plinth)
-      .mul(float(1.0).sub(floorLine.mul(0.32)))
-      .mul(float(1.0).sub(belt.mul(0.28)));
-    col = mix(col, trim, frame);
-    col = mix(col, trim, sill.mul(0.9));
-    col = mix(col, glassCol, glass);
-    const cornice = smoothstep(0.55, 0.70, fromTop).mul(smoothstep(1.10, 0.90, fromTop)).mul(wall);
-    col = mix(col, trim, cornice);
-    return col;
+  const mat=new THREE.MeshStandardNodeMaterial({roughness:1,metalness:0,flatShading:true});
+  mat.name='LandmarkFacade';
+  mat.colorNode=Fn(()=>{
+    const data=uv(),tint=floor(data.x);
+    let stone=color(LANDMARK_TINTS[0]);
+    for(let i=1;i<LANDMARK_TINTS.length;i++) stone=mix(stone,color(LANDMARK_TINTS[i]),step(i-0.5,tint));
+    const n=abs(normalWorldGeometry),p=positionWorld;
+    const u=mix(p.x,p.z,step(n.z,n.x)).div(3.6);
+    const v=p.y.div(fract(data.x).mul(20).clamp(2.5,8));
+    const au=fwidth(u).max(0.001),av=fwidth(v).max(0.001);
+    const x=smoothstep(float(0.25).sub(au),float(0.25).add(au),fract(u))
+      .mul(float(1).sub(smoothstep(float(0.75).sub(au),float(0.75).add(au),fract(u))));
+    const y=smoothstep(float(0.30).sub(av),float(0.30).add(av),fract(v))
+      .mul(float(1).sub(smoothstep(float(0.82).sub(av),float(0.82).add(av),fract(v))));
+    const wall=float(1).sub(step(0.75,n.y));
+    const opening=x.mul(y).mul(wall).mul(step(0.8,data.y.sub(p.y)));
+    return mix(stone,color(0x35454b),opening);
   })();
-
   return mat;
 }
 
@@ -155,7 +101,12 @@ function buildLandmarks(scene) {
       if (!bodyMats.has(key)) bodyMats.set(key, new THREE.MeshStandardNodeMaterial({ color: spec.color, roughness: spec.roughness, metalness: 0.05 }));
       return bodyMats.get(key);
     };
+    // Canonical aliases (for example Estación de Príncipe Pío) share the same
+    // source ring as their OSM name. Rendering both creates coplanar duplicate meshes.
+    const aliasOriginals=new Set(Object.values(LANDMARK_SITES).filter(lm=>lm.osmName &&
+      LANDMARK_SITES[lm.osmName] && JSON.stringify(lm.ring)===JSON.stringify(LANDMARK_SITES[lm.osmName].ring)).map(lm=>lm.osmName));
     for (const [name, lm] of Object.entries(LANDMARK_SITES)) {
+      if(aliasOriginals.has(name)) continue;
       if (!lm.ring || lm.ring.length < 6 || lm.w < 12) continue; // points & slivers stay out (map/teleports still use them)
       // The legacy Cibeles rectangle is a union of named ROAD bounds, not a pedestrian area.
       // Keep the location for maps/teleports; only explicit surface provenance may restore paving.
@@ -166,6 +117,10 @@ function buildLandmarks(scene) {
       // box is Torre de Madrid (142 m)
       const H = Math.max(9, Math.min(lm.h || 0, 160) || (lm.w > 80 ? 24 : 14));
       const g = new THREE.Group();
+      if (name === 'Fuente de Cibeles') {
+        const fountain=buildProceduralMonument(name,matFor(name),lm);
+        if(fountain) {g.add(fountain);g.position.set(lm.cx,0,lm.cz);group.add(g);continue;}
+      }
       if (OPEN_SPACE.test(name) || FLAT_FEATURE.test(name)) {
         const n = lm.ring.length / 2;
         const shape = new THREE.Shape();
@@ -191,6 +146,14 @@ function buildLandmarks(scene) {
         else colliders.push({ minX: lm.cx - lm.w / 2, maxX: lm.cx + lm.w / 2, minZ: lm.cz - lm.d / 2, maxZ: lm.cz + lm.d / 2, maxY: H });
         continue;
       }
+      // Use clipped source volumes where available; the former hull erased patios and tiers.
+      facadeMat.userData.landmarkTint = LANDMARK_TINT_INDEX.get(styleFor(name).color) ?? 0;
+      const sourced=buildSourcedLandmarkBody(name,lm,facadeMat);
+      if(sourced) {
+        g.add(sourced); g.position.set(lm.cx,0,lm.cz); group.add(g);
+        colliders.push({minX:lm.cx-lm.w/2,maxX:lm.cx+lm.w/2,minZ:lm.cz-lm.d/2,maxZ:lm.cz+lm.d/2,maxY:H});
+        continue;
+      }
       const n = lm.ring.length / 2;
       const shape = new THREE.Shape();
       shape.moveTo(lm.ring[0] - lm.cx, -(lm.ring[1] - lm.cz));
@@ -203,7 +166,7 @@ function buildLandmarks(scene) {
       if (bodyMat === facadeMat) {
         const tint = LANDMARK_TINT_INDEX.get(styleFor(name).color) ?? 0;
         const uvAttr = geo.attributes.uv;
-        for (let i = 0; i < uvAttr.count; i++) uvAttr.setXY(i, tint + 0.5, H);
+        for (let i = 0; i < uvAttr.count; i++) uvAttr.setXY(i, tint + 3.55 / 20, H);
       }
       const body = new THREE.Mesh(geo, bodyMat);
       body.rotation.x = -Math.PI / 2; // extrude runs along +z; rotate the footprint to the ground plane

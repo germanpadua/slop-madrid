@@ -19,13 +19,15 @@ test('flat fountain and plaza footprints do not retain invisible raised collisio
     THREE: { Group, Shape, ShapeGeometry: Geometry, Mesh, MeshStandardNodeMaterial: class {} },
     LANDMARK_SITES: { 'Fuente de Cibeles': footprint, 'Plaza de prueba': footprint,
       'Plaza de la Cibeles': footprint,
-      'Plaza solo localización': { ...footprint, renderSurface: false } },
+      'Plaza solo localización': { ...footprint, renderSurface: false },
+      'Plaza original': footprint, 'Plaza canónica': { ...footprint, osmName: 'Plaza original' } },
     MADRID_LANDMARK_STYLES: [], DEFAULT_LANDMARK_BODY: {},
+    buildProceduralMonument: () => null,
     createLandmarkFacadeMaterial: () => ({}), batchStaticGroupMeshes() {}
   });
   const scene = new Group();
   const result = buildLandmarks(scene);
-  assert.equal(result.group.children.length, 2, 'real surfaces render, named-road bounds and location-only extents do not');
+  assert.equal(result.group.children.length, 3, 'real surfaces render once per alias; bounds and location-only extents do not');
   assert.equal(result.colliders.length, 0, 'pavement has no nine metre obstacle');
   assert.equal(scene.children[0], result.group);
 });

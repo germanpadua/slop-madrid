@@ -1,4 +1,5 @@
 import { GEO } from './madrid-geodata.js';
+import { MADRID_LANDMARK_SITES } from './madrid-landmark-masses.js';
 
 // js/city-config.js
 // Madrid centro spatial configuration & street database at true 1:1 scale, derived from the real geography in
@@ -389,7 +390,7 @@ for (const b of BLOCKS) b.district = districtAt(b.cx, b.cz);
 // ---------------------------------------------------------------------------------------------------------------------
 // Landmarks (real footprints from OpenStreetMap, heights from IDEAM where available)
 // ---------------------------------------------------------------------------------------------------------------------
-const LANDMARK_SITES = GEO.landmarks;
+const LANDMARK_SITES = Object.fromEntries(Object.entries(GEO.landmarks).map(([name,lm]) => [name,{...lm,...(MADRID_LANDMARK_SITES[name] || {})}]));
 // Plaza centres from the real square outlines, with fixed fallbacks
 const plazaC = (name, fb) => {
   const p = (GEO.plazasMadrid || []).find((q) => q.name === name);

@@ -7,7 +7,7 @@ const { loadModule } = require('./helpers/module.cjs');
 // Geometry records allow spatial assertions without a renderer or external Three.js install.
 class Vector { constructor() { this.set(0, 0, 0); } set(x, y, z) { Object.assign(this, { x, y, z }); return this; } }
 class Group {
-  constructor() { this.children = []; this.position = new Vector(); this.rotation = new Vector(); }
+  constructor() { this.children = []; this.position = new Vector(); this.rotation = new Vector(); this.scale = new Vector(); }
   add(child) { this.children.push(child); }
 }
 class Mesh extends Group { constructor(geometry, material) { super(); Object.assign(this, { geometry, material }); } }
@@ -15,21 +15,26 @@ class Shape {
   constructor() { this.points = []; this.holes = []; }
   moveTo(x, y) { this.points.push([x, y]); }
   lineTo(x, y) { this.points.push([x, y]); }
-  absarc() {} closePath() {}
+  absarc(...args) { this.arcs ||= []; this.arcs.push(args); } closePath() {}
 }
 class Geometry {
   constructor(...parameters) { this.parameters = parameters; }
   rotateX(angle) { this.rotate = angle; return this; }
   translate(x, y, z) { this.translation = { x, y, z }; return this; }
 }
+class SphereGeometry extends Geometry {}
+class CircleGeometry extends Geometry {}
+class IcosahedronGeometry extends Geometry {}
+class ShapeGeometry extends Geometry {}
+class Path extends Shape {}
 class CylinderGeometry extends Geometry {}
 class ConeGeometry extends Geometry {}
 class BoxGeometry extends Geometry {}
 class ExtrudeGeometry extends Geometry {}
-const THREE = { Group, Mesh, Shape, CylinderGeometry, ConeGeometry, BoxGeometry, ExtrudeGeometry,
-  MeshStandardNodeMaterial: class { constructor(options) { this.options = options; } } };
-const { buildProceduralMonument, buildProceduralColliders } = loadModule(
-  readFileSync(join(__dirname, '../js/monuments.js'), 'utf8'), { imports: { 'three/webgpu': THREE } }
+const THREE = { Group, Mesh, Shape, Path, ShapeGeometry, CircleGeometry, IcosahedronGeometry, SphereGeometry, CylinderGeometry, ConeGeometry, BoxGeometry, ExtrudeGeometry,
+  MeshStandardNodeMaterial: class { constructor(options) { this.options = options; this.userData={}; } } };
+const { buildProceduralMonument, buildProceduralColliders, buildSourcedLandmarkBody } = loadModule(
+  readFileSync(join(__dirname, '../js/monuments.js'), 'utf8'), { imports: { 'three/webgpu': THREE, './madrid-landmark-masses.js': require('./helpers/module.cjs').loadModule(readFileSync(join(__dirname, '../js/madrid-landmark-masses.js'), 'utf8')) } }
 );
 const source = readFileSync(join(__dirname, '../js/madrid-geodata.js'), 'utf8');
 const lm = JSON.parse(source.match(/export const GEO = (.*);/)[1]).landmarks['Palacio de Cibeles'];
@@ -79,13 +84,13 @@ test('Cibeles tower galleries remain exposed above their shafts, with narrow vis
   }
 });
 
-test('Cibeles keeps its source footprint and reaches the documented 70 m with pinnacles, not cone roofs', () => {
+test('Cibeles uses source parcel volumes and reaches the documented 70 m with pinnacles, not cone roofs', () => {
   const root = build(), objects = all(root);
-  const body = objects.find((o) => o.geometry instanceof ExtrudeGeometry && o.geometry.parameters[1].depth === 28);
-  assert.ok(body);
-  const points = body.geometry.parameters[0].points;
-  assert.equal(points.length, lm.ring.length / 2);
-  points.forEach(([x, y], i) => { close(x + lm.cx, lm.ring[i * 2]); close(-y + lm.cz, lm.ring[i * 2 + 1]); });
+  const body=objects.find(o=>o.name==='SourcedBody:Palacio de Cibeles');
+  assert.ok(body,'real parcel massing replaces uniform footprint extrusion');
+  const volumes=body.children.filter(o=>o.geometry instanceof ExtrudeGeometry);
+  assert.ok(volumes.length>40,'source volume articulation retained');
+  assert.ok(new Set(volumes.map(o=>o.geometry.parameters[1].depth)).size>10,'multiple source heights retained');
   const clock = objects.find((o) => o.name === 'CibelesClockTower');
   const pinnacles = clock.children.filter((o) => o.name === 'CibelesClockPinnacle');
   assert.equal(pinnacles.length, 8);
@@ -101,9 +106,7 @@ test('Cibeles clock faces sit below the tall upper gallery and point radially ou
   const stage = tower.children.find((o) => o.name === 'CibelesClockStage');
   const gallery = tower.children.find((o) => o.name === 'CibelesClockUpperGallery');
   const drum = tower.children.find((o) => o.name === 'CibelesClockLowerDrum');
-  const body = all(root).find((o) => o.geometry instanceof ExtrudeGeometry && o.geometry.parameters[1].depth === 28);
-  const bodyRoof = body.geometry.translation.y + body.geometry.parameters[1].depth;
-  close(drum.position.y - drum.geometry.parameters[2] / 2, bodyRoof);
+  close(drum.position.y - drum.geometry.parameters[2] / 2, 0);
   close(drum.position.y + drum.geometry.parameters[2] / 2, stage.position.y - stage.geometry.parameters[2] / 2);
   const galleryBottom = gallery.position.y - gallery.geometry.parameters[2] / 2;
   assert.ok(stage.position.y + stage.geometry.parameters[2] / 2 <= galleryBottom);
@@ -126,4 +129,35 @@ test('Cibeles clock faces sit below the tall upper gallery and point radially ou
     close(normal[1], 0);
     close(normal[2], disk.position.z / radial);
   }
+});
+
+
+test('Cibeles fountain restores three documented basins and a two-lion chariot oriented to Sol',()=>{
+ const site={cx:910,cz:-276.8};
+ const fountain=buildProceduralMonument('Fuente de Cibeles',{},site);
+ const objects=all(fountain);
+ const rims=objects.filter(o=>o.name==='CibelesBasinRim');
+ assert.equal(rims.length,3);
+ rims.forEach((rim,i)=>close(rim.geometry.parameters[0].arcs[0][2]*2,[32.4,24,21][i]));
+ assert.equal(objects.filter(o=>o.name==='CibelesLion').length,2);
+ const chariot=objects.find(o=>o.name==='CibelesChariotAndLions');
+ assert.ok(Math.sin(chariot.rotation.y)<0,'sculpture faces west toward Sol');
+ assert.ok(objects.some(o=>o.name==='CibelesSeatedGoddess'));
+});
+
+test('Cibeles decorative anchors use the same audited footprint as the runtime registry',async()=>{
+ const {LANDMARK_SITES}=await import('../js/city-config.js');
+ assert.deepEqual(Array.from(LANDMARK_SITES['Palacio de Cibeles'].ring),lm.ring);
+});
+
+
+test('Almudena dome and lantern use mapped profiles with source heights',async()=>{
+ const {LANDMARK_SITES}=await import('../js/city-config.js');
+ const body=buildSourcedLandmarkBody('Catedral de la Almudena',LANDMARK_SITES['Catedral de la Almudena'],{userData:{}});
+ const dome=body.children.find(o=>o.name==='MappedRoofProfile:337694417');
+ assert.ok(dome.geometry instanceof SphereGeometry,'dome is curved rather than an extruded roof box');
+ close(dome.position.y+dome.scale.y,65.4);
+ const lantern=body.children.find(o=>o.name==='MappedLantern:337694416');
+ assert.ok(lantern);close(lantern.position.y+lantern.scale.y/2,73);
+ assert.equal(LANDMARK_SITES['Catedral de la Almudena'].h,73);
 });

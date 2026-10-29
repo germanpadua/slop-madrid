@@ -16,6 +16,8 @@ import osmium
 TARGETS = {
     'Banco de España': {'relation': 2614014, 'outer': 4487661},
     'Palacio de Cibeles': {'outer': 16322055},
+    'Palacio Real': {'relation': 30399, 'outer': 101817021},
+    'Catedral de la Almudena': {'relation': 75658, 'outer': 101817016},
 }
 
 
