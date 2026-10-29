@@ -87,10 +87,11 @@ const out = await page.evaluate(async ({ place, gridN, waitMs, ndcPoint, shotPat
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   const shot = shotPath ? document.querySelector('canvas').toDataURL('image/jpeg', 0.72) : null;
   const cameraPos = camera.getWorldPosition(new THREE.Vector3());
-  return { place, target, mode, entity: entityPos, camera: { x: +cameraPos.x.toFixed(1), y: +cameraPos.y.toFixed(1), z: +cameraPos.z.toFixed(1) }, occluders, shot };
+  return { place, target, mode, entity: entityPos, camera: { x: +cameraPos.x.toFixed(1), y: +cameraPos.y.toFixed(1), z: +cameraPos.z.toFixed(1) }, occluders, shot,
+    roadPaintStats: api.roadPaintStats || null, roadStats: api.roadStats ? { routingNodes: api.roadStats.routingNodes, routingEdges: api.roadStats.routingEdges } : null };
 }, { place, gridN, waitMs, ndcPoint, shotPath });
 if (jsonOut) fs.writeFileSync(path.resolve(ROOT, jsonOut), JSON.stringify({ ...out, shot: undefined }, null, 2));
 if (shotPath && out.shot) fs.writeFileSync(path.resolve(ROOT, shotPath), Buffer.from(out.shot.split(',')[1], 'base64'));
-console.log(JSON.stringify({ place: out.place, target: out.target, mode: out.mode, entity: out.entity, camera: out.camera, hits: out.occluders.length, jsonOut, shotPath }));
+console.log(JSON.stringify({ place: out.place, target: out.target, mode: out.mode, entity: out.entity, camera: out.camera, hits: out.occluders.length, jsonOut, shotPath, roadPaintStats: out.roadPaintStats }));
 await browser.close();
 server.close();

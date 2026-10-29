@@ -10,7 +10,7 @@ import { buildLandmarks } from './landmarks.js';
 import { buildCityBlocks } from './buildings.js';
 import { buildStreetDetails } from './street-details.js';
 import { createTrafficSystem, createHighwayTraffic } from './traffic.js';
-import { buildRoadPaint } from './road-paint.js';
+import { buildRoadPaint, createRoadPaint } from './road-paint.js';
 import { ThirdPersonControllerManager } from './controllers.js';
 import { TouchControls } from './touch-controls.js';
 import { GamepadControls } from './gamepad-controls.js';
@@ -118,6 +118,10 @@ async function initApp() {
   markInit('traffic');
   const highwayTraffic = createHighwayTraffic(scene, cityGrid.highwayLanes);
   buildRoadPaint(scene, trafficSystem.network);
+  // The boot markings come from the legacy seed network; the resident painter adopts that mesh and swaps
+  // only its geometry whenever the resident circulation graph changes (one material, no extra groups).
+  const roadPaint = createRoadPaint(scene);
+  let roadPaintStats = null;
   markInit('roadPaint');
 
   // 4. Initialize Third-Person Controllers (Person, Car, Cyclist, Helicopter) & Multi-Camera System
@@ -186,6 +190,7 @@ async function initApp() {
   const tilePreparer = createTilePreparer({ distanceGeometry: bootParams.get('detail') === 'geometry' });
   window.addEventListener('pagehide', (event) => { if (!event.persisted) tilePreparer.dispose(); });
   window.addEventListener('pagehide', (event) => { if (!event.persisted) roadService?.dispose(); });
+  window.addEventListener('pagehide', (event) => { if (!event.persisted) roadPaint.dispose(); });
   try {
     tileStreamer = await createTileStreamer({
       world: tileWorld,
@@ -210,7 +215,17 @@ async function initApp() {
       onNetwork: (network, blockAt, stats) => {
         trafficSystem.setNetwork(network, blockAt);
         roadStats = stats;
-        if (window.__madrid) window.__madrid.roadStats = stats;
+        // Markings follow the live graph: same lanes the cars use, and on a tile swap the old geometry is
+        // disposed while the material (and its compiled pipeline) is reused.
+        const tPaint = performance.now();
+        roadPaint.rebuild(network);
+        const mesh = roadPaint.mesh;
+        roadPaintStats = {
+          rebuildMs: +(performance.now() - tPaint).toFixed(1),
+          vertices: mesh ? mesh.geometry.attributes.position.count : 0,
+          triangles: mesh ? mesh.geometry.index.count / 3 : 0
+        };
+        if (window.__madrid) { window.__madrid.roadStats = stats; window.__madrid.roadPaintStats = roadPaintStats; }
       },
       onError: (error) => console.warn('[madrid-roads] resident network unavailable:', error.message)
     });
@@ -223,7 +238,7 @@ async function initApp() {
   // stats and the controller from the page. Nothing is exposed on a normal visit.
   if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug')) {
     window.__madrid = { renderer, scene, tileStreamer, tileWorld, controllerManager, cameraSystem, trafficSystem,
-      roadService, roadStats, cityGrid, streetDetails };
+      roadService, roadStats, roadPaint, roadPaintStats, cityGrid, streetDetails };
   }
 
   const touchControls = new TouchControls(controllerManager);

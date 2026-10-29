@@ -6,13 +6,49 @@ import { createRoadPaintMaterial } from './tsl-materials.js';
 // Road markings generated from the drivable road network (js/road-network.js), so the paint matches where traffic
 // actually drives and stops: dashed lane lines, double yellow centre lines on two-way roads, stop bars at the stop
 // lines, continental crosswalks across every intersection approach and green bike lanes along wide one-way avenues.
+//
+// The resident network (js/madrid-road-network.js) is swapped every time a tile loads or unloads, so the markings
+// have to follow it. `createRoadPaint(scene)` owns one group/mesh/material and `rebuild(network)` replaces its
+// geometry in place: previous geometry is disposed, the material is reused (no shader recompile) and no second
+// group is ever added to the scene. `buildRoadPaint(scene, network)` keeps the original one-shot contract for
+// js/main.js and is adopted by the controller if it already ran.
 
 const WHITE = new THREE.Color(0xe6e2d6);
 const YELLOW = new THREE.Color(0xe8ad22);
 const GREEN = new THREE.Color(0x2a8a4e);
 const HEIGHT = 0.012; // above the asphalt
 
-function buildRoadPaint(scene, network) {
+// The worker-decoded resident network carries `paintEdges: []` (decodeRoadNetwork), and an empty array is
+// truthy: prefer paintEdges only when it actually has edges, otherwise fall back to the routing edges.
+function paintSource(network) {
+  if (!network) return [];
+  const edges = network.paintEdges && network.paintEdges.length ? network.paintEdges : network.edges;
+  return Array.isArray(edges) ? edges : [];
+}
+
+// Builder nodes carry the `shape` flag (a centreline bend, not an intersection); worker-decoded nodes drop it.
+// Reconstruct it from the two lead arms exactly like buildRoadNetwork does, so resident bends suppress their
+// crosswalks and join their dashes instead of painting an intersection that is not there.
+function isShape(node) {
+  if (!node) return false;
+  if (node.shape !== undefined) return !!node.shape;
+  if (!node.general || !Array.isArray(node.arms) || node.arms.length < 2) return false;
+  const leads = node.arms.filter((a) => !a || a.lead === undefined || a.lead === a);
+  if (leads.length !== 2 || !leads[0] || !leads[1]) return false;
+  // Same fork test as buildRoadNetwork: a road splitting in two live arms within 20° is an intersection, not a bend.
+  const live = (a) => !!((a.in && a.in.live) || (a.out && a.out.live));
+  if (leads.some((lead) => node.arms.filter((a) => a.lead === lead && live(a)).length > 1)) return false;
+  return leads[0].ux * leads[1].ux + leads[0].uz * leads[1].uz < -0.82;
+}
+
+// Tolerate a partially populated network (the worker answer may race a tile eviction): an edge that cannot describe
+// a strip is skipped instead of throwing and leaving the street unmarked.
+function usableEdge(e) {
+  return !!e && !!e.from && !!e.to && Array.isArray(e.lanes) && e.lanes.length > 0 &&
+    Number.isFinite(e.dx) && Number.isFinite(e.dz) && Number.isFinite(e.len) && Number.isFinite(e.half);
+}
+
+function buildPaintMesh(network, material) {
   const position = [];
   const side = [];
   const paint = [];
@@ -42,12 +78,12 @@ function buildRoadPaint(scene, network) {
   const at = (e, s, o) => [e.sx + e.dx * s + e.rx * o, e.sz + e.dz * s + e.rz * o];
   const along = (e, o, w, col, period = 1, duty = 1) => {
     const start = (e.sx - e.x0) * e.dx + (e.sz - e.z0) * e.dz;
-    const ends = [at(e, e.from.shape ? -start : 0.9, o), at(e, e.to.shape ? e.span - start : e.len - 0.9, o)];
+    const ends = [at(e, isShape(e.from) ? -start : 0.9, o), at(e, isShape(e.to) ? e.span - start : e.len - 0.9, o)];
     lines.push({ e, o, w, col, period, duty, ends, joins: [] });
   };
   const across = (e, s, o0, o1, w, col, period, duty) => strip(...at(e, s, o0), ...at(e, s, o1), w, col, period, duty);
   const clearCentre = (e, o) => {
-    if (!network.isRoadClear) return false;
+    if (!network || !network.isRoadClear) return false;
     const steps = Math.max(1, Math.ceil((e.len - 1.8) / 2.5));
     for (let i = 0; i <= steps; i++) {
       const s = 0.9 + (e.len - 1.8) * i / steps;
@@ -58,13 +94,18 @@ function buildRoadPaint(scene, network) {
 
   // The one or two directed edges of each road between a pair of intersections
   const roads = new Map();
-  for (const e of network.paintEdges || network.edges) {
+  for (const e of paintSource(network)) {
+    if (!usableEdge(e)) continue;
     const key = Math.min(e.from.id, e.to.id) * 65536 + Math.max(e.from.id, e.to.id);
     if (roads.has(key)) roads.get(key).push(e);
     else roads.set(key, [e]);
   }
 
-  for (const [e, back] of roads.values()) {
+  for (const group of roads.values()) {
+    const e = group[0];
+    // Pair the road with its oncoming edge when the network says which one it is; otherwise keep the old
+    // "second edge of the pair" fallback.
+    const back = group.find((c) => c !== e && c.from === e.to && c.to === e.from) || group[1] || null;
     const firstLine = lines.length;
     // Lanes of both directions, measured to the right of e, left to right
     const lanes = e.lanes.map((o) => ({ o, dir: 1 }));
@@ -100,17 +141,17 @@ function buildRoadPaint(scene, network) {
     // Stop bars across the lanes arriving at each stop line, from the centre line (or median) to the curb (none where a
     // street merely bends: a shape node of the centreline streets)
     for (const f of back ? [e, back] : [e]) {
-      if (f.to.shape) continue;
+      if (isShape(f.to)) continue;
       const left = back ? Math.max(0, f.lanes[0] - 1.8) : -f.half;
       across(f, f.len - 0.35, left + 0.1, f.half - 0.1, 0.45, WHITE);
     }
 
     // Continental crosswalks curb to curb, between the stop lines and the intersections at both ends
-    if (!e.from.shape) across(e, -CROSSWALK / 2, -e.half, e.half, CROSSWALK - 0.3, WHITE, 1.2, 0.5);
-    if (!e.to.shape) across(e, e.len + CROSSWALK / 2, -e.half, e.half, CROSSWALK - 0.3, WHITE, 1.2, 0.5);
+    if (!isShape(e.from)) across(e, -CROSSWALK / 2, -e.half, e.half, CROSSWALK - 0.3, WHITE, 1.2, 0.5);
+    if (!isShape(e.to)) across(e, e.len + CROSSWALK / 2, -e.half, e.half, CROSSWALK - 0.3, WHITE, 1.2, 0.5);
 
     for (const [end, node] of [[0, e.from], [1, e.to]]) {
-      if (!node.shape) continue;
+      if (!isShape(node)) continue;
       if (!bends.has(node.id)) bends.set(node.id, []);
       bends.get(node.id).push({ e, end, lines: lines.slice(firstLine) });
     }
@@ -195,12 +236,107 @@ function buildRoadPaint(scene, network) {
   geometry.setAttribute('paint', new THREE.Float32BufferAttribute(paint, 3));
   geometry.setIndex(index);
 
-  const mesh = new THREE.Mesh(geometry, createRoadPaintMaterial());
+  const mesh = new THREE.Mesh(geometry, material || createRoadPaintMaterial());
   mesh.name = 'RoadMarkings';
+  mesh.userData.roadPaint = true;
   mesh.receiveShadow = true;
   mesh.renderOrder = -1; // under the other see-through ground effects (contact shadows, headlight beams)
+  return mesh;
+}
+
+// One-shot API kept for js/main.js: builds the markings for the network it is given and adds them to the scene.
+function buildRoadPaint(scene, network) {
+  const mesh = buildPaintMesh(network, createRoadPaintMaterial());
   scene.add(mesh);
   return mesh;
 }
 
-export { buildRoadPaint };
+// Rebuildable painter used by the resident network. It owns a single group/material and swaps only the geometry,
+// so a tile load/unload cannot leak markings or stack duplicate groups in the scene.
+// Integration (Lead, js/main.js): after `buildRoadPaint(...)` create the controller (it adopts the boot mesh),
+// call `roadPaint.rebuild(network)` inside roadService's onNetwork, and `roadPaint.dispose()` on pagehide.
+function createRoadPaint(scene, network) {
+  const group = new THREE.Group();
+  group.name = 'RoadPaint';
+  group.userData.roadPaint = true;
+
+  let mesh = null;
+  let material = null;
+  let source = null;
+  let disposed = false;
+  let warned = false;
+
+  // Take over the mesh buildRoadPaint already added at boot, so switching to this controller does not leave
+  // two marking meshes (or two groups) in the scene.
+  for (const child of scene.children.slice()) {
+    if (!child || child.userData?.roadPaint !== true || !child.geometry) continue;
+    scene.remove(child);
+    group.add(child);
+    scene.add(group);
+    mesh = child;
+    material = child.material;
+    break;
+  }
+
+  function release() {
+    if (!mesh) return;
+    if (mesh.parent) mesh.parent.remove(mesh);
+    mesh.geometry?.dispose?.();
+    mesh = null;
+  }
+
+  function rebuild(nextNetwork) {
+    if (disposed) return null;
+    if (!nextNetwork) {
+      release();
+      source = null;
+      return null;
+    }
+    if (nextNetwork === source && mesh) return mesh;
+    if (!paintSource(nextNetwork).length) {
+      release();
+      source = nextNetwork;
+      warned = false;
+      return null;
+    }
+    if (!material) material = createRoadPaintMaterial();
+    let next = null;
+    try {
+      next = buildPaintMesh(nextNetwork, material);
+    } catch (error) {
+      // Keep the previous markings on screen rather than leaving the street blank on a malformed swap.
+      if (!warned) console.warn('[road-paint] resident network paint skipped:', error.message);
+      warned = true;
+      return null;
+    }
+    warned = false;
+    release();
+    mesh = next;
+    source = nextNetwork;
+    if (!group.parent) scene.add(group);
+    group.add(next);
+    return next;
+  }
+
+  function dispose() {
+    if (disposed) return;
+    disposed = true;
+    release();
+    if (group.parent) group.parent.remove(group);
+    if (typeof group.clear === 'function') group.clear();
+    if (material) { material.dispose?.(); material = null; }
+    source = null;
+  }
+
+  if (network) rebuild(network);
+
+  return {
+    group,
+    rebuild,
+    dispose,
+    get mesh() { return mesh; },
+    get network() { return source; }
+  };
+}
+
+export { buildRoadPaint, createRoadPaint };
