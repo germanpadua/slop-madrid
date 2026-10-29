@@ -714,6 +714,25 @@ function createPreWarBuildingMaterial(opts = {}) {
     roughness: 0.76
   });
   mat.vertexColors = vertexTint;
+  if (madrid) {
+    mat.roughness = 1;
+    mat.metalness = 0;
+    mat.flatShading = true;
+    mat.colorNode = Fn(() => {
+      const f=facadeCell(float(windowWidth),float(floorHeight),boxLocal,cornerPier);
+      const u=f.cellUV.x, v=f.cellUV.y;
+      const aa=fwidth(f.cellUV).max(vec2(0.001));
+      const x=smoothstep(float(0.25).sub(aa.x),float(0.25).add(aa.x),u)
+        .mul(float(1).sub(smoothstep(float(0.75).sub(aa.x),float(0.75).add(aa.x),u)));
+      const y=smoothstep(float(0.30).sub(aa.y),float(0.30).add(aa.y),v)
+        .mul(float(1).sub(smoothstep(float(0.82).sub(aa.y),float(0.82).add(aa.y),v)));
+      const opening=x.mul(y).mul(float(1).sub(f.isRoof)).mul(float(1).sub(f.solid));
+      return mix(color(stoneColor),color(windowGlassColor),opening);
+    })();
+    _preWarCache.set(cacheKey,mat);
+    return mat;
+  }
+
 
   // The style's parameters are uniforms (not baked-in constants), so every masonry style compiles to one shader
   const cStone = uniform(new THREE.Color(stoneColor));
@@ -1682,7 +1701,8 @@ function roadWetMasks(field, drainage = 0.0) {
  * (as for the rivers), so puddles reflect the street through SSR at grazing angles yet only darken seen from above.
  * Lane markings are separate geometry built from the road network (js/road-paint.js).
  */
-function createRoadSurfaceMaterial() {
+function createRoadSurfaceMaterial({ clean = true } = {}) {
+  if(clean) return new THREE.MeshStandardNodeMaterial({color:0x606767,roughness:1,metalness:0});
   const mat = new THREE.MeshStandardNodeMaterial({
     metalness: 0.24,
     roughness: 0.48
@@ -1835,7 +1855,8 @@ function createRoadPaintMaterial() {
  * that follow cityUniforms.uRoadWetness like the roadway (better drained: fewer, smaller pools)
  * (Ported from SidewalkGenerator.js)
  */
-function createSidewalkMaterial() {
+function createSidewalkMaterial({ clean = true } = {}) {
+  if(clean) return new THREE.MeshStandardNodeMaterial({color:0xbcb8aa,roughness:1,metalness:0});
   const mat = new THREE.MeshStandardNodeMaterial({
     metalness: 0.0,
     roughness: 0.88
@@ -2477,7 +2498,8 @@ const waterBoxCover = Fn(([x, a, b, s]) => {
  *   through the same wave normals & Fresnel, blurred by the unresolved slopes into the familiar vertical light streaks.
  * - Park lakes, the Reservoir & fountains (well above the harbour) get finer, calmer ripples and a greener, duller body.
  */
-function createWaterMaterial() {
+function createWaterMaterial({ clean = true } = {}) {
+  if(clean) return new THREE.MeshStandardNodeMaterial({color:0x729c9d,roughness:1,metalness:0});
   const mat = new THREE.MeshStandardNodeMaterial({
     metalness: 0.0,
     roughness: 0.25
@@ -2704,8 +2726,8 @@ function createParkLawnMaterial(isMeadow = false) {
     roughness: 0.86
   });
 
-  const cGrassDeep = color(isMeadow ? 0x2c5c28 : 0x224c20);
-  const cGrassMid = color(isMeadow ? 0x457d36 : 0x36682c);
+  const cGrassDeep = color(isMeadow ? 0x748e55 : 0x6b854e);
+  const cGrassMid = color(isMeadow ? 0x9aaf71 : 0x8fa567);
   const cGrassSun = color(0x6b9c3e);
 
   mat.colorNode = Fn(() => {

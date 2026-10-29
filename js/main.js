@@ -114,9 +114,9 @@ async function initApp() {
     ...cityGrid.footprints,
     ...streetDetails.footprints,
     ...allColliders.filter((c) => !c.obb && (c.minY ?? 0) < 3.5)
-  ], streetDetails.signalIntersections);
+  ], streetDetails.signalIntersections, { enabled: false });
   markInit('traffic');
-  const highwayTraffic = createHighwayTraffic(scene, cityGrid.highwayLanes);
+  const highwayTraffic = createHighwayTraffic(scene, cityGrid.highwayLanes, { enabled: false });
   buildRoadPaint(scene, trafficSystem.network);
   // The boot markings come from the legacy seed network; the resident painter adopts that mesh and swaps
   // only its geometry whenever the resident circulation graph changes (one material, no extra groups).
@@ -330,7 +330,7 @@ async function initApp() {
   // Roughness mip blur must not spread reflections back onto matte or nonreflective surfaces.
   const reflectionMask = scenePassMetalRough.r.greaterThan(0).select(smoothstep(maxSSRRoughness, 0.55, scenePassMetalRough.g), 0);
   const reflections = ssrPass.mul(reflectionMask);
-  const colorGrade = createPostProcessing(renderer, scenePassColor, reflections);
+  const colorGrade = createPostProcessing(renderer, scenePassColor, reflections, { clean: true });
   const renderPipeline = new THREE.RenderPipeline(renderer, colorGrade.outputNode);
 
   // 6. Wire UI Controls (Strictly using safe DOM APIs: textContent, classList, addEventListener)
@@ -669,10 +669,10 @@ async function initApp() {
     }
   });
 
-  // Initialize the UI and chase camera around the restored player, or the default taxi on a first visit.
-  selectMode(controllerManager.activeMode);
-  selectCamera('chase', true);
-  selectTime('golden');
+  // Static city review starts in the aerial model, with the pedestrian explorer.
+  selectMode('person');
+  selectCamera('maqueta', true);
+  selectTime('midday');
   // the web fonts change the buttons' widths once they arrive
   if (document.fonts) document.fonts.ready.then(placeModeIndicator);
   markInit('ui');

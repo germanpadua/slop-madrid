@@ -72,6 +72,12 @@ function createBusDestinationTexture() {
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
 
 function createTrafficSystem(scene, sidewalks, obstacles, signalIntersections, options = {}) {
+  if (options.enabled === false) {
+    let network = buildRoadNetwork(sidewalks, obstacles, signalIntersections);
+    return { group: new THREE.Group(), cars: [], buses: [], peds: [], network,
+      getNetwork: () => network, setNetwork: (next) => { network = next; },
+      update() {}, setCollisionListener() {}, enabled: false };
+  }
   const group = new THREE.Group();
   group.name = 'ManhattanTrafficAndPedestrians';
   let collisionListener = null;
@@ -1854,7 +1860,8 @@ const HWY_MID_LOD = 450;
 const HWY_FAR_CULL = 1600;
 const HWY_RAMP = 32; // the dip at the lane ends: 2.4 m down over this many metres
 
-function createHighwayTraffic(scene, lanes) {
+function createHighwayTraffic(scene, lanes, { enabled = true } = {}) {
+  if (!enabled) return { group: new THREE.Group(), cars: [], lanes, update() {}, enabled: false };
   const group = new THREE.Group();
   group.name = 'HighwayTraffic';
   scene.add(group);

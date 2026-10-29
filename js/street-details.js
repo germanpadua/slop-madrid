@@ -1,4 +1,5 @@
 import * as THREE from 'three/webgpu';
+import { GEO } from './madrid-geodata.js';
 import { Fn, float, color, positionWorld, uniform, mod, fract, step, smoothstep, mix } from 'three/tsl';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
@@ -105,6 +106,12 @@ function createWalkSignalMaterial(clock) {
 }
 
 function buildStreetDetails(scene) {
+  // NYC roadside props and its procedural tree planting have no Madrid provenance.
+  // Madrid vegetation is supplied by the resident OSM/municipal tree renderers.
+  if(GEO.frame?.madrid) {
+    const group=new THREE.Group();group.name='MadridStreetDetails';scene.add(group);
+    return {group,footprints:[],signalClock:uniform(0),signalIntersections:[],audioSignals:[],update(){}};
+  }
   const group = new THREE.Group();
   group.name = 'ManhattanStreetDetails';
 
