@@ -168,6 +168,64 @@ for (const e of els) {
 }
 // Same ownership rule for roads (they carry the bridge decks over the water): keep the ones that enter the core.
 roadLines.splice(0, roadLines.length, ...roadLines.filter((r) => r.pts.some(([x, z]) => inCore(x, z))));
+
+// Rail ways (railway=rail): kept whole when they enter the core, same ownership rule as roads. The k3j-1
+// corridor void (Atocha / Méndez Álvaro) was traced to this class missing from the fetch (see MADRID.md).
+const railLines = [];
+for (const e of els) {
+  if (e.type !== 'way' || !e.geometry) continue;
+  const t = e.tags || {};
+  if (t.railway !== 'rail') continue;
+  const pts = e.geometry.filter((p) => p).map((p) => toWorld(p.lon, p.lat));
+  const kept = pts.filter(([x, z]) => x >= wx0 - 20 && x <= wx1 + 20 && z >= wz0 - 20 && z <= wz1 + 20);
+  if (kept.length < 2) continue;
+  railLines.push({ pts: rdp(kept, 0.6) });
+}
+railLines.splice(0, railLines.length, ...railLines.filter((r) => r.pts.some(([x, z]) => inCore(x, z))));
+// Rails are RENDERED geometry (unlike road centrelines): clip polylines to the core rect segment by segment
+// (Liang-Barsky) so no stub floats over the frame apron. Both tiles cut at the same line, so tracks join at seams.
+const clipSegCore = (ax, az, bx, bz, [x0, z0, x1, z1]) => {
+  let t0 = 0, t1 = 1;
+  const dx = bx - ax, dz = bz - az;
+  for (const [p, q] of [[-dx, ax - x0], [dx, x1 - ax], [-dz, az - z0], [dz, z1 - az]]) {
+    if (Math.abs(p) < 1e-12) { if (q < 0) return null; continue; }
+    const r = q / p;
+    if (p < 0) { if (r > t1) return null; if (r > t0) t0 = r; }
+    else { if (r < t0) return null; if (r < t1) t1 = r; }
+  }
+  return [[ax + dx * t0, az + dz * t0], [ax + dx * t1, az + dz * t1]];
+};
+const clippedRails = [];
+for (const r of railLines) {
+  let run = null;
+  for (let i = 1; i < r.pts.length; i++) {
+    for (const rect of CORE) {
+      const seg = clipSegCore(r.pts[i - 1][0], r.pts[i - 1][1], r.pts[i][0], r.pts[i][1], rect);
+      if (!seg) continue;
+      if (run && Math.hypot(run[run.length - 1][0] - seg[0][0], run[run.length - 1][1] - seg[0][1]) < 0.05) run.push(seg[1]);
+      else { if (run && run.length >= 2) clippedRails.push(run); run = [seg[0], seg[1]]; }
+    }
+  }
+  if (run && run.length >= 2) clippedRails.push(run);
+}
+railLines.splice(0, railLines.length, ...clippedRails.map((pts) => ({ pts })));
+log(`${railLines.length} rail polylines in core (clipped to the core rect)`);
+
+// Railway landuse (landuse=railway): ballast ground for the corridor. Ways only in this pass (relation
+// stitching is the water/park machinery and is not extended here - bounded). Same conservative exclusions
+// as cadastral lots: contained park rings become holes, park-crossing rings are rejected.
+const railLandRaw = [];
+for (const e of els) {
+  if (e.type !== 'way' || !e.geometry) continue;
+  const t = e.tags || {};
+  if (t.landuse !== 'railway') continue;
+  const pts = e.geometry.filter((p) => p).map((p) => toWorld(p.lon, p.lat));
+  if (pts.length < 3) continue;
+  const ring = rdpRing(pts, 0.8);
+  if (Math.abs(ringArea(ring)) < 40) continue;
+  if (ringArea(ring) > 0) ring.reverse();
+  railLandRaw.push(ring);
+}
 log(`${roadLines.length} road polylines, ${roadLines.filter((r) => r.name).length} named`);
 
 // parks, water & pedestrian squares (ground colouring + GEO.parks)
@@ -855,6 +913,50 @@ if (IS_TILE) {
   // which this simplified derived geometry is. (c) IGN/Catastro.
   const cpLots = [];
   const cpPath = path.join(DATA, 'cadastral_parcels_raw.json');
+  // Shared conservative exclusions for ground overlays (cadastral lots, railway ballast): a park ring fully
+  // inside an overlay ring becomes an EXACT hole (no z-fight with dirt/lawn possible); a ring CROSSING any
+  // park ring - by vertices or by an edge-only intersection - is rejected wholesale.
+  const segsCross = (ax, az, bx, bz, cx, cz, dx, dz) => {
+    const d1 = (bx - ax) * (cz - az) - (bz - az) * (cx - ax);
+    const d2 = (bx - ax) * (dz - az) - (bz - az) * (dx - ax);
+    const d3 = (dx - cx) * (az - cz) - (dz - cz) * (ax - cx);
+    const d4 = (dx - cx) * (bz - cz) - (dz - cz) * (bx - cx);
+    return ((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0));
+  };
+  const parkRingsAll = parksClipped.flatMap((pk) => (pk.rings || []));
+  const parkHolesOrReject = (ring) => {
+    const holes = [];
+    for (const pr of parkRingsAll) {
+      const ins = pr.map(([x, z]) => inRing(ring, x, z));
+      const anyIn = ins.some(Boolean), allIn = ins.every(Boolean);
+      if (anyIn && !allIn) return null;
+      if (!anyIn) {
+        for (let i = 0, j = pr.length - 1; i < pr.length; j = i++) {
+          const [px0, pz0] = pr[j], [px1, pz1] = pr[i];
+          let hit = false;
+          for (let k = 0, l = ring.length - 1; k < ring.length; l = k++) {
+            if (segsCross(px0, pz0, px1, pz1, ring[l][0], ring[l][1], ring[k][0], ring[k][1])) { hit = true; break; }
+          }
+          if (hit) return null;
+        }
+        continue;
+      }
+      holes.push(pr);
+    }
+    return holes;
+  };
+  // Railway landuse -> ballast ground, with the same conservative park exclusions. Runs whether or not this
+  // tile has cadastral-plot data.
+  const railLand = [];
+  let rlRejectedPark = 0;
+  for (const ring0 of railLandRaw) {
+    for (const ring of clipToCore(ring0, 40)) {
+      const holes = parkHolesOrReject(ring);
+      if (holes === null) { rlRejectedPark++; continue; }
+      railLand.push({ ring, holes });
+    }
+  }
+  log(`railway landuse: ${railLand.length} pieces (${railLand.reduce((t, l) => t + l.holes.length, 0)} park holes, rejected ${rlRejectedPark} park-crossing)`);
   if (fs.existsSync(cpPath)) {
     const cp = JSON.parse(fs.readFileSync(cpPath, 'utf8'));
     const extRing = (gml) => {
@@ -881,13 +983,6 @@ if (IS_TILE) {
         for (let k = 0; k < n; k++) namedRoadPts.push([rx0 + ((rx1 - rx0) * k) / n, rz0 + ((rz1 - rz0) * k) / n]);
       }
     }
-    const segsCross = (ax, az, bx, bz, cx, cz, dx, dz) => {
-      const d1 = (bx - ax) * (cz - az) - (bz - az) * (cx - ax);
-      const d2 = (bx - ax) * (dz - az) - (bz - az) * (dx - ax);
-      const d3 = (dx - cx) * (az - cz) - (dz - cz) * (ax - cx);
-      const d4 = (dx - cx) * (bz - cz) - (dz - cz) * (bx - cx);
-      return ((d1 > 0) !== (d2 > 0)) && ((d3 > 0) !== (d4 > 0));
-    };
     const roadHitsPlot = (ring) => {
       for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
         const [ex0, ez0] = ring[j], [ex1, ez1] = ring[i];
@@ -912,39 +1007,17 @@ if (IS_TILE) {
       cpLots.push(ring);
     }
     const clipped = cpLots.flatMap((r) => clipToCore(r, 60));
-    // Parks keep their own floors at every camera distance: a park ring fully inside a lot becomes a HOLE
-    // (polygonOffset must never let plot ground beat dirt/lawn); a lot CROSSING any park ring is rejected
-    // wholesale (conservative - no boolean clipping of partial overlaps in this prototype).
-    const parkRingsAll = parksClipped.flatMap((pk) => (pk.rings || []));
+    // Parks keep their own floors at every camera distance (see parkHolesOrReject above).
     const lotOut = [];
     let rejectedPark = 0;
     for (const ring of clipped) {
-      let crosses = false;
-      const holes = [];
-      for (const pr of parkRingsAll) {
-        const ins = pr.map(([x, z]) => inRing(ring, x, z));
-        const anyIn = ins.some(Boolean), allIn = ins.every(Boolean);
-        if (anyIn && !allIn) { crosses = true; break; }
-        if (!anyIn) {
-          // Vertex tests miss edge-only intersections (all vertices outside, edges crossing): check segments.
-          for (let i = 0, j = pr.length - 1; i < pr.length; j = i++) {
-            const [px0, pz0] = pr[j], [px1, pz1] = pr[i];
-            let hit = false;
-            for (let k = 0, l = ring.length - 1; k < ring.length; l = k++) {
-              if (segsCross(px0, pz0, px1, pz1, ring[l][0], ring[l][1], ring[k][0], ring[k][1])) { hit = true; break; }
-            }
-            if (hit) { crosses = true; break; }
-          }
-          if (crosses) break;
-          continue;
-        }
-        if (allIn) holes.push(pr);
-      }
-      if (crosses) { rejectedPark++; continue; }
+      const holes = parkHolesOrReject(ring);
+      if (holes === null) { rejectedPark++; continue; }
       lotOut.push({ ring, holes });
     }
     cpLots.length = 0; cpLots.push(...lotOut);
     log(`cadastral lots: ${cpLots.length} pieces (${lotOut.reduce((t, l) => t + l.holes.length, 0)} park holes) for ${orphanCentres.length} core orphans (rejected ${rejectedRoad} named-road, ${rejectedWater} water-crossing, ${rejectedPark} park-crossing)`);
+
   }
   const TILE = {
     id: phase.tile.id,
@@ -963,6 +1036,8 @@ if (IS_TILE) {
     water: waterClipped.map(flat),
     roads: roadLines.map((r) => [r.name, r1(r.w), r.dir, r.lanes, r.hw, flat(r.pts)]),
     lots: cpLots.map((l) => ({ r: l.ring.flatMap(([x, z]) => [r1(x), r1(z)]), ...(l.holes.length ? { h: l.holes.map((h) => h.flatMap(([x, z]) => [r1(x), r1(z)])) } : {}) })),
+    rails: railLines.map((r) => r.pts.flatMap(([x, z]) => [r1(x), r1(z)])),
+    railLand: railLand.map((l) => ({ r: l.ring.flatMap(([x, z]) => [r1(x), r1(z)]), ...(l.holes.length ? { h: l.holes.map((h) => h.flatMap(([x, z]) => [r1(x), r1(z)])) } : {}) })),
     landmarks,
   };
   fs.writeFileSync(OUT, `// ${path.relative(path.resolve(OUT_DIR, '../..'), OUT)} — GENERATED by tools/madrid/build.mjs, do not edit by hand.

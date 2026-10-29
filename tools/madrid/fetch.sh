@@ -84,6 +84,9 @@ while read -r ix iy tS tW tN tE; do
   way["leisure"~"park|garden|pitch|playground"]($TWGS);
   relation["leisure"~"park|garden"]($TWGS);
   way["landuse"~"grass|forest|meadow|recreation_ground"]($TWGS);
+  way["railway"="rail"]($TWGS);
+  way["landuse"="railway"]($TWGS);
+  relation["landuse"="railway"]($TWGS);
   way["highway"="pedestrian"]["area"="yes"]($TWGS);
 );
 out geom meta;

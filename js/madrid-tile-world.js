@@ -186,6 +186,8 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     water: materials?.water || createWaterMaterial(),
     lawn: materials?.lawn || createParkLawnMaterial(false),
     dirt: materials?.dirt || new THREE.MeshStandardNodeMaterial({ color: 0xb59a6e, roughness: 1, metalness: 0 }),
+    ballast: materials?.ballast || new THREE.MeshStandardNodeMaterial({ color: 0x6b655a, roughness: 1, metalness: 0, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -3 }), // railway landuse ground; offset tier between lot (-2) and medianera
+    rail: materials?.rail || new THREE.MeshStandardNodeMaterial({ color: 0x2f2c28, roughness: 0.9, metalness: 0.1, side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -4 }), // track bed strips (DoubleSide: quad winding follows segment direction, parallel tracks would all cull together)
     lot: materials?.lot || new THREE.MeshStandardNodeMaterial({ color: 0x9b9284, roughness: 0.98, metalness: 0, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }), // dusty plot ground (distinct from granite/dirt/asphalt); polygonOffset wins the sub-millimetre depth race against the deck at aerial distances
     stone: new THREE.MeshStandardNodeMaterial({ color: 0xc9c2b4, roughness: 0.88, metalness: 0.02 }),
     landmark: new THREE.MeshStandardNodeMaterial({ color: 0xcfc8b8, roughness: 0.85, metalness: 0.03 }),
@@ -241,6 +243,49 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
         for (const g of lotGeos) g.dispose();
         const mesh = new THREE.Mesh(mergedLots, mats.lot);
         mesh.name = 'TileLots';
+        group.add(mesh);
+      }
+    }
+
+    // 1e. Railway: landuse=railway as ballast ground (y=0.06, park holes pre-cut by the builder) and
+    //     railway=rail ways as dark track-bed strips (y=0.07, 2.2 m quads per segment).
+    if (tile.railLand && tile.railLand.length) {
+      const rlGeos = [];
+      for (const entry of tile.railLand) {
+        const ring = toPts(entry.r || entry);
+        if (ring.length < 3) continue;
+        const holes = [...(entry.h || []).map(toPts), ...holesWithin(ring, bboxOf(ring), waterBoxes)];
+        rlGeos.push(createFlatPolygonMesh(ring, 0.06, mats.ballast, true, holes.length ? holes : null).geometry);
+      }
+      if (rlGeos.length) {
+        const mergedRL = mergeGeometries(rlGeos, false);
+        for (const g of rlGeos) g.dispose();
+        const mesh = new THREE.Mesh(mergedRL, mats.ballast);
+        mesh.name = 'TileRailLand';
+        group.add(mesh);
+      }
+    }
+    if (tile.rails && tile.rails.length) {
+      const pos = [];
+      const HW = 1.1; // half width of the drawn track bed (m)
+      for (const flat of tile.rails) {
+        const pts = toPts(flat);
+        for (let i = 1; i < pts.length; i++) {
+          const [ax, az] = [pts[i - 1].x, pts[i - 1].z], [bx, bz] = [pts[i].x, pts[i].z];
+          const dx = bx - ax, dz = bz - az, len = Math.hypot(dx, dz);
+          if (len < 0.01) continue;
+          const nx = (-dz / len) * HW, nz = (dx / len) * HW;
+          const y = 0.07;
+          pos.push(ax + nx, y, az + nz, ax - nx, y, az - nz, bx + nx, y, bz + nz);
+          pos.push(bx + nx, y, bz + nz, ax - nx, y, az - nz, bx - nx, y, bz - nz);
+        }
+      }
+      if (pos.length) {
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+        geo.computeVertexNormals();
+        const mesh = new THREE.Mesh(geo, mats.rail);
+        mesh.name = 'TileRails';
         group.add(mesh);
       }
     }
