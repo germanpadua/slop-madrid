@@ -69,3 +69,9 @@ test('lane preparation outside the seed uses only resident source roads and cove
  assert.equal(network.walkable(4000,4001,0,1),false,'unloaded terrain is not walkable');
  assert.equal(network.walkable(3050,3051,50,51),true);
 });
+
+test('surface trunk roads remain available for mapped city crossings while tunnels are excluded', async () => {
+  const { surfaceRoadPolicy } = await import('../js/madrid-resident-road-graph.js');
+  assert.ok(surfaceRoadPolicy({highway:'trunk',lanes:'5',oneway:'yes'}));
+  assert.equal(surfaceRoadPolicy({highway:'trunk',tunnel:'yes'}),null);
+});

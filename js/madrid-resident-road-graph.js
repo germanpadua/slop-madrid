@@ -1,7 +1,7 @@
 // Resident surface topology assembled from original OSM node identities. Never
 // join two roads just because their projected coordinates cross or coincide.
-const SURFACE_ROADS = new Set(['primary','secondary','tertiary','residential','unclassified','living_street','service','road','primary_link','secondary_link','tertiary_link']);
-const WIDTHS = { primary: 16, secondary: 14, tertiary: 11, residential: 9, unclassified: 8, living_street: 7, service: 5.5, road: 9, primary_link: 8, secondary_link: 7, tertiary_link: 6 };
+const SURFACE_ROADS = new Set(['trunk','trunk_link','primary','secondary','tertiary','residential','unclassified','living_street','service','road','primary_link','secondary_link','tertiary_link']);
+const WIDTHS = { trunk: 16, trunk_link: 8, primary: 16, secondary: 14, tertiary: 11, residential: 9, unclassified: 8, living_street: 7, service: 5.5, road: 9, primary_link: 8, secondary_link: 7, tertiary_link: 6 };
 const denied = value => ['no','private','agricultural','forestry'].includes(value);
 const number = value => {
   const match = String(value ?? '').match(/^\s*(\d+(?:[.,]\d+)?)\s*(?:m)?\s*$/);

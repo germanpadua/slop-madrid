@@ -1,11 +1,13 @@
 import * as THREE from 'three/webgpu';
 import { CROSSWALK } from './road-network.js';
+import { MADRID_CROSSING_PATHS } from './madrid-marked-crossings.js';
+import { matchMarkedCrossings } from './madrid-crosswalk-matching.js';
 import { createRoadPaintMaterial } from './tsl-materials.js';
 
 // js/road-paint.js
-// Road markings generated from the drivable road network (js/road-network.js), so the paint matches where traffic
-// actually drives and stops: dashed lane lines, double yellow centre lines on two-way roads, stop bars at the stop
-// lines, continental crosswalks across every intersection approach and green bike lanes along wide one-way avenues.
+// Madrid road markings: lane lines follow the resident physical network; zebra paths
+// follow explicitly marked OSM crossings. Widths and stripe dimensions are illustrative.
+// No automatic crosswalks/stop bars at every junction or inferred green cycle lanes.
 //
 // The resident network (js/madrid-road-network.js) is swapped every time a tile loads or unloads, so the markings
 // have to follow it. `createRoadPaint(scene)` owns one group/mesh/material and `rebuild(network)` replaces its
@@ -14,8 +16,7 @@ import { createRoadPaintMaterial } from './tsl-materials.js';
 // js/main.js and is adopted by the controller if it already ran.
 
 const WHITE = new THREE.Color(0xe6e2d6);
-const YELLOW = new THREE.Color(0xe8ad22);
-const GREEN = new THREE.Color(0x2a8a4e);
+const YELLOW = WHITE; // Madrid centre markings use the same white palette.
 const HEIGHT = 0.012; // above the asphalt
 
 // The worker forwards the builder's physical marking edges next to the routing ones; prefer them when
@@ -127,33 +128,29 @@ function buildPaintMesh(network, material) {
       }
     }
 
-    // Wide one-way avenues: edge line, then a buffer and a green bike lane along the curb on the side left free
-    if (!back && e.axis === 'ave' && lanes.length >= 4) {
-      for (const [edge, sign] of [[lanes[lanes.length - 1].o + 1.8, 1], [lanes[0].o - 1.8, -1]]) {
-        const curb = sign * e.half;
-        if ((curb - edge) * sign < 3.5) continue;
-        along(e, edge + sign * 0.2, 0.13, WHITE);
-        along(e, curb - sign * 2.4, 0.13, WHITE);
-        along(e, curb - sign * 1.3, 2.0, GREEN);
-      }
-    }
-
-    // Stop bars across the lanes arriving at each stop line, from the centre line (or median) to the curb (none where a
-    // street merely bends: a shape node of the centreline streets)
-    for (const f of back ? [e, back] : [e]) {
-      if (isShape(f.to)) continue;
-      const left = back ? Math.max(0, f.lanes[0] - 1.8) : -f.half;
-      across(f, f.len - 0.35, left + 0.1, f.half - 0.1, 0.45, WHITE);
-    }
-
     // Continental crosswalks curb to curb, between the stop lines and the intersections at both ends
-    if (!isShape(e.from)) across(e, -CROSSWALK / 2, -e.half, e.half, CROSSWALK - 0.3, WHITE, 1.2, 0.5);
-    if (!isShape(e.to)) across(e, e.len + CROSSWALK / 2, -e.half, e.half, CROSSWALK - 0.3, WHITE, 1.2, 0.5);
+    // Crosswalks are emitted once at mapped positions after collecting physical roads.
 
     for (const [end, node] of [[0, e.from], [1, e.to]]) {
       if (!isShape(node)) continue;
       if (!bends.has(node.id)) bends.set(node.id, []);
       bends.get(node.id).push({ e, end, lines: lines.slice(firstLine) });
+    }
+  }
+
+  // Draw the mapped crossing path itself, including split approaches and refuge islands.
+  // Only keep paths near a resident carriageway; do not extrapolate junction crossings.
+  const physicalEdges = [...roads.values()].map((group) => group[0]);
+  const visibleCrossings = new Set(matchMarkedCrossings(physicalEdges,
+    MADRID_CROSSING_PATHS.filter(([,path]) => path.length > 1)
+      .map(([id,path]) => [id, ...path[Math.floor(path.length/2)]]), 25).map(m => m.id));
+  for (const [id, path] of MADRID_CROSSING_PATHS) {
+    if (!visibleCrossings.has(id)) continue;
+    let phase = 0;
+    for (let i = 1; i < path.length; i++) {
+      const [ax,az] = path[i-1], [bx,bz] = path[i];
+      strip(ax,az,bx,bz, CROSSWALK - 0.3, WHITE, 1.2, 0.5, phase);
+      phase += Math.hypot(bx-ax,bz-az);
     }
   }
 
