@@ -66,7 +66,9 @@ const state = await page.evaluate(() => {
     init: (window.__initTimings || []).slice?.(-12) || null,
     roadStats: api?.roadStats || null,
     network: network ? { nodes: network.nodes.length, edges: network.edges.length,
+      paintEdges: network.paintEdges?.length || 0,
       signals: network.nodes.filter((n) => n.signal).length } : null,
+    roadPaintStats: api?.roadPaintStats || null,
     seedNetwork: seed ? { nodes: seed.nodes.length, edges: seed.edges.length,
       sample: seed.edges.slice(0, 6).map((e) => ({ from: e.from.id, to: e.to.id, axis: e.axis, len: e.len, lanes: e.lanes })) } : null,
     seedInputs: api?.cityGrid ? {

@@ -130,7 +130,7 @@ export function createResidentRoadService({ tileWorld, manifest, seedSidewalks =
     const queries = createGroundQueries(inputs.sidewalks, inputs.obstacles, { coverage: inputs.coverage });
     const tDecode = performance.now();
     const network = decodeRoadNetwork({
-      nodes: result.nodes, edges: result.edges,
+      nodes: result.nodes, edges: result.edges, paintEdges: result.paintEdges,
       walkable: queries.walkable, onSidewalk: queries.onSidewalk, isRoadClear: queries.isRoadClear
     });
     const tBlocks = performance.now();

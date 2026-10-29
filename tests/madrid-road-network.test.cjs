@@ -157,13 +157,30 @@ test('the worker payload round-trips connectivity through flat index-addressed d
   assert.ok(original.nodes.some((n) => n.signal), 'the source traffic signal survives the round trip');
 
   const encoded = encodeRoadNetwork(original);
-  const cloned = JSON.parse(JSON.stringify(encoded)); // acyclic plain data, unlike the live graph
+  const cloned = structuredClone(encoded); // the worker transport, preserving values such as negative zero
   assert.equal(typeof cloned.nodes[0].arms[0].lead, 'number');
   const queries = { walkable: () => true, onSidewalk: () => false, isRoadClear: () => true };
   const decoded = decodeRoadNetwork({ ...cloned, ...queries });
 
   assert.equal(decoded.nodes.length, original.nodes.length);
   assert.equal(decoded.edges.length, original.edges.length);
+  assert.ok(decoded.paintEdges.length > 0, 'physical marking edges cross the worker boundary');
+  assert.equal(decoded.paintEdges.length, original.paintEdges.length);
+  const decodedPaintNodes = new Map();
+  for (const [i, paint] of decoded.paintEdges.entries()) {
+    const source = original.paintEdges[i];
+    assert.equal(paint.from.shape, !!source.from.shape, 'bend flag survives for the painter');
+    assert.equal(paint.to.shape, !!source.to.shape);
+    for (const field of ['axis', 'x0', 'z0', 'sx', 'sz', 'dx', 'dz', 'rx', 'rz', 'span', 'len', 'half', 'lanes']) {
+      assert.deepEqual(paint[field], source[field], `paint ${field} survives the worker boundary`);
+    }
+    for (const end of ['from', 'to']) {
+      assert.equal(paint[end].id, source[end].id);
+      const previous = decodedPaintNodes.get(source[end]);
+      if (previous) assert.equal(paint[end], previous, 'shared paint junctions preserve identity for opposite-edge pairing');
+      else decodedPaintNodes.set(source[end], paint[end]);
+    }
+  }
   assert.equal(decoded.edges.filter((e) => e.moves.length).length, original.edges.filter((e) => e.moves.length).length);
   assert.equal(decoded.edges.filter((e) => e.opposite).length, original.edges.filter((e) => e.opposite).length);
   for (const [i, edge] of decoded.edges.entries()) {
@@ -214,3 +231,70 @@ test('a swap reports its own per-phase timings, not just the worker numbers', as
 });
 
 
+// Exercise the real fallback builder, including stale worker requests after eviction.
+test('unavailable and failed workers prepare current source coverage on main', async () => {
+  const { createRoadNetworkPreparer } = await import('../js/madrid-road-preparer.js');
+  const originalWorker = global.Worker;
+  const way = (id, nodes) => ({ id, nodes, tags: { highway: 'residential' } });
+  const input = { featureSets: [{ ways: [
+    way(1, [[1, 3000, 0], [2, 3200, 0]]), way(2, [[2, 3200, 0], [3, 3200, 200]]),
+    way(3, [[3, 3200, 200], [4, 3000, 200]]), way(4, [[4, 3000, 200], [1, 3000, 0]])
+  ] }], sidewalks: [], obstacles: [], coverage: [[2950, -50, 3250, 250]] };
+  try {
+    for (const workerType of [undefined, class { constructor() { throw new Error('blocked'); } }, class {
+      postMessage() { queueMicrotask(() => this.onerror({ preventDefault() {} })); }
+      terminate() {}
+    }]) {
+      global.Worker = workerType;
+      const preparer = createRoadNetworkPreparer();
+      try {
+        const result = await preparer.prepare(input);
+        assert.equal(result.stats.mode, 'main-fallback');
+        assert.ok(result.edges.length >= 4, 'fallback creates usable source routing');
+        assert.ok(result.paintEdges.length >= 4, 'fallback carries physical road markings');
+        assert.ok(Number.isFinite(result.stats.layoutMs));
+      } finally { preparer.dispose(); }
+    }
+  } finally { global.Worker = originalWorker; }
+});
+
+test('worker failure fallback discards a stale snapshot and rebuilds after tile eviction', async () => {
+  const { createResidentRoadService } = await load();
+  const originalWorker = global.Worker;
+  let failWorker;
+  let resolveStarted;
+  const started = new Promise((resolve) => { resolveStarted = resolve; });
+  global.Worker = class {
+    postMessage() { failWorker = () => this.onerror({ preventDefault() {} }); resolveStarted(); }
+    terminate() {}
+  };
+  const way = (id, nodes) => ({ id, nodes, tags: { highway: 'residential' } });
+  const features = { ways: [
+    way(1, [[1, 3000, 0], [2, 3200, 0]]), way(2, [[2, 3200, 0], [3, 3200, 200]]),
+    way(3, [[3, 3200, 200], [4, 3000, 200]]), way(4, [[4, 3000, 200], [1, 3000, 0]])
+  ] };
+  let mounted = true;
+  let resolveApplied;
+  const applied = new Promise((resolve) => { resolveApplied = resolve; });
+  const swaps = [];
+  const service = createResidentRoadService({
+    tileWorld: {
+      residentStreetFeatures: () => mounted ? new Map([['tile', features]]) : new Map(),
+      residentGeometry: () => mounted ? new Map([['tile', { core: [[2950, -50, 3250, 250]] }]]) : new Map()
+    },
+    manifest: { tiles: [] }, debounceMs: 1,
+    onNetwork(network, _blocks, stats) { swaps.push(network); resolveApplied(stats); },
+    onError(error) { resolveApplied(Promise.reject(error)); }
+  });
+  try {
+    await started;
+    mounted = false;
+    service.schedule();
+    failWorker();
+    const stats = await applied;
+    assert.equal(stats.mode, 'main-fallback');
+    assert.equal(swaps.length, 1, 'stale pre-eviction fallback was never applied');
+    assert.deepEqual(swaps[0].paintEdges, [], 'evicted roads are absent from fresh fallback');
+    assert.deepEqual(swaps[0].edges, []);
+  } finally { service.dispose(); global.Worker = originalWorker; }
+});

@@ -18,8 +18,8 @@ const YELLOW = new THREE.Color(0xe8ad22);
 const GREEN = new THREE.Color(0x2a8a4e);
 const HEIGHT = 0.012; // above the asphalt
 
-// The worker-decoded resident network carries `paintEdges: []` (decodeRoadNetwork), and an empty array is
-// truthy: prefer paintEdges only when it actually has edges, otherwise fall back to the routing edges.
+// The worker forwards the builder's physical marking edges next to the routing ones; prefer them when
+// they are there (dead ends and non-routable streets get paint too), otherwise fall back to routing.
 function paintSource(network) {
   if (!network) return [];
   const edges = network.paintEdges && network.paintEdges.length ? network.paintEdges : network.edges;

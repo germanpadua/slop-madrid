@@ -1276,13 +1276,22 @@ export function encodeRoadNetwork(network) {
     outArm: e.outArm ? e.from.arms.indexOf(e.outArm) : -1,
     moves: e.moves.map((m) => ({ to: m.to.id, out: m.out, turn: m.turn }))
   }));
-  return { nodes, edges };
+  // Marking geometry describes the physical streets, including dead ends and roads routing traffic cannot
+  // circulate through, so it is a different set from the routing edges (and its junction nodes may have been
+  // dropped by the router). Only what the painter reads crosses the boundary: node ids/shape flags plus the
+  // lane strip geometry.
+  const paintEdges = (network.paintEdges || []).map((e) => ({
+    from: e.from.id, fromShape: !!e.from.shape, to: e.to.id, toShape: !!e.to.shape,
+    axis: e.axis, x0: e.x0, z0: e.z0, sx: e.sx, sz: e.sz, dx: e.dx, dz: e.dz, rx: e.rx, rz: e.rz,
+    span: e.span, len: e.len, half: e.half, lanes: e.lanes
+  }));
+  return { nodes, edges, paintEdges };
 }
 
 // Rebuild the live object graph from the worker's index-addressed form, then attach the lane-curve
 // runtime. Adjacency (n.in/n.out), moves and arms are reconstructed with the original ordering, so
 // lane indices, turn rules and pedestrian ports describe the same intersections as in the builder.
-export function decodeRoadNetwork({ nodes: nodeData, edges: edgeData, walkable, onSidewalk, isRoadClear }) {
+export function decodeRoadNetwork({ nodes: nodeData, edges: edgeData, paintEdges: paintEdgeData = [], walkable, onSidewalk, isRoadClear }) {
   const nodes = nodeData.map((raw, id) => ({
     id, x: raw.x, z: raw.z, hx: raw.hx, hz: raw.hz, signal: raw.signal, general: raw.general, mixed: raw.mixed,
     sideCount: raw.sideCount, groupCount: raw.groupCount, arms: [], in: [], out: []
@@ -1311,7 +1320,21 @@ export function decodeRoadNetwork({ nodes: nodeData, edges: edgeData, walkable, 
     e.from.out.push(e);
     e.to.in.push(e);
   }
-  return hydrateRoadNetwork({ nodes, edges, paintEdges: [], walkable, onSidewalk, isRoadClear });
+  // Paint-only junctions: the painter needs identity (pairing opposite directions) and the bend flag to
+  // suppress crosswalks, nothing else. Their ids are the builder's pre-filter ids; keep a separate map
+  // because routing node ids have since been renumbered and may refer to different junctions.
+  const paintNodes = new Map();
+  const paintNode = (id, shape) => {
+    let node = paintNodes.get(id);
+    if (!node) paintNodes.set(id, (node = { id, shape: !!shape, arms: [] }));
+    return node;
+  };
+  const paintEdges = paintEdgeData.map((raw) => ({
+    from: paintNode(raw.from, raw.fromShape), to: paintNode(raw.to, raw.toShape),
+    axis: raw.axis, x0: raw.x0, z0: raw.z0, sx: raw.sx, sz: raw.sz, dx: raw.dx, dz: raw.dz, rx: raw.rx, rz: raw.rz,
+    span: raw.span, len: raw.len, half: raw.half, lanes: raw.lanes
+  }));
+  return hydrateRoadNetwork({ nodes, edges, paintEdges, walkable, onSidewalk, isRoadClear });
 }
 
 // Rebuild the runtime half (lane-to-lane curves) of a network whose nodes/edges were prepared
