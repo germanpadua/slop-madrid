@@ -88,7 +88,8 @@ const bootMs = Date.now() - t0;
 const initLine = logs.find((l) => l.startsWith('[init]')) || '';
 
 const hideRoots = (process.env.HIDE_ROOTS || '').split(',').filter(Boolean);
-const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view, aerialZoom, hideRoots }) => {
+const clipRect = process.env.CLIP_RECT ? Object.fromEntries(process.env.CLIP_RECT.split(',').map((v, i) => [['x0','x1','z0','z1'][i], +v])) : null;
+const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view, aerialZoom, hideRoots, clipRect }) => {
   const { renderer, tileStreamer, tileWorld, controllerManager } = window.__madrid;
   const waitFor = async (fn, timeoutMs = 120000) => {
     const start = performance.now();
@@ -197,6 +198,30 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
     c.traverse((o) => { if (!o.isMesh) return; const gm = o.geometry; const per = gm?.index ? gm.index.count / 3 : (gm?.attributes?.position?.count || 0) / 3; const n = per * (o.isInstancedMesh ? o.count : 1); tris += n; meshes++; let v = o.visible; for (let a = o.parent; a && v; a = a.parent) v = a.visible; if (v) vis += n; });
     if (tris) sceneTris[c.name || c.type] = { meshes, tris: Math.round(tris), visibleTris: Math.round(vis), visible: c.visible };
   });
+  let clipStats = null;
+  if (clipRect) {
+    const { x0, x1, z0, z1 } = clipRect; clipStats = {};
+    sceneOf.traverse((o) => {
+      if (!o.isMesh || !/MadridTile:/.test(o.parent?.name || '') && !(o.parent && o.parent.parent && /MadridTile:/.test(o.parent.parent.name || ''))) return;
+      const gm = o.geometry, pos = gm.attributes.position, ix = gm.index; if (!pos) return;
+      o.updateWorldMatrix(true, false); const m = o.matrixWorld.elements;
+      const tw = (i) => [m[0]*pos.getX(i)+m[4]*pos.getY(i)+m[8]*pos.getZ(i)+m[12], m[2]*pos.getX(i)+m[6]*pos.getY(i)+m[10]*pos.getZ(i)+m[14]];
+      const nT = ix ? ix.count / 3 : pos.count / 3;
+      const key = o.name.replace(/[:#]?\d+$/, '') || 'unnamed';
+      const e = clipStats[key] ||= { tris: 0, instancedTrisInRect: 0, vertsInRect: 0 };
+      if (o.isInstancedMesh) {
+        // count instances whose geometry-bbox centre falls in the rect
+        gm.computeBoundingBox(); const c = gm.boundingBox.getCenter(new gm.boundingBox.min.constructor()); const im = new o.instanceMatrix.array.constructor(16);
+        for (let k = 0; k < o.count; k++) { o.getMatrixAt(k, o.matrix); const el = o.matrix.elements; const wx = el[0]*c.x+el[4]*c.y+el[8]*c.z+el[12], wz = el[2]*c.x+el[6]*c.y+el[10]*c.z+el[14]; if (wx>=x0&&wx<=x1&&wz>=z0&&wz<=z1) e.instancedTrisInRect += nT; }
+        return;
+      }
+      for (let t = 0; t < nT; t++) {
+        const a = ix ? ix.getX(t*3) : t*3, b = ix ? ix.getX(t*3+1) : t*3+1, c = ix ? ix.getX(t*3+2) : t*3+2;
+        const A = tw(a), B = tw(b), C = tw(c); const cx = (A[0]+B[0]+C[0])/3, cz = (A[1]+B[1]+C[1])/3;
+        if (cx>=x0&&cx<=x1&&cz>=z0&&cz<=z1) { e.tris++; }
+      }
+    });
+  }
   const routeFrames = (window.__madrid.frameSamples || []).filter((s) => s.at >= routeStart);
   const intervals = routeFrames.map((s) => s.intervalMs).sort((a, b) => a - b);
   return {
@@ -211,7 +236,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
     distanceDetail: window.__madrid.distanceDetail?.status(),
     shaderWarmupHidden: sceneOf.getObjectByName('MadridTileShaderWarmup')?.visible === false,
     backend: renderer.backend.isWebGPUBackend ? 'WebGPU' : 'WebGL2',
-    tileStats, sceneTris,
+    tileStats, sceneTris, clipStats,
     tiles: before,
     after: tileSet,
     tileMs,
@@ -229,7 +254,7 @@ const result = await page.evaluate(async ({ walk, bootOnly, stress, places, view
     meshes: tileWorld ? tileWorld.meshCount() : 0,
     loaded: tileWorld ? tileWorld.ids() : []
   };
-}, { walk, bootOnly, stress, places, view, aerialZoom, hideRoots });
+}, { walk, bootOnly, stress, places, view, aerialZoom, hideRoots, clipRect });
 
 let detailComparison = null;
 if (process.env.DETAIL_COMPARE) detailComparison = await page.evaluate(async () => {
