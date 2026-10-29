@@ -1,0 +1,11 @@
+{
+  "tests": 152,
+  "pass": 152,
+  "fail": 0,
+  "cancelled": 0,
+  "skipped": 0,
+  "durationMs": 62259.378047,
+  "command": "node --test tests/*.test.cjs tests/*.test.mjs",
+  "recordedAt": "2026-10-29T12:09:43.440149+00:00",
+  "node": "v26.7.0"
+}

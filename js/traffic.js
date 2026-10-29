@@ -58,11 +58,11 @@ function createBusDestinationTexture() {
   ctx.font = '900 26px Inter, Arial, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('M1', 37, 33);
+  ctx.fillText('BUS', 37, 33);
   ctx.fillStyle = '#ff9d1c';
   ctx.font = '800 22px JetBrains Mono, monospace';
   ctx.textAlign = 'left';
-  ctx.fillText('5 AV / HARLEM', 78, 33);
+  ctx.fillText('MADRID', 78, 33); // ambient buses do not claim a real scheduled line or destination
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;

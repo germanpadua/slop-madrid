@@ -3,6 +3,7 @@ import {
   ISLAND_BOUNDS,
   CENTRAL_PARK_BOUNDS,
   getIslandBoundsAtZ,
+  clampToMadridGround,
   isTypingInField,
   blockAt,
   streetZ
@@ -387,6 +388,10 @@ class ThirdPersonControllerManager {
     const cameraBack = Math.cos(0.09) * entity.chaseDistance;
     const cameraUp = entity.chaseHeight + Math.sin(0.09) * entity.chaseDistance * 0.85;
     const clampPoint = (px, pz) => {
+      if (!heli && clampToMadridGround) {
+        const active = clampToMadridGround(px, pz);
+        if (active) return active;
+      }
       pz = Math.max(ISLAND_BOUNDS.minZ + (heli ? -6000 : 30), Math.min(ISLAND_BOUNDS.maxZ + margin, pz));
       px = Math.max(ISLAND_BOUNDS.minX - margin, Math.min(ISLAND_BOUNDS.maxX + margin, px));
       if (!heli && getIslandBoundsAtZ) {
@@ -899,9 +904,11 @@ class ThirdPersonControllerManager {
     // The detailed island (the helicopter may roam out over the harbour & the boroughs)
     const heli = this.activeMode === 'helicopter';
     const m = heli ? 6000 : 0;
+    const activeGround = !heli && clampToMadridGround && clampToMadridGround(pos.x, pos.z);
+    if (activeGround) { pos.x = activeGround.x; pos.z = activeGround.z; }
     pos.x = Math.max(ISLAND_BOUNDS.minX - m, Math.min(ISLAND_BOUNDS.maxX + m, pos.x));
     pos.z = Math.max(ISLAND_BOUNDS.minZ + (heli ? -6000 : 30), Math.min(ISLAND_BOUNDS.maxZ + m, pos.z));
-    if (this.activeMode !== 'helicopter' && getIslandBoundsAtZ) {
+    if (!activeGround && this.activeMode !== 'helicopter' && getIslandBoundsAtZ) {
       const shore = getIslandBoundsAtZ(pos.z);
       const minShoreX = shore.westX + 8.0;
       const maxShoreX = shore.eastX - 8.0;

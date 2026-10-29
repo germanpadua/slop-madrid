@@ -1,0 +1,301 @@
+# Paridad Madrid — auditoría y estado reanudable
+
+Fecha de línea base: 2026-10-29. Rama de trabajo: `feat/paridad`. Ningún push, merge a main ni deploy autorizado.
+Este informe es de código/datos; **no constituye aprobación visual**. El propietario valida el resultado con GPU.
+
+## Evidencia anterior a cambios de producto
+
+- Leído `MADRID.md` completo (594 líneas), manifiestos, generador, módulos de semilla y teselas, consumidores y contratos.
+- `git log --all`: `upstream/main = main = 09361be`; `feat/madrid = 791f17c`; `feat/monumentos = dac8b4e`.
+  Hay **seis** commits sobre Madrid, cuatro locales sobre `origin/feat/monumentos`, no cuatro sobre Madrid.
+  Integrados mediante merge local desde una rama nueva nacida en `feat/madrid`.
+- `git diff upstream/main...feat/madrid --stat`: 41 ficheros, +9365 / −1729. Lectura dirigida de city-config,
+  city-grid, buildings, landmarks, road-network, nyc-map, main, cámaras y controllers; street-details, traffic,
+  road-paint, trees, audio y materiales se conservan esencialmente de upstream.
+- Suite inicial exacta: `node --test tests/*.test.cjs tests/*.test.mjs`: **137/137**, 66,29 s.
+- Manifiesto inicial: **8/85 listas, 77 pendientes**, 15,20 km² de cores listos, 6.788.893 B de módulos
+  (incluye semilla y manzanas). No confundir 85 km de cuadrícula envolvente con los 52,1 km² de almendra.
+  La selección de celdas usa la **caja** del anillo M-30; varias celdas periféricas están fuera del interior.
+- Monumentos: diez módulos, 1.125.998 B sumados. La tabla antigua de MADRID.md precede al último rediseño.
+- Disco real: 7,4 GiB libres, no 11. Cachés nuevos en `/tmp`; nada de ZIP municipal de 2,2 GB.
+- Referencias externas: se intentó acceder a [TinyWarsaw](https://tinywarsaw.app/preview/engine/) y
+  [Pages actual](https://germanpadua.github.io/slop-madrid/); el navegador de lectura devolvió error interno.
+  No se han inspeccionado frames ni se ha copiado código/assets. NYC se estudia por diff local.
+
+## A. Datos, cobertura y fidelidad — pendiente
+
+| Sistema | Estado NYC (09361be) | Madrid en la línea base | Plan para paridad | Coste estimado |
+|---|---|---|---|---|
+| Cobertura | Manhattan detallado + boroughs y horizonte | 8 cores listos, 77 pendientes con rejilla oscura | Extracto OSM PBF local, osmium por celda, alturas IDEAM cacheadas; primero vecinos centrales | 1–3 h pipeline; descarga depende de fuente |
+| Huellas y alturas | Volúmenes procedurales por manzana | Semilla raster 12 m + alturas por centro; tesela usa bbox por parcela | Extrusión de anillo real; conservar alturas, no fabricar plazas/techos | 2–4 h |
+| Costuras | Mundo estático continuo | Propiedad por >50 % de área; bloque que toca fetch descartado | Verificar dedupe incluyendo semilla; registrar casos sin dueño en esquinas y bloques >100 m | 2–4 h, regeneración aparte |
+| Barrios | Límites/zonas NYC completos | Polígonos administrativos sólo en semilla, fallback centro | Llevar límites reales a las nuevas zonas | 1–2 h |
+| Agua/puentes | Costas, muelles, puentes modelados | Cauce Manzanares real + tableros por segmento; puentes escultóricos ausentes | Mantener agua/cores, validar cortes del río; mallas sólo con fuente | 2–6 h |
+
+Los stubs de islas, puertos y Central Park son una eliminación geográfica correcta, no piezas que deban copiarse.
+Persisten polígonos y elementos NYC aparcados fuera de mapa (`PARKED_Z`, boroughs lejanos); limpiar el acoplo es
+trabajo pendiente. El render de bbox por parcela sí es un defecto de fidelidad, aunque pase los tests de datos.
+
+Inspección del propietario (build local `http://localhost:8000/?debug=1`; Pages sólo tras publicación explícita):
+
+- [ ] Volar Sol → Chamberí → Salamanca → Chamartín: manzanas ocupadas donde hay datos, ninguna plaza convertida en torre.
+- [ ] Cruzar el borde de semilla junto al Retiro y el Manzanares: ningún duplicado, corte de fachada o franja de agua tapada.
+- [ ] Revisar patios en vista cenital: contornos irregulares y vacíos legibles; no cajas envolventes llenándolos.
+
+## B. Motor y navegación — pendiente
+
+| Sistema | Estado NYC | Madrid en la línea base | Plan para paridad | Coste estimado |
+|---|---|---|---|---|
+| Tráfico | Grafo de carriles, giros, semáforos; población local fija | `buildRoadNetwork` lee GEO estático; teselas nunca lo actualizan | Red activa con dedupe y cruces, adaptación de simulación sin reset cercano | 4–8 h |
+| Peatones | Aceras conectadas, conversaciones, cruces | Rutas derivadas del mismo grafo de semilla | Reconstrucción incremental por tesela y pasos reales | 3–6 h |
+| Mapa y búsqueda | Path2D cacheado, etiquetas, edificios, teleports | `LAYERS`, `STREET_LABELS`, límites y búsqueda sólo de semilla | Capas activas por tesela; invalidación de cachés y límites activos | 2–4 h |
+| GPS | Trazo ortogonal visual, no router sobre grafo | Mismo trazo heredado, incorrecto en diagonales Madrid | Ruta real por red activa, sin inventar conexión a través de edificios | 2–4 h |
+| Parseo | Módulo único estático | `import()` teselas en hilo principal; module cache persiste tras expulsión | Worker de módulo dedicado, terminable; import ?v=md5 dentro del worker | 1–2 h |
+| Presupuesto | Mundo estático, culling de lotes | Política 12 MiB/12; no reserva in-flight; semilla omite blocksBytes; loadTile directo esquiva topes | Contabilizar semilla completa, reservas y admisión al completar; medir realmente | 1–2 h |
+| LOD lejano | Boroughs de baja resolución + niebla | Semilla detallada / tesela intermedia; sin nivel 0 | Módulos ligeros por core y anillos reales simplificados, reemplazo sin solape | 3–5 h |
+| Colisiones/teleports | Índices, suelo, modos, buena cobertura tests | Índice se refresca al cargar; límites de controllers/mapa siguen en semilla | Extender dominio activo sin permitir aterrizajes en celdas pendientes | 2–4 h |
+
+`roads` permite dibujar y etiquetar; no contiene identidad de nodos OSM, acceso, nivel/puente/túnel. No basta unir
+cruces 2D indiscriminadamente: fabricaría intersecciones. El generador debe emitir su `roadGraph` por tesela.
+La lectura completa del emisor confirma que `outLinks` elimina `hw` antes de exportar: el slot 6 de `inner`
+es correcto. Sí hay un fallo de identidad en la entrada Overpass: cuando out-geom no trae id de nodo, el fallback
+incluye el id de vía, por lo que un cruce compartido recibe identidades distintas. Corregirlo en el generador y
+normalizar por coordenadas de vértices reales al unir datos existentes (sin conectar cruces geométricos arbitrarios).
+
+Inspección (`http://localhost:8000/?debug=1`):
+
+- [ ] Abrir M en Retiro/Chamberí; capas, etiquetas y búsqueda deben corresponder a teselas activas y desaparecer al expulsarlas.
+- [ ] Circular de semilla a una tesela: coches en calzadas reales, sin saltos/reset visibles cerca del jugador.
+- [ ] Red Network: peticiones por módulo con `?v=<md5>`; memoria acotada tras ida/vuelta y fallos sin tormenta de peticiones.
+- [ ] Performance: import/parse de tesela en worker; construcción de mallas sigue en hilo principal y se mide por separado.
+
+## C. Acabado y localización — pendiente
+
+| Sistema | Estado NYC | Madrid en la línea base | Plan para paridad | Coste estimado |
+|---|---|---|---|---|
+| Fachadas/masificación | 6 familias, tiendas, retranqueos, cornisas, fire escapes, azoteas | Semilla conserva muchas rutinas NYC, 3 perfiles Madrid; teselas sólo 3 fachadas/cajas | Variación estilizada sobre huella real; detalles sin añadir volumen no documentado | 3–6 h |
+| Árboles/parques | Árboles procedurales con LOD, Central Park detallado | Césped OSM; gran parte del arbolado sigue ramas Central Park desactivadas; teselas sin árboles | Puntos natural=tree reales y vegetación documentada, con LOD reutilizado | 2–3 h |
+| Farolas/señales | Polos y lentes, luces cercanas en pools | Sigue street-details NYC (incluye vapor, metro MTA, carros y señales NYC en coordenadas heredadas); teselas no reciben detalles | Sustituir puntos autorados por OSM documentado; instanciar mobiliario real | 3–6 h |
+| Pintura vial | Grafo físico completo, marcas/carriles y cruces | Sólo red de semilla; mezcla ejes rectos NYC y grafo Madrid | Llevar road-paint a red real activa, respetar peatonales y niveles | 2–4 h |
+| Vehículos/aparcados | Coches, buses MTA, policía, geometrías/luces pulidas | Geometría intacta pero cartelería M1/5 AV/HARLEM, libreas NYC | Localizar texto; aparcados sólo emplazamientos con fuente | 1–3 h |
+| Hitos | ~12 modelos manuales icónicos con detalles | 10 módulos municipales/low-poly preservados; otros hitos extrusión; Atocha sin fachada | Conservar contrato; evitar doble parcela bajo malla; nuevas piezas sólo con fuente | 2–8 h por pieza |
+| Noche | Día/noche, interiores, luces calle y reflejos | Materiales/lighting intactos; monumentos sin iluminación dedicada | Iluminación estilizada enlazada a uniformes nocturnos y carga de monumentos | 1–2 h |
+| POIs/cámaras | Presets y teleports NYC icónicos | Teleports reales centrales; cámaras renombradas con varias coordenadas de fase 1 imprecisas | POIs desde datos, estadio/museos sólo si están cubiertos; corregir cámaras desde hitos | 1–3 h |
+| Audio | Fuentes de tráfico, peatones, vapor, viento y oclusión | Conservado, pero fuentes vinculadas a elementos NYC y a población semilla | Conectar fuentes a mobiliario y red activas reales | 2–3 h |
+| UI/controles | Modos coche/bici/pie/heli; ratón, teclado, táctil/gamepad | Conservados y tests verdes; etiquetas internas NYC | Mantener contratos; traducir contenido geográfico incorrecto | 1–2 h |
+
+No se atribuye paridad sólo porque el módulo heredado no tenga diff. El estilo de dibujo se conserva; los elementos
+geográficos o arquitectónicos NYC sin fuente Madrid no cuentan como detalle válido. Variación de color/material y
+modelos low-poly documentados son representaciones, no mediciones de material de fachada.
+
+Inspección (`http://localhost:8000/?debug=1`):
+
+- [ ] Día/noche en Cibeles, Alcalá, Palacio y Debod: siluetas preservadas, base apoyada, luz cálida sin doble edificio.
+- [ ] Retiro: verde y arbolado dentro del parque, agua y caminos abiertos; variación de fachada sin falsa altura.
+- [ ] Conducir Sol–Gran Vía: señales/cárteles sin destinos NYC, sin bocas MTA ni vapor Con Edison inventados.
+- [ ] Probar pie/bici/coche/heli y cámaras; teleports sobre suelo/calzada transitables mirando al hito correcto.
+
+## D. Rendimiento, mediciones y límites — pendiente
+
+| Sistema | Estado NYC | Madrid en la línea base | Plan para paridad | Coste estimado |
+|---|---|---|---|---|
+| Culling | Lotes estáticos 500/1000 m, árboles/vehículos con LOD | Conservado en semilla; grupo entero de cada tesela sin partición equivalente | Medir triángulos/draw calls, culling por core y LOD real | 2–4 h |
+| Arranque | Mundo único, construcción síncrona | Fase 3 midió 5,75 s CPU; frame SwiftShader ~151 s | Harness CPU sin WebGPU + métricas del worker, no fingir FPS | 1–2 h |
+| Memoria | No contrato de streaming | Bytes JS de red no equivalen a heap ni VRAM | Informar bytes de módulos, reservas, buffers estimados/medidos por separado | 1–2 h |
+| GPU/FPS | Validación upstream en navegador | Device destruido incluso en ejemplo mínimo (histórico) | Propietario con GPU: ?debug y Performance, mismos recorridos antes/después | bloqueado aquí |
+
+No ejecutar de nuevo una compilación WebGPU masiva en SwiftShader: no responde a la pregunta de FPS real.
+Usar `tools/madrid/measure.mjs` con modo CPU si se añade; conservar modo GPU para el propietario.
+
+Inspección (`http://localhost:8000/?debug=1`; `https://germanpadua.github.io/slop-madrid/` aún es fase 3):
+
+- [ ] Recorrido idéntico Sol–Retiro–Chamberí, registrar hardware/navegador, mediana y p95 de frame/long tasks.
+- [ ] `window.__madrid`: residentes ≤12, bytes de módulos ≤12 MiB, monumentos ≤2 MiB; medir heap aparte.
+- [ ] No device lost, errores de red ni crecimiento continuo de objetos tras tres recorridos de ida y vuelta.
+
+## Registro de ejecución
+
+Auditoría cerrada antes de escribir código de producto. Estado y próximos comandos en `PARIDAD-PLAN.md`.
+
+### A1/A2 — avance entregado
+
+`tools/madrid/pbf.py` usa el [extracto diario de Geofabrik](https://download.geofabrik.de/europe/spain/madrid.html)
+del 28-10-2026 (85.464.364 B, timestamp OSM `2026-10-28T21:21:02Z`, MD5 proveedor verificado
+`c1dfa14ee00cca5710549dadb49b4e5e`). `osmium extract -s smart` conserva vías y relaciones completas por
+celda; adaptación XML conserva IDs compartidos de nodo y roles. IDEAM no expone distrito: paginar por bbox
+con `orderByFields=OBJECTID`, sin duplicados, caché reusada en `/tmp`. Catastro no se consulta porque el
+constructor consume sólo IDEAM para estos edificios; la procedencia nueva ya no lo atribuye falsamente.
+
+Se entregan k0j2, k1j2, k2j2, k3j2, k3j0, k1j-1, k3j-1, k1j3, k2j3 y k3j3. **18 listas / 67 pendientes**,
+23,00 km² de cores, 11.077.635 B de módulos listos. Cada celda lleva md5, tamaño, counts y `sourceSnapshot`.
+Los ocho módulos previos (semilla partida + siete vecinas) no cambian. Ningún mega-JSON de entrega.
+
+La ampliación reveló duplicados por propiedad bloque/huérfana. Las celdas nuevas usan centro de parcela y mantienen
+anillos enteros; las huellas ya publicadas conservan su dueño fijo de fase 3/semilla. Dedupe incluye ahora la
+semilla. No se afirma que todos los bloques grandes o las esquinas de cuatro celdas tengan acera completa: el
+criterio anterior de >50 % y el descarte en borde de fetch siguen pendientes de una regeneración coordinada.
+
+Se extraen helpers puros a `tools/geo-geometry.mjs`: Madrid deja de construir Manhattan al importar helpers.
+El generador NYC conserva los mismos helpers y su test de reconstrucción. Antes, cada import añadía decenas de
+segundos; últimas celdas nuevas tardan ~8–10 s incluyendo extracción y caché/consulta municipal.
+
+Inspección A entregada (`http://localhost:8000/?debug=1`):
+
+- [ ] Desde Sol ir al norte por San Bernardo y Bravo Murillo: se completan los antiguos huecos intermedios.
+- [ ] Volar al sur desde Atocha y al este hacia Salamanca: continuidad de datos; las 67 pendientes siguen visibles.
+- [ ] En los bordes k0j2/k0j3 y k3j2/k4j2 no deben aparecer edificios dobles; verificar también en vista de calle.
+
+### B1 — carga y presupuesto entregados
+
+`madrid-tile-worker.js` importa cada módulo con su `?v=md5` y clona los datos; el cliente termina el worker al
+recibirlos, cancelar, fallar o agotar 30 s. La caché de módulos de tesela ya no queda retenida permanentemente en
+el hilo principal. **La clonación y construcción de mallas siguen costando CPU en el hilo principal.**
+
+Se cuentan ambos módulos de semilla (3.911.281 B), reservas y cargas directas; máximo 3 workers simultáneos.
+Los resultados tardíos no resucitan teselas canceladas. Un residente más lejano cede sitio al siguiente core
+cercano aunque siga dentro del radio de descarga (histéresis 200 m). Fallos: un reintento; después no se planifica
+esa celda hasta liberarla. Los topes siguen en **12 MiB y 12 teselas**, no se han aumentado.
+
+Inspección B1 (`http://localhost:8000/?debug=1`):
+
+- [ ] Network muestra módulos con md5; Performance sitúa su importación en un worker, con la geometría aún en main.
+- [ ] En `window.__madrid.tileStreamer.status()`, `bytes + reservedBytes` nunca supera 12 MiB; cargadas + inFlight ≤12.
+- [ ] Ir y volver a Chamberí con caché fría y luego caliente: sin crecimiento de módulos de tesela en main ni tormenta de reintentos.
+
+### B2 — mundo activo y mapa entregados; simulación pendiente
+
+`madrid-active-data.js` mantiene sólo semilla + teselas residentes. Al entrar/salir una celda se actualizan el
+índice de calles, los bloques consultables, los límites de movimiento, las capas de mapa (suelo, agua, parques,
+manzanas, huellas), las etiquetas y búsqueda. Se invalidan las cachés del radar y del mapa completo. Los límites
+de teletransporte/pie/coche no confunden la caja envolvente del ámbito con suelo activo: se ajustan a cores listos.
+
+Las diez celdas nuevas exportan `roadGraph` (IDs de intersección compartidos al generar con PBF). El modelo activo
+une vértices coincidentes, deduplica segmentos y conserva curvas y sentidos. GPS usa Dijkstra por esa red y no
+dibuja un codo ortogonal atravesando manzanas; si no existe ruta devuelve vacío. En los siete módulos antiguos
+sin roadGraph usa vértices de `roads`, sin crear intersecciones por mero cruce 2D. **Quedan por modelar explícitamente
+acceso peatonal, restricciones de giro y niveles de puentes/túneles**: esta red aún no equivale a un router de coche
+validado. La semilla antigua ya perdió identidad OSM al generar: no se le atribuye topología perfecta.
+
+**El tráfico y los peatones todavía simulan la red de semilla.** No se conecta una reconstrucción completa de
+`road-network` a cada carga: hay arrays de ocupación, conectores, actores y rutas peatonales que requieren migración
+incremental para no resetear actores cercanos. Ese trabajo es B3 pendiente, no se declara resuelto por tener un
+grafo activo para el mapa. Tampoco hay LOD0 ni horizonte completo.
+
+Inspección B2 (`http://localhost:8000/?debug=1`):
+
+- [ ] Abrir M al norte de la semilla: las calles nuevas se buscan y sus polígonos aparecen con los edificios.
+- [ ] Seleccionar waypoint en la misma red: trazado siguiendo curvas reales; sin conexión, sólo marcador.
+- [ ] Alejarse hasta expulsar la celda y volver: capas y búsqueda se actualizan, no quedan huellas fantasma.
+- [ ] Caminar sobre acera en Chamberí: pies a altura de acera y movimiento permitido en las celdas activas.
+- [ ] Fuera de semilla habrá poca o ninguna población simulada: limitación conocida, no fallo de carga de geometría.
+
+### C — muestras de acabado fiel entregadas
+
+Las teselas ya no dibujan el bbox de cada parcela: extruyen el **anillo IDEAM completo** a su altura emitida, con
+las tres fachadas procedurales y paleta del original en coordenadas de mundo. Un mesh por familia, compartiendo
+material entre teselas. Geometría indexada de techo y paredes sin tapa enterrada; no se añade retranqueo, cornisa
+ni volumen de azotea inventado. La extracción de las diez nuevas celdas conserva además **3.504 anillos interiores**
+y alas disjuntas de IDEAM, antes descartados. Los siete módulos de fase 3 y la semilla conservan sus datos previos
+(todavía sin sus anillos interiores). Los colisionadores siguen siendo cajas conservadoras: patios visibles no
+implican todavía una colisión poligonal exacta.
+
+Se añaden **5.989 puntos OSM** de árboles, farolas y señales en las celdas nuevas. Posiciones con id de nodo;
+formas low-poly documentadas: árbol sin altura etiquetada 7 m, farola 6 m, poste de señal 3 m. No se afirma especie
+ni diseño de luminaria medidos; no hay dispersión aleatoria dentro de parques. Las señales son postes sin fase
+activa (el tag no contiene orientación/ciclo); las farolas cambian brillo con la noche. Son símbolos estilizados,
+no emplazamientos fabricados. Retiro en módulos antiguos sigue pendiente de regenerar con puntos de arbolado.
+
+Los monumentos reciben un relleno emisivo tenue (0,22 × color de vértice al anochecer), ligado al uniforme de
+ventanas de la ciudad. **No es un modelo de iluminación municipal ni proyecta luz sobre el entorno.** Se conserva
+cada módulo/hash y presupuesto. Los buses ambientales ya muestran BUS/MADRID en vez de M1/5 AV/HARLEM;
+no se les atribuye una línea EMT real. Las libreas y otros detalles NYC siguen pendientes.
+
+El extrusor genérico de hitos ya exige altura de fuente: elimina los fallbacks 14/24 m y el mínimo 9 m, y no
+trunca torres medidas a 160 m. No se extruyen plazas ni los sitios reservados a monumentos. Queda pendiente
+revisar las reservas procedurales de la semilla (aún heredan nombres NYC) contra las mallas para evitar masas
+genéricas bajo hitos; no se declara resuelto sólo por retirar la extrusión de `landmarks.js`.
+
+Inspección C (`http://localhost:8000/?debug=1`):
+
+- [ ] Chamberí: patios cóncavos e interiores abiertos entre cubiertas, fachadas siguiendo el contorno real.
+- [ ] Esquinas de tesela: fachadas completas sin llenar las calles con su caja envolvente.
+- [ ] Árboles y farolas en celdas nuevas: posiciones coherentes con calles/parques; no se espera arbolado nuevo en Retiro antiguo.
+- [ ] Cambiar a noche en Cibeles/Alcalá/Debod: mallas legibles y brillo tenue; comparar con día, sin confundirlo con luz real de proyectores.
+- [ ] Autobuses: cartel Madrid sin destino NYC; revisar posibles masas bajo los monumentos y reportarlas como pendientes.
+
+### D — mediciones y verificación de entrega
+
+Entorno: ARM64, 2 vCPU, Node v26.7.0, Chromium 156.0.8078.4. `--cpu` usa `--disable-gpu`: **no crea renderer**.
+Importa los módulos reales, solicita las 17 vecinas mediante el worker de producción y construye la geometría.
+El mismo conjunto de datos final se usa para comparar contra el renderer de `feat/monumentos`. No se confunden
+bytes de red, buffers geométricos y memoria total. Los materiales de fachada nuevos requieren compilar variantes
+GPU al entrar; ese coste no está incluido en CPU.
+
+| Medición archivada en `tools/madrid/measurements/` | import + construcción por tesela, mín / mediana / máx (ms) | Máx. buffers geométricos (B) | Nota |
+|---|---|---|---|
+| `2026-10-29-01-extrude-prototype.json` | 73,7 / 274,4 / 376,0 | 92.982.058 | Primera extrusión fiel sin compactar, datos A |
+| `2026-10-29-02-box-baseline.json` | 44,7 / 98,8 / 203,3 | 17.356.554 | Cajas del renderer anterior, mismos datos A |
+| `2026-10-29-03-compact-prototype.json` | 46,3 / 146,0 / 193,6 | 55.955.988 | Techo y paredes indexados, sin patios interiores |
+| `2026-10-29-04-compact-confirmation.json` | 45,7 / 141,2 / 229,2 | 55.955.988 | Segunda pasada compacta |
+| `2026-10-29-05-courtyards.json` | 54,2 / 188,5 / 378,7 | 58.868.742 | Incluye patios interiores de datos C |
+| `2026-10-29-06-release-box-baseline.json` | 50,0 / 83,2 / 148,3 | 17.356.554 | Cajas sobre los datos finales, GPU desactivada |
+| `2026-10-29-07-release.json` | 79,0 / 147,0 / 265,2 | 58.868.742 | Entrega final + smoke de mapa, GPU desactivada |
+
+La fidelidad geométrica **tiene coste**: en la comparación final la mediana de construcción sube 83,2→147 ms y
+los buffers 17,36→58,87 MB. Compactar evita los 93 MB del primer prototipo, pero no iguala la ligereza de las cajas.
+Estas cifras no incluyen geometría de semilla, heap JS, texturas, materiales ni VRAM/driver; no son una medición
+de memoria GPU. Se mantiene el presupuesto de módulos, sin subirlo para esconder el coste.
+
+En la pasada final: máximo **12 teselas**, **8.966.388 B** de módulos residentes contando semilla completa,
+0 errores de página/red y 0 mallas de tesela tras expulsión. El grafo activo alcanzó 10.938 segmentos en ese
+recorrido (no es una medida de carriles simulados). Reconstrucción del grafo: mediana 33,7 ms; queda en main.
+Smoke Path2D real: 5.140 polilíneas y 1.257 manzanas activas → 2.796 y 488 al volver a la semilla. Raycast sobre
+la geometría de producción: cubierta +12 m, patio cóncavo e interior ~0 m. En el renderer anterior ambos patios
+quedan a +12 m, demostrando la ocupación indebida por bbox. FPS y coste por frame: **no medidos**.
+
+| Celda nueva | Bytes de módulo final | Parcelas |
+|---|---:|---:|
+| k0j2 | 249.114 | 1.168 |
+| k1j-1 | 401.590 | 2.209 |
+| k1j2 | 346.458 | 1.570 |
+| k1j3 | 781.574 | 4.216 |
+| k2j2 | 332.905 | 1.805 |
+| k2j3 | 779.812 | 4.459 |
+| k3j-1 | 304.725 | 1.383 |
+| k3j0 | 226.837 | 1.147 |
+| k3j2 | 604.136 | 3.672 |
+| k3j3 | 578.978 | 3.104 |
+
+Final de datos: **18/85 listas, 67 pendientes, 23 km² de cores, 11.395.022 B publicados**. Las nuevas celdas suman
+24.733 parcelas; puntos OSM: 4.454 árboles, 878 farolas, 657 señales. Monumentos: mismos diez módulos/hash,
+1.125.998 B totales; presupuesto 2 MiB y 250 KiB/módulo conservados. Suite completa **152/152**, incluidos los
+contratos previos sin debilitarlos. Cada commit se verificó además sobre una copia del índice para no depender
+de cambios todavía sin commitear. `tiles.mjs verify`: 18/85 correctas.
+
+## Handoff y brechas que siguen abiertas
+
+No se ha alcanzado paridad global con NYC/TinyWarsaw. Prioridades de continuación:
+
+1. **Tráfico/peatones activos**: migrar carriles, conectores, ocupación y rutas sin reiniciar actores cercanos.
+   Llevar acceso, identidad y niveles al grafo antes de declararlo drivable; el GPS actual no valida esas restricciones.
+2. **LOD0 y 67 celdas restantes**: aún se ve fuera-de-mapa. Completar esquinas de bloques >50 %, bordes del fetch,
+   y el solape de 100 m del suelo/agua de semilla con el core vecino. Dedupe de huellas no demuestra continuidad
+   perfecta de todas las superficies. El test histórico suma todos los módulos listos contra 12 MiB: el próximo
+   escalado necesita resolver ese contrato respecto al presupuesto de residentes, sin perder las pruebas de topes.
+3. **Acabado restante**: pintura vial fuera de semilla, mobiliario y señales operativas, LOD de árboles, aparcados
+   con fuente, interiores/patios de las teselas antiguas, reservas de hitos en semilla, cámaras y nuevos POIs con fuente,
+   libreas Madrid y limpieza de contenido NYC aparcado. No se ha añadido estadio ni arquitectura sin datos.
+4. **GPU del propietario**: validar imagen, compilación de nuevos materiales, sombras, FPS y p95 de frame/long tasks.
+   El harness acepta `--native-gpu` para no forzar SwiftShader; sólo tiene sentido con WebGPU funcionando en ese entorno.
+
+Para reanudar: comandos y commits en `PARIDAD-PLAN.md`. Cache público 114 MiB en `/tmp/slop-paridad-cache`;
+disco libre al cierre ~7,2 GiB. No se ha leído ninguna clave ni usado servicio de pago. **Sin push ni deploy.**
+
+Inspección final del propietario (no validada visualmente aquí):
+
+- [ ] Servir `feat/paridad` y abrir `http://localhost:8000/?debug=1`; Pages `https://germanpadua.github.io/slop-madrid/`
+  sigue mostrando la fase 3 anterior, no esta entrega.
+- [ ] Sol → Chamberí → Salamanca: cobertura nueva, ventanas y patios abiertos; M muestra las mismas calles/huellas que el mundo activo.
+- [ ] Volver y repetir tres veces: `tileStreamer.status()` dentro de 12 MiB/12; monumentos intactos; sin fugas ni fallos de red.
+- [ ] Día/noche en Cibeles, Alcalá, Palacio y Debod: conservar siluetas; verificar brillo, apoyo, sombras y posibles masas genéricas debajo.
+- [ ] Registrar hardware, navegador, FPS y p95 en ese recorrido. La mayor memoria de geometría y compilación de materiales requiere esta validación.

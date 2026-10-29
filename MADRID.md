@@ -1,5 +1,10 @@
 # slop-madrid — plan de adaptación (fork de mrdoob/slop-newyork)
 
+> Avance local de paridad (29-10-2026, `feat/paridad`, sin publicar): auditoría y mediciones en
+> [MADRID-PARIDAD.md](MADRID-PARIDAD.md), estado reanudable en [PARIDAD-PLAN.md](PARIDAD-PLAN.md).
+> 18/85 teselas listas, workers, mapa activo y muestras de acabado con fuente. Tráfico activo, LOD0,
+> 67 celdas y validación GPU siguen pendientes. Las fases publicadas descritas abajo conservan su historial.
+
 Fork del simulador GTA-style de Manhattan (three.js WebGPURenderer + TSL, 1:1) a Madrid.
 Objetivo por fases: **fase 1** centro (~1,9 km²: Sol, Gran Vía, Cibeles, Alcalá) — completada;
 **fase 2** almendra central oeste (8,45 km²: Manzanares, Debod, Palacio Real, Atocha) — completada el
@@ -118,7 +123,8 @@ presupuesto de memoria); la fase 4 es llenar el término municipal.
   completo conviene descargar por distrito (~21 peticiones MapServer con where por distrito) y recortar.
 - **LOD**: la fase 3 ya separa dos niveles (semilla con masificación procedural de manzana; tesela con una caja de
   fachada por parcela). Fase 4: nivel 0 = máscara de suelo + manzanas simplificadas para lo lejano (~50 MB para
-  el municipio); i3s municipal como capa opcional de hitos (ya investigado por nodo).
+  el municipio). Los hitos ya tienen su capa i3s propia (rama `feat/monumentos`); ampliarla depende de que el
+  Ayuntamiento publique más mallas (sólo hay servicios dedicados de Cibeles, Puerta de Alcalá y Obelisco).
 - **Tráfico y minimapa por tesela**: hoy el grafo de tráfico y el minimapa son de la semilla; extenderlos requiere
   un grafo global con tiles activos (los `roads` de cada tesela ya se emiten con nombre, ancho y carriles).
 - **Carga diferida**: el presupuesto (12 MB / 12 teselas) y el `?v=<md5>` de los módulos ya están; para el
@@ -242,6 +248,9 @@ regeneran con el script.
 
 ### Hitos de la almendra
 
+> En la rama `feat/monumentos`, Cibeles, Puerta de Alcalá, Palacio Real + Almudena y Banco de España dejan de
+> extruirse y usan la malla municipal real; el resto de la tabla sigue siendo la representación de fase 2.
+
 | Hito | Huella (m) | Altura | Fuente |
 |---|---|---|---|
 | Templo de Debod | 91 × 41 | — (sin altura inventada) | OSM ring |
@@ -310,7 +319,8 @@ parcelas dentro del frame y fuera del agua, crecimiento ~4×, módulo partido).
   dato antes que inventarlo (el extrusor usa su valor por defecto).
 - **Puente/baden**: los 17 vanos son tableros planos a cota 0; no hay barandillas ni
   geometría de puente.
-- **i3s** (`MODELADO_3D_MADRID`) sigue diferido: los hitos se extruyen de su huella real.
+- **i3s** (`MODELADO_3D_MADRID`) sigue diferido en fase 2: los hitos se extruyen de su huella real. En
+  `feat/monumentos` cuatro de ellos ya usan malla municipal real (ver la sección de monumentos al final).
 - Errores de consola de WebGPU en headless (`Binding size … is zero`) son **previos**
   (también aparecen con los datos de fase 1) y del entorno SwiftShader; 0 pageerrors.
 
@@ -469,3 +479,121 @@ cercanas. Ampliar radios/budget es un valor del manifiesto, no un cambio de cód
 - **Vecinos de la semilla**: al regenerarla con 100 m de solape, las manzanas del anillo pertenecen a las celdas
   vecinas (488 manzanas interiores en la semilla), de modo que una parte del borde de fase 2 se completa al cargar esas
   celdas.
+
+## Monumentos con malla municipal real (rama feat/monumentos, 29-10-2026)
+
+Sustituye la extrusión genérica de los hitos principales por mallas del **modelo 3D municipal** (i3s del
+Ayuntamiento), simplificadas al presupuesto de la web. La premisa de partida («el modelo contiene estatuas y
+fuentes») sólo se cumple en parte: `MODELADO_3D_MADRID` es **sólo edificación**; los servicios dedicados a
+esculturas (`Conjunto_Fuente_Cibeles_sin_textura`, `P_Alcala_st`) traen malla, pero Neptuno, Debod y Cervantes están
+**registrados y vacíos** y la fotogrametría del conjunto de Cibeles no tiene silueta legible (amasijo). Por eso hay
+6 mallas municipales reales (más la cubierta de Atocha) y 4 piezas **low-poly manuales** documentadas; no se inventa
+masa municipal.
+
+### Resultado
+
+| Hito | Servicio i3s | Triángulos | Vértices | Módulo | Altura |
+|---|---|---|---|---|---|
+| Cibeles (bacín real + escultura low-poly) | `Conjunto_Fuente_Cibeles_sin_textura` + manual | 8 027 | 3 503 | 106 697 B | 7,3 m |
+| Puerta de Alcalá | `P_Alcala_st` | 16 888 | 7 475 | 225 670 B | 24,8 m |
+| Palacio Real | `MODELADO_3D_MADRID` | 2 010 | 1 008 | 28 625 B | 57,2 m |
+| Catedral de la Almudena | `MODELADO_3D_MADRID` | 2 032 | 1 014 | 28 868 B | 94,9 m |
+| Banco de España | `MODELADO_3D_MADRID` | 9 813 | 4 172 | 129 437 B | 40,7 m |
+| Edificio Metrópolis | `MODELADO_3D_MADRID` | 217 | 172 | 4 245 B | 40,8 m |
+| Atocha (cubierta de vías) | `MODELADO_3D_MADRID` | 9 462 | 5 722 | 144 819 B | 62,3 m |
+| Fuente de Neptuno | low-poly manual | 340 | 197 | 5 553 B | 5,5 m |
+| Templo de Debod | low-poly manual | 176 | 104 | 3 137 B | 8,4 m |
+| Monumento a Cervantes | low-poly manual | 108 | 72 | 2 234 B | 16,1 m |
+| **Total** | | **51 075** | **23 439** | **679 285 B** (0,65 MB) | | |
+
+Δ = centro del bbox de la malla contra el centroide de la huella OSM/IDEAM del hito (o el centro de la unión
+Palacio+Almudena). Tolerancia de test: 15 m.
+
+**Piezas low-poly manuales** (sin malla municipal utilizable; `tools/madrid/monumentos.json` → `notes`):
+
+- **Escultura de Cibeles**: el servicio dedicado trae el bacín limpio pero el conjunto escultórico es fotogrametría
+  sin silueta (bloque amorfo de 9 × 8 m). El módulo lleva el bacín real menos ese bloque, y encima peñasco, carro,
+  figura y leones low-poly (escala real: remate a +7,3 m).
+- **Fuente de Neptuno**: los SceneServers dedicados (`Conjunto_Fuente_Neptuno_sin_textura`) existen pero están
+  **vacíos** (0 hojas); lo mismo `Templo_Debod_st`, `Monumento_Cervantes_st` y `Plaza_Espana_st`.
+- **Templo de Debod / Monumento a Cervantes**: igual; low-poly con silueta icónica (pórtico y losa en Debod;
+  obelisco, pilares y figuras en Cervantes).
+- **Atocha (fachada + reloj)**: el modelo municipal sólo tiene naves y cubierta; no modela la fachada de 1892. El
+  único servicio dedicado de la zona (`SG_INNOVACION_ATOCHA_CARLOSV`) es una nube de puntos. El módulo lleva la
+  cubierta de vías real; la fachada se queda fuera antes que publicar una torre que no existe.
+
+Los ocho hitos del encargo dejan de extruirse en `js/landmarks.js` aunque no tengan malla: una caja de 24 m sobre una
+plaza o sobre el templo es peor que ningún volumen. También dejan de extruirse las plazas y recintos sin altura
+etiquetada (`Plaza Mayor`, `Puerta del Sol`, `Plaza de España`…), que hasta ahora se convertían en losas de 24 m.
+
+### Pipeline (`tools/madrid/monumentos.py`)
+
+1. **Traversal i3s**: desde `nodes/root` se desciende *siempre* que el nodo tenga hijos (el LOD fino del servidor son
+   hijos con `mbs[3]` de 100–350 m); se queda con las hojas con geometría de radio ≤ 350 m (≤ 60 m en los servicios
+   dedicados). Sin clave, con caché de nodos brutos en `/tmp/madrid-i3s` (nunca en Git).
+2. **Decodificación**: cabecera `nv/nf`, posiciones f32 relativas al `mbs` del nodo, `feature ids` y rangos de caras.
+   lon/lat → UTM 30N con la misma serie que `projection.mjs` (verificada contra las esquinas de `config.mjs`), altura
+   EGM96 del nodo. No hay colores de origen (el material municipal es blanco): los colores son una paleta de piedra
+   estilizada por normal y altura, no material medido.
+3. **Recorte**: servicio dedicado = la malla completa; modelo de ciudad = triángulos cuyo centro cae en la huella
+   `GEO.landmarks` del edificio (+6 m) o en el bbox del hito.
+4. **Base**: se aplana por *feature* (cada edificio del modelo es una feature). En el modelo de ciudad la base es el
+   **percentil 5** de la altura de la feature, no el mínimo: aparcamientos, criptas y niveles bajo rasante quedan
+   enterrados en vez de convertirse en un zócalo gigante. La malla se apoya en `y = 0` (suelo plano del simulador).
+5. **Decimación**: clustering de vértices en rejilla (numpy puro), sin dependencias nuevas; la celda crece (×1,25)
+   hasta que el módulo cabe en 245 KiB. Después, soldadura en la rejilla de cuantización de 0,1 m y eliminación de
+   triángulos degenerados/duplicados.
+6. **Formato**: posiciones int16 en decímetros (x este, y arriba, z sur), colores RGB uint8 por vértice, índices
+   uint16 (uint32 si hiciera falta) e índice base64. Sin Draco ni texturas: 9 B/vértice + 6 B/triángulo, ~5–15× más
+   pequeño que el JSON de origen.
+
+Para regenerar (requiere `numpy` y `requests`; en esta máquina el venv de tiny-madrid o `/usr/bin/python3`):
+
+```
+<venv>/bin/python tools/madrid/monumentos.py                # extractor original: alcala, banco (servicios dedicados)
+<venv>/bin/python tools/madrid/monumentos_emitir.py         # emisor: bacín+escultura Cibeles, Real, Almudena,
+                                                            # Metrópolis, Atocha y las 3 piezas low-poly
+```
+
+### Carga y colocación (`js/monumentos.js`)
+
+El manifiesto `tools/madrid/monumentos.json` fija md5, bytes, bbox, altura y **tesela dueña** de cada módulo. El
+loader usa el mismo patrón que las teselas: `import()` diferido con `?v=<md5>`, y sólo carga un monumento si su
+tesela está residente (`isTileResident`, la semilla siempre lo está) y la cámara está a ≤ 1 000 m; lo descarga a
+> 1 600 m o si la tesela se va. Presupuesto propio de 2 MB. `js/monument-mesh.js` decodifica a `BufferGeometry`
+   indexada, material `MeshStandardNodeMaterial` con `attribute('color')` (luz del visor, sin sombras propias raras),
+   sombreado plano, y añade un colisionador de caja a `allColliders`.
+
+En el arranque desde Sol se cargan Palacio, Banco y Cibeles (~265 KB); Alcalá entra al acercarse; la cubierta de
+Atocha y el resto llevan su tesela.
+
+### Verificación
+
+- **Tests**: `node --test tests/*.test.cjs tests/*.test.mjs` → **134/134**, incluidos 4 de monumentos
+  (`tests/monumentos.test.cjs`): colocación de cada malla dentro de su bbox esperado, presupuesto estricto
+  (≤ 250 KiB por módulo, ≤ 2 MiB total), md5/tamaño, geometría decodificable (índices en rango, base sin flotar,
+  altura del manifiesto), los 8 hitos fuera del extrusor, plazas nunca extruidas, y la política de carga/expulsión por
+  tesela y radio.
+- **Smoke en navegador** (Chromium headless ARM64, WebGPU sobre SwiftShader): la app arranca, `monumentLoader` deja
+  `palacio/banco/cibeles` cargados sin fallos y las teselas `fase2/k3j1/k0j-1/k2j-1` residentes; los objetos
+  `Monument:*` están en la escena en sus coordenadas. En esta máquina el **dispositivo WebGPU se destruye**
+  ("Device was destroyed", también con un triángulo mínimo), así que el canvas sale negro y no se puede validar el
+  frame de la app; la malla exportada se verificó aparte con un visor WebGL (misma geometría y colores): fuente de
+  Cibeles con carro y leones, Alcalá con tres arcos y estatuas, Banco con rotonda, Palacio+Almudena apoyados en el
+  suelo.
+- **Sin errores de carga**: 0 fallos en los 4 módulos y en las 4 teselas del smoke.
+
+### Limitaciones conocidas (monumentos)
+
+- **Low-poly donde no hay municipal**: escultura de Cibeles, Neptuno, Debod y Cervantes son siluetas manuales (~2–6 KB);
+  la fachada de Atocha no está. Documentado arriba y en el manifiesto.
+- **Cibeles: sin bloque central municipal**: la fotogrametría del conjunto escultórico no tiene silueta; se sustituyó
+  por la pieza low-poly (los restos del borde del bloque en la zona de corte son mínimos).
+- **Sin texturas ni colores de origen**: el material del servicio es blanco; la paleta (piedra, cubierta, banda alta)
+  es estilizada, como en el piloto de tiny-madrid.
+- **Base plana**: el simulador no tiene terreno; en la Almudena (ladera) la base del percentil 5 deja la fachada baja
+  a cota 0 y la parte alta enterrada. La silueta se lee, pero no casa con un DEM.
+- **Un solo LOD por servicio**: la decimación es nuestra (clustering); no se puede pedir al servidor un LOD intermedio
+  por debajo de la hoja sin cambiar el traversal.
+- **Cuantización 0,1 m**: suficiente a escala de calle; los detalles de estatua menores de ~25 cm se pierden en
+  Cibeles/Alcalá.

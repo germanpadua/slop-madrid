@@ -80,6 +80,7 @@ function mapHarness() {
   const elements = {
     'fullmap-canvas': canvas, 'fullmap-canvas-wrap': wrapper,
     'fullmap-modal': { classList: classList() },
+    'fullmap-counts': {},
     'map-zoom-in': zoomIn, 'map-zoom-out': zoomOut
   };
   const document = {
@@ -117,6 +118,7 @@ function mapHarness() {
   map.toggleFullMap(true);
   return {
     map, canvas, controls, wrapper, window, document, captured, teleports, toggles, zoomIn, zoomOut,
+    config, counts: elements['fullmap-counts'],
     pointer(target, type, id, x = 110, y = 120, pointerType = 'touch', button = 0) {
       const event = { pointerId: id, clientX: x, clientY: y, pointerType, button, preventDefault() {} };
       (captured.has(id) ? canvas : target).dispatch(type, event);
@@ -155,6 +157,36 @@ test('a normal map tap teleports once and releases capture', () => {
   assert.equal(h.map.waypoint.name, '1000, 2000');
   assert.equal(h.captured.size, 0);
   assert.equal(h.map.isPanning, false);
+});
+
+test('tile changes invalidate both map caches and route along the active polyline instead of a grid elbow', () => {
+  const { map, config, counts } = mapHarness();
+  config.ROADS.push({ name: 'Calle de Prueba', pts: [{ x: 100, z: 50 }, { x: 200, z: 50 }], w: 9 });
+  let routed = 0;
+  const model = {
+    version: 1,
+    snapshot: () => ({ tiles: [{ id: 'fase2' }, { id: 'east', core: [[100, 0, 200, 100]] }] }),
+    clamp: () => ({ x: 150, z: 50 }),
+    route: () => { routed++; return [{ x: 0, z: 0 }, { x: 50, z: 30 }, { x: 100, z: 0 }]; }
+  };
+  map.miniCache = {}; map.fullStaticKey = 'stale';
+  map.setActiveData(model);
+  assert.equal(map.miniCache, null);
+  assert.equal(map.fullStaticKey, null);
+  assert.equal(counts.textContent, '1 streets · 0 blocks');
+  assert.deepEqual({ ...map.clampToManhattan({ x: 9999, z: 9999 }) }, { x: 150, z: 50 });
+  const lines = [];
+  const ctx = { beginPath() {}, moveTo(x, y) { lines.push([x, y]); }, lineTo(x, y) { lines.push([x, y]); }, stroke() {} };
+  const view = { toX: (x) => x * 2, toY: (z) => z * 2 };
+  map.drawActiveRoute(ctx, view, { x: 0, z: 0 }, { x: 100, z: 0 }, 3);
+  assert.deepEqual(lines, [[0, 0], [100, 60], [200, 0]]);
+  map.drawActiveRoute(ctx, view, { x: 0, z: 0 }, { x: 100, z: 0 }, 3);
+  assert.equal(routed, 1, 'the stationary radar and full map share a cached route');
+  model.version++;
+  map.drawActiveRoute(ctx, view, { x: 0, z: 0 }, { x: 100, z: 0 }, 3);
+  assert.equal(routed, 2, 'a new resident graph invalidates the route');
+  config.ROADS.length = 0; map.setActiveData(model);
+  assert.equal(counts.textContent, '0 streets · 0 blocks');
 });
 
 for (const interruption of ['pointercancel', 'lostpointercapture', 'blur', 'hidden', 'close']) {

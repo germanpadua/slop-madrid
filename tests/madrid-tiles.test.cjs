@@ -248,3 +248,93 @@ test('budget constants match the phase-3 target (~12 MB of resident geodata)', (
   assert.ok(TILE_BUDGET.dropRadius > TILE_BUDGET.preloadRadius);
   assert.equal(manifest.budget.maxResidentBytes, TILE_BUDGET.maxResidentBytes);
 });
+
+test('a full resident set makes room for the nearest tile before the old tiles reach the drop radius', () => {
+  const tiles = [
+    { id: 'fase2', status: 'ready', core: [[-100, -100, 100, 100]], bytes: 4, blocksBytes: 2 },
+    { id: 'old', status: 'ready', core: [[1000, 0, 1500, 500]], bytes: 3 },
+    { id: 'here', status: 'ready', core: [[0, 0, 500, 500]], bytes: 3 }
+  ];
+  const loaded = new Map([['fase2', { bytes: 6 }], ['old', { bytes: 3 }]]);
+  const plan = planTiles({ tiles, loaded, bytes: 9, x: 250, z: 250, budget: { maxResidentBytes: 10, maxResidentTiles: 2 } });
+  assert.deepEqual(plan.drop, ['old']);
+  assert.deepEqual(plan.load, ['here']);
+});
+
+function testWorld() {
+  const ids = new Set();
+  return { addTile: (t) => ids.add(t.id), removeTile: (id) => ids.delete(id), meshCount: () => ids.size, ids };
+}
+
+test('runtime reserves in-flight loads, includes seed blocks and caps direct loadTile calls', async () => {
+  const { createTileStreamer } = await import('../js/madrid-tiles.js');
+  const pending = new Map();
+  const world = testWorld();
+  const tiles = [
+    { id: 'fase2', status: 'ready', bytes: 2, blocksBytes: 4 },
+    ...['a', 'b', 'c'].map((id) => ({ id, status: 'ready', bytes: 3, module: `${id}.js`, md5: id }))
+  ];
+  const s = await createTileStreamer({ world, baseUrl: 'https://example.test/', fetchJson: async () => ({ tiles }),
+    budget: { maxResidentBytes: 10, maxResidentTiles: 3 },
+    importModule: (url) => new Promise((resolve) => pending.set(new URL(url).pathname.slice(1, 2), resolve)) });
+  assert.equal(s.status().bytes, 6);
+  const a = s.loadTile('a');
+  assert.equal(s.status().reservedBytes, 3);
+  assert.equal(await s.loadTile('b'), false, 'another direct request cannot oversubscribe an in-flight reservation');
+  pending.get('a')({ TILE: { id: 'a' } });
+  await a;
+  assert.equal(s.status().bytes, 9);
+  assert.equal(s.status().reservedBytes, 0);
+  assert.equal(await s.loadTile('c'), false);
+  s.dropTile('a');
+  assert.equal(s.status().bytes, 6);
+  s.dispose();
+});
+
+test('late results after cancellation/disposal never resurrect a tile; failed loads release reservations', async () => {
+  const { createTileStreamer } = await import('../js/madrid-tiles.js');
+  const world = testWorld();
+  let resolve;
+  const make = (importModule) => createTileStreamer({ world, baseUrl: 'https://example.test/',
+    fetchJson: async () => ({ tiles: [{ id: 'a', status: 'ready', bytes: 3, module: 'a.js' }] }), importModule });
+  const s = await make(() => new Promise((r) => { resolve = r; }));
+  const a = s.loadTile('a');
+  s.dropTile('a');
+  resolve({ TILE: { id: 'a' } });
+  assert.equal(await a, false);
+  assert.equal(world.ids.size, 0);
+  const b = s.loadTile('a');
+  s.dispose();
+  resolve({ TILE: { id: 'a' } });
+  assert.equal(await b, false);
+  assert.equal(s.status().reservedBytes, 0);
+  const failed = await make(async () => { throw new Error('offline'); });
+  await failed.loadTile('a');
+  await failed.loadTile('a');
+  assert.equal(failed.status().failures, 1);
+  assert.equal(failed.status().reservedBytes, 0);
+  assert.equal(await failed.loadTile('a'), false, 'bounded retry');
+  failed.dispose();
+});
+
+test('tile import uses a terminable module worker and preserves the cache-busting URL', async () => {
+  const { importTileModule } = await import('../js/madrid-tile-import.js');
+  let instance;
+  class Worker {
+    constructor(url, options) { instance = this; this.url = url; this.options = options; }
+    postMessage(message) { this.message = message; }
+    terminate() { this.terminated = true; }
+  }
+  const p = importTileModule('https://example.test/t.js?v=abc', { WorkerClass: Worker });
+  assert.equal(instance.options.type, 'module');
+  assert.match(instance.url.pathname, /madrid-tile-worker.js$/);
+  assert.match(instance.message.url, /\?v=abc$/);
+  instance.onmessage({ data: { tile: { id: 't' } } });
+  assert.equal((await p).TILE.id, 't');
+  assert.ok(instance.terminated);
+  const controller = new AbortController();
+  const cancelled = importTileModule('https://example.test/t.js?v=abc', { WorkerClass: Worker, signal: controller.signal });
+  controller.abort();
+  await assert.rejects(cancelled, { name: 'AbortError' });
+  assert.ok(instance.terminated);
+});

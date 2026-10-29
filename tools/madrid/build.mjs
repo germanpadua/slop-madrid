@@ -13,15 +13,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Raster, rdp, rdpRing, ringArea, bbox, r1, log } from '../geo-base.mjs';
+import { Raster, rdp, rdpRing, ringArea, bbox, r1, pointInRing } from '../geo-geometry.mjs';
+const log = (...args) => console.log('[madrid]', ...args);
 import { getPhase } from './config.mjs';
 import { toWorld, utmToWorld } from './projection.mjs';
 
 const DATA = process.env.MADRID_DATA || fileURLToPath(new URL('../../tools/data/madrid/', import.meta.url));
 const SOURCES = [
-  'OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)',
+  'OpenStreetMap (© OpenStreetMap contributors, ODbL; Overpass or local PBF)',
   'Ayuntamiento de Madrid IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)',
-  'Catastro INSPIRE WFS (© IGN/Catastro)',
 ];
 const OUT = process.argv[2] || fileURLToPath(new URL('../../js/madrid-geodata.js', import.meta.url));
 const load = (f) => JSON.parse(fs.readFileSync(path.join(DATA, f), 'utf8'));
@@ -47,6 +47,25 @@ const CORE = (phase.core ? phase.core.map((r) => r.slice()) : [[wx0, wz0, wx1, w
     return [x0, z0, x1, z1];
   });
 const IS_TILE = !!phase.tile;
+// Phase-3 modules are conquered ground. Pin their footprint ownership while filling new neighbours. The old
+// block/orphan rule was context-dependent: the same parcel could be a block member here and an orphan next door.
+// New cells use centroid ownership (whole rings, never clipped); a parcel already delivered by the seed/phase3
+// stays with that owner. This reads only the fixed phase3 set, so build order never changes the result.
+const legacyParcels = new Set();
+let modernParcelTile = false;
+if (IS_TILE) {
+  const mf = JSON.parse(fs.readFileSync(new URL('./tiles.json', import.meta.url), 'utf8'));
+  const legacyIds = new Set([mf.grid.seed, ...mf.phases['3']]);
+  modernParcelTile = !legacyIds.has(phase.tile.id);
+  if (!legacyIds.has(phase.tile.id)) {
+    const { PARCELS } = await import(new URL('../../js/madrid-geodata-blocks.js', import.meta.url));
+    for (const p of PARCELS.flat()) legacyParcels.add(p.ring.join(','));
+    for (const t of mf.tiles.filter((t) => legacyIds.has(t.id) && t.id !== mf.grid.seed)) {
+      const { TILE } = await import(new URL(`../../${t.module}`, import.meta.url));
+      for (const p of TILE.parcels) legacyParcels.add(p.ring.join(','));
+    }
+  }
+}
 const ALL_CORES = phase.allCores || CORE;
 const inCore = (x, z) => CORE.some(([x0, z0, x1, z1]) => x >= x0 && x <= x1 && z >= z0 && z <= z1);
 // A point in the fetch overlap belongs to no core: a feature there is owned by whoever owns its block. A point inside
@@ -144,6 +163,15 @@ function cellRects(comp, res, ox, oz, keep, factor = 6) {
 // =====================================================================================================================
 const osm = load('osm_madrid.json');
 const els = osm.elements || [];
+// Sourced positions, deliberately not random scatter. Dimensions without tags are documented stylised low-poly.
+const streetPoints = els.filter((e) => e.type === 'node' &&
+  (e.tags?.natural === 'tree' || e.tags?.highway === 'street_lamp' || e.tags?.highway === 'traffic_signals'))
+  .map((e) => {
+    const [x, z] = toWorld(e.lon, e.lat);
+    const kind = e.tags.natural === 'tree' ? 'tree' : e.tags.highway;
+    const h = parseFloat(e.tags.height);
+    return { id: `n${e.id}`, kind, x: r1(x), z: r1(z), h: Number.isFinite(h) && h > 0 ? r1(h) : null };
+  }).filter((p) => inCore(p.x, p.z));
 
 // Highway class -> curb-to-curb width (m) when OSM has no explicit width/lanes
 const HIGHWAY_W = { motorway: 24, trunk: 22, primary: 16, secondary: 14, tertiary: 11, residential: 9, unclassified: 8, living_street: 7, pedestrian: 8, service: 5.5, road: 9, motorway_link: 12, trunk_link: 10, primary_link: 8, secondary_link: 7, tertiary_link: 6 };
@@ -259,7 +287,12 @@ for (const f of alturas.features) {
   const h = f.attributes?.ALTURA;
   const g = f.geometry?.rings?.[0];
   if (!Number.isFinite(h) || !g || g.length < 4) continue;
-  const ring = rdpRing(g.map(([x, y]) => utmToWorld(x, y)), 0.4);
+  const rings = f.geometry.rings.map((r) => rdpRing(r.map(([x, y]) => utmToWorld(x, y)), 0.4));
+  const outerSign = Math.sign(ringArea(rings[0]));
+  // ESRI polygons: exterior rings share winding; interiors have the opposite winding. Preserve disjoint wings
+  // and attach each courtyard to its containing exterior. Legacy generation keeps its original contract.
+  const exteriors = modernParcelTile ? rings.filter((r) => Math.sign(ringArea(r)) === outerSign) : [rings[0]];
+  for (const ring of exteriors) {
   if (Math.abs(ringArea(ring)) < 12) continue; // kiosks & sheds
   const bb = bbox(ring);
   if (bb.x1 - bb.x0 < 1.2 || bb.z1 - bb.z0 < 1.2) continue;
@@ -271,7 +304,10 @@ for (const f of alturas.features) {
   for (const q of ring) { cx += q[0]; cz += q[1]; }
   cx /= ring.length; cz /= ring.length;
   if (cx < wx0 || cx > wx1 || cz < wz0 || cz > wz1) continue;
-  parcels.push({ ring, h: Math.max(2.4, Math.round(h * 10) / 10), cx, cz });
+  const holes = modernParcelTile ? rings.filter((r) => !exteriors.includes(r) && r.length >= 3 && Math.abs(ringArea(r)) > 1 &&
+    pointInRing(r[0][0], r[0][1], ring)) : [];
+  parcels.push({ ring, holes, h: Math.max(2.4, Math.round(h * 10) / 10), cx, cz });
+  }
 }
 log(`${parcels.length} real building parcels (IDEAM alturas)`);
 
@@ -628,7 +664,7 @@ for (const e of els) {
   if (!name && !/^(motorway|trunk)/.test(t.highway)) continue; // unnamed service tracks stay paint-only
   const kept = e.geometry.map((p) => [p, toWorld(p.lon, p.lat)]).filter(([, wpt]) => wpt[0] >= wx0 - 20 && wpt[0] <= wx1 + 20 && wpt[1] >= wz0 - 20 && wpt[1] <= wz1 + 20);
   if (kept.length < 2) continue;
-  const ids = kept.map(([p, wpt]) => nodeId(p.id ?? `s${e.id}x${p.lon.toFixed(6)}x${p.lat.toFixed(6)}`, wpt[0], wpt[1]));
+  const ids = kept.map(([p, wpt]) => nodeId(p.id ?? `p${p.lon.toFixed(7)},${p.lat.toFixed(7)}`, wpt[0], wpt[1]));
   for (const id of ids) useCount.set(id, (useCount.get(id) || 0) + 1);
   wayRuns.push({ t, ids, pts: kept.map(([, wpt]) => wpt) });
 }
@@ -835,10 +871,15 @@ if (IS_TILE) {
     // parcel's own centre keeps every footprint in exactly one tile, whatever block its raster merged into).
     // A footprint that sits on a block is written only by that block's owner (seam buildings included, so a block is
     // whole in one tile); a footprint in no block belongs to the core that holds its centre.
-    parcels: parcels.filter((p) => (p.frameBlock >= 0 ? p.owned : inCore(p.cx, p.cz))).map((p) => ({ ring: flat(p.ring), h: p.h })),
+    parcels: parcels.filter((p) => legacyParcels.size
+      ? inCore(p.cx, p.cz) && !legacyParcels.has(flat(p.ring).join(','))
+      : (p.frameBlock >= 0 ? p.owned : inCore(p.cx, p.cz))).map((p) => ({ ring: flat(p.ring), h: p.h,
+        ...(p.holes.length ? { holes: p.holes.map(flat) } : {}) })),
     parks: parksClipped.map((p) => ({ name: p.name, cat: p.cat, acres: p.acres, rings: p.rings.map(flat) })),
     water: waterClipped.map(flat),
     roads: roadLines.map((r) => [r.name, r1(r.w), r.dir, r.lanes, r.hw, flat(r.pts)]),
+    roadGraph: { nodes: outNodes, links: outLinks, names },
+    streetPoints,
     landmarks,
   };
   fs.writeFileSync(OUT, `// ${path.relative(path.resolve(OUT_DIR, '../..'), OUT)} — GENERATED by tools/madrid/build.mjs, do not edit by hand.
@@ -847,7 +888,7 @@ if (IS_TILE) {
 ${credits}
 export const TILE = ${JSON.stringify(TILE)};
 `);
-  log(`wrote ${path.basename(OUT)} (${(fs.statSync(OUT).size / 1024).toFixed(0)} KB): ${TILE.blocks.length} blocks, ${TILE.parcels.reduce((t, b) => t + b.length, 0)} parcels, ${TILE.parks.length} parks, ${TILE.water.length} water, ${TILE.roads.length} roads, ${Object.keys(TILE.landmarks).length} landmarks`);
+  log(`wrote ${path.basename(OUT)} (${(fs.statSync(OUT).size / 1024).toFixed(0)} KB): ${TILE.blocks.length} blocks, ${TILE.parcels.length} parcels, ${TILE.parks.length} parks, ${TILE.water.length} water, ${TILE.roads.length} roads, ${Object.keys(TILE.landmarks).length} landmarks`);
   process.exit(0);
 }
 

@@ -70,6 +70,8 @@ while read -r ix iy tS tW tN tE; do
   way["building"]($TWGS);
   relation["building"]($TWGS);
   way["highway"]($TWGS);
+  node["natural"="tree"]($TWGS);
+  node["highway"~"street_lamp|traffic_signals"]($TWGS);
   nwr["railway"~"station|halt"]($TWGS);
   nwr["public_transport"="station"]($TWGS);
   nwr["historic"]["name"]($TWGS);

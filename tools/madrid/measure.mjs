@@ -7,13 +7,21 @@
 // The WebGPU adapter in headless is SwiftShader (software raster): its FPS is not a GPU measurement and is only
 // reported as the render-loop rate; draw calls & triangles are the comparable numbers.
 //
-// usage: node tools/madrid/measure.mjs [--tiles k3j1,k4j1,...]
+// usage: node tools/madrid/measure.mjs [--tiles k3j1,k4j1,...] [--native-gpu]
+//        node tools/madrid/measure.mjs --cpu [--baseline-ref feat/monumentos]
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
+import os from 'node:os';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
+const cpuOnly = process.argv.includes('--cpu');
+const nativeGpu = process.argv.includes('--native-gpu');
+const baselineIndex = process.argv.indexOf('--baseline-ref');
+const baselineRef = baselineIndex >= 0 ? process.argv[baselineIndex + 1] : null;
+const baselineWorld = baselineRef ? execFileSync('git', ['show', `${baselineRef}:js/madrid-tile-world.js`], { cwd: ROOT, encoding: 'utf8' }) : null;
 const PW = process.env.PLAYWRIGHT_MODULE || '/tmp/pw/node_modules/playwright/index.js';
 const pwMod = await import(PW);
 const chromium = pwMod.chromium || pwMod.default?.chromium;
@@ -22,6 +30,15 @@ const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/jav
 
 const server = http.createServer((req, res) => {
   const url = decodeURIComponent(req.url.split('?')[0]);
+  if (url === '/js/__baseline-world.js' && baselineWorld) {
+    res.writeHead(200, { 'content-type': 'text/javascript' }).end(baselineWorld);
+    return;
+  }
+  if (url === '/__cpu') {
+    const html = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
+    res.writeHead(200, { 'content-type': 'text/html' }).end(`<!doctype html><meta charset="utf-8">${html.match(/<script type="importmap">[\s\S]*?<\/script>/)[0]}`);
+    return;
+  }
   const file = path.join(ROOT, url === '/' ? 'index.html' : url);
   if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
     res.writeHead(404).end('not found');
@@ -38,7 +55,7 @@ const tileArg = args.indexOf('--tiles');
 const walk = tileArg >= 0 ? args[tileArg + 1].split(',') : ['k3j1', 'k4j1', 'k4j2', 'k2j-1', 'k0j-1', 'k0j3', 'k2j4'];
 
 const browser = await chromium.launch({
-  args: ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=swiftshader', '--enable-webgpu-developer-features']
+  args: cpuOnly ? ['--disable-gpu'] : nativeGpu ? [] : ['--enable-unsafe-webgpu', '--enable-features=Vulkan', '--use-angle=swiftshader', '--enable-webgpu-developer-features']
 });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
 const logs = [];
@@ -47,6 +64,91 @@ const failed = [];
 page.on('console', (m) => logs.push(m.text()));
 page.on('pageerror', (e) => pageErrors.push(String(e)));
 page.on('requestfailed', (r) => failed.push(`${r.url()} ${r.failure()?.errorText}`));
+
+if (cpuOnly) {
+  try {
+    await page.goto(`http://127.0.0.1:${port}/__cpu`);
+    const result = await page.evaluate(async ({ baselineRef }) => {
+      const t0 = performance.now();
+      const THREE = await import('three/webgpu');
+      const { createTileWorld } = await import(baselineRef ? '/js/__baseline-world.js' : '/js/madrid-tile-world.js');
+      const { createTileStreamer } = await import('/js/madrid-tiles.js');
+      const { createActiveMadridData } = await import('/js/madrid-active-data.js');
+      const { GEO } = await import('/js/madrid-geodata.js');
+      const config = await import('/js/city-config.js');
+      const { NYCMapSystem } = await import('/js/nyc-map.js');
+      const mf = await (await fetch('/tools/madrid/tiles.json')).json();
+      const seed = mf.tiles.find((t) => t.id === 'fase2');
+      const model = createActiveMadridData({ ...GEO, core: seed.core });
+      const scene = new THREE.Scene(), world = createTileWorld(scene);
+      const importMs = performance.now() - t0;
+      const tileTimes = [];
+      const streamer = await createTileStreamer({ world, baseUrl: location.origin + '/',
+        manifestUrl: '/tools/madrid/tiles.json', onTileAdded: (tile) => model.set(tile), onTileRemoved: (id) => model.remove(id) });
+      let peakBytes = 0, peakTiles = 0, peakBuffers = 0;
+      const bufferBytes = () => {
+        let bytes = 0;
+        const seen = new Set();
+        scene.traverse((o) => {
+          if (!o.geometry || seen.has(o.geometry)) return;
+          seen.add(o.geometry);
+          for (const a of Object.values(o.geometry.attributes)) bytes += a.array.byteLength;
+          bytes += o.geometry.index?.array.byteLength || 0;
+          bytes += o.instanceMatrix?.array.byteLength || 0;
+        });
+        return bytes;
+      };
+      const samples = mf.tiles.filter((t) => t.status === 'ready' && t.id !== 'fase2');
+      for (const tile of samples) {
+        // Serial imports/builds, same worker, same admission path as app. Keep cap, explicitly evict before full.
+        if (streamer.loaded.size >= mf.budget.maxResidentTiles) streamer.dropTile([...streamer.loaded.keys()].find((id) => id !== 'fase2'));
+        const start = performance.now();
+        const ok = await streamer.loadTile(tile.id);
+        const graphStart = performance.now();
+        const graph = model.snapshot().roadGraph;
+        const graphMs = performance.now() - graphStart;
+        tileTimes.push({ id: tile.id, bytes: tile.bytes, ok, importBuildMs: +(graphStart - start).toFixed(1), graphMs: +graphMs.toFixed(1), graphLinks: graph.links.length });
+        peakBytes = Math.max(peakBytes, streamer.status().bytes);
+        peakTiles = Math.max(peakTiles, streamer.loaded.size);
+        peakBuffers = Math.max(peakBuffers, bufferBytes());
+      }
+      // Exercise real Path2D/map construction and live lookups in Chromium, without a WebGPU device.
+      config.setActiveMadridData(model);
+      const canvas = document.createElement('canvas'); canvas.width = 1280; canvas.height = 720;
+      const map = new NYCMapSystem({ controllerManager: { getActiveEntity: () => ({ position: { x: 1700, z: -1500 }, heading: 0 }) } });
+      Object.assign(map, { fullCanvas: canvas, fullCtx: canvas.getContext('2d'), isFullMapOpen: true,
+        viewCenterX: 1700, viewCenterZ: -1500, viewZoom: 0.3 });
+      map.setActiveData(model); map.renderFullMap();
+      const mapSmoke = { residentTiles: model.tiles.size, roadCount: config.ROADS.length, blockCount: config.BLOCKS.length };
+      // Verify the actual renderer's concave footprint, rather than just inspecting its source code.
+      streamer.dispose();
+      config.setActiveMadridData(model); map.setActiveData(model); map.renderFullMap();
+      mapSmoke.afterDisposal = { residentTiles: model.tiles.size, roadCount: config.ROADS.length, blockCount: config.BLOCKS.length };
+      const remainingMeshes = world.meshCount();
+      world.addTile({ id: 'probe', core: [[0, 0, 50, 50]], blocks: [],
+        parcels: [{ ring: [5, 5, 25, 5, 25, 10, 10, 10, 10, 25, 5, 25], h: 12 },
+          { ring: [30, 5, 45, 5, 45, 25, 30, 25], holes: [[34, 9, 41, 9, 41, 21, 34, 21]], h: 12 }] });
+      scene.updateMatrixWorld(true);
+      const heightAt = (x, z) => {
+        const r = new THREE.Raycaster(new THREE.Vector3(x, 100, z), new THREE.Vector3(0, -1, 0));
+        return r.intersectObjects(scene.children, true)[0]?.point.y;
+      };
+      const geometryChecks = { roofHeight: heightAt(7, 7), emptyPatioHeight: heightAt(20, 20), innerCourtyardHeight: heightAt(37, 15) };
+      world.disposeAll();
+      if (!baselineRef && (Math.abs(geometryChecks.roofHeight - 12) > 0.01 || Math.abs(geometryChecks.emptyPatioHeight) > 0.01 ||
+        Math.abs(geometryChecks.innerCourtyardHeight) > 0.01)) throw new Error('Footprint raycast failed');
+      if (remainingMeshes !== 0 || peakBytes > mf.budget.maxResidentBytes || peakTiles > mf.budget.maxResidentTiles) throw new Error('Resident budget/disposal failed');
+      return { mode: 'cpu-no-renderer', baselineRef, importMs: +importMs.toFixed(1), tileTimes, peakBytes, peakTiles,
+        peakGeometryBufferBytes: peakBuffers, remainingMeshes, geometryChecks, mapSmoke,
+        note: 'No WebGPU renderer, no FPS. Geometry buffers exclude seed, textures, JS heap, driver allocations and shadow passes.' };
+    }, { baselineRef });
+    console.log(JSON.stringify({ ...result, runtime: { arch: process.arch, cpus: os.availableParallelism(), node: process.version,
+      chromium: browser.version() }, pageErrors, failedRequests: failed }, null, 2));
+  } finally {
+    await browser.close(); server.close();
+  }
+  process.exit(0);
+}
 
 const t0 = Date.now();
 await page.goto(`http://127.0.0.1:${port}/?debug=1`, { waitUntil: 'load', timeout: 180000 });
@@ -67,16 +169,19 @@ const result = await page.evaluate(async ({ walk }) => {
   };
   const before = tileStreamer ? tileStreamer.status() : null;
   const tileMs = [];
+  const autoUpdate = tileStreamer?.update;
+  // The app follows its camera every frame; keep it from cancelling the harness's next destination while it loads.
+  if (tileStreamer) tileStreamer.update = () => null;
   if (tileStreamer) {
     for (const id of walk) {
       const tile = tileStreamer.tiles.find((t) => t.id === id);
       if (!tile) continue;
       const x = (tile.core[0][0] + tile.core[0][2]) / 2;
       const z = (tile.core[0][1] + tile.core[0][3]) / 2;
-      controllerManager.teleportActiveTo(x, z, 0);
       const t = performance.now();
-      tileStreamer.update(x, z, performance.now());
+      autoUpdate(x, z, performance.now());
       const ok = await waitFor(() => tileStreamer.loaded.has(id), 90000);
+      if (ok) controllerManager.teleportActiveTo(x, z, 0); // active ground must exist before resolving the landing
       tileMs.push({ id, ok, ms: Math.round(performance.now() - t) });
     }
   }
@@ -84,10 +189,14 @@ const result = await page.evaluate(async ({ walk }) => {
   if (tileStreamer) {
     tileStreamer.budget.preloadRadius = 5000;
     controllerManager.teleportActiveTo(1800, 0, 0);
-    tileStreamer.update(1800, 0, performance.now());
+    autoUpdate(1800, 0, performance.now());
     await waitFor(() => tileStreamer.status().loaded.length >= 6, 120000);
   }
   const tileSet = tileStreamer ? tileStreamer.status() : null;
+  if (tileStreamer) tileStreamer.update = autoUpdate;
+  const adapter = await navigator.gpu?.requestAdapter();
+  const adapterInfo = adapter?.info ? Object.fromEntries(['vendor', 'architecture', 'device', 'description', 'isFallbackAdapter']
+    .map((key) => [key, adapter.info[key]])) : null;
   // Frame cost: renderer.info.render.frame counts the frames the app actually submitted.
   const frames0 = renderer.info?.render?.frame ?? 0;
   const start = performance.now();
@@ -126,7 +235,8 @@ const result = await page.evaluate(async ({ walk }) => {
     triangles: info.triangles ?? null,
     residentBytes: tileWorld ? tileWorld.residentBytes() : 0,
     meshes: tileWorld ? tileWorld.meshCount() : 0,
-    loaded: tileWorld ? tileWorld.ids() : []
+    loaded: tileWorld ? tileWorld.ids() : [],
+    adapterInfo
   };
 }, { walk });
 

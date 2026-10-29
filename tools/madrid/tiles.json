@@ -1,6 +1,6 @@
 {
  "version": 1,
- "generated": "2026-10-27",
+ "generated": "2026-10-29",
  "crs": "EPSG:25830",
  "frame": {
   "origin": "Puerta del Sol",
@@ -1306,11 +1306,11 @@
  },
  "totals": {
   "tiles": 85,
-  "ready": 8,
-  "pending": 77,
+  "ready": 18,
+  "pending": 67,
   "failed": 0,
-  "readyBytes": 6788893,
-  "readyKm2": 15.2
+  "readyBytes": 11395022,
+  "readyKm2": 23
  },
  "tiles": [
   {
@@ -2814,7 +2814,7 @@
    "i": 0,
    "j": 2,
    "label": "Tesela k0j2",
-   "status": "pending",
+   "status": "ready",
    "core": [
     [
      -1841.3,
@@ -2844,15 +2844,27 @@
    "module": "js/geodata/tile-k0j2.js",
    "overlapped": true,
    "areaKm2": 0.4,
-   "bytes": null,
-   "md5": null,
-   "counts": null,
+   "bytes": 249114,
+   "md5": "afef353a4355fd2416200d681be70fcd",
+   "counts": {
+    "blocks": 35,
+    "parcels": 1168,
+    "parks": 10,
+    "water": 1,
+    "roads": 123,
+    "landmarks": 17
+   },
    "error": null,
    "sources": [
-    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
-    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
-    "Catastro INSPIRE WFS (© IGN/Catastro)"
-   ]
+    "OpenStreetMap / Geofabrik PBF (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)"
+   ],
+   "sourceSnapshot": {
+    "osmUrl": "https://download.geofabrik.de/europe/spain/madrid-261028.osm.pbf",
+    "osmMd5": "c1dfa14ee00cca5710549dadb49b4e5e",
+    "ideamUrl": "https://sigma.madrid.es/hosted/rest/services/CARTOGRAFIA/EDIFICIOS_ALTURAS/MapServer/0/query",
+    "date": "2026-10-29"
+   }
   },
   {
    "id": "k0j3",
@@ -3136,7 +3148,7 @@
    "i": 1,
    "j": -1,
    "label": "Tesela k1j-1",
-   "status": "pending",
+   "status": "ready",
    "core": [
     [
      -841.3,
@@ -3166,22 +3178,34 @@
    "module": "js/geodata/tile-k1j-1.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": null,
-   "md5": null,
-   "counts": null,
+   "bytes": 401590,
+   "md5": "0e804a58343ccb79a38bb9b6ca741368",
+   "counts": {
+    "blocks": 102,
+    "parcels": 2209,
+    "parks": 117,
+    "water": 1,
+    "roads": 288,
+    "landmarks": 9
+   },
    "error": null,
    "sources": [
-    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
-    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
-    "Catastro INSPIRE WFS (© IGN/Catastro)"
-   ]
+    "OpenStreetMap / Geofabrik PBF (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)"
+   ],
+   "sourceSnapshot": {
+    "osmUrl": "https://download.geofabrik.de/europe/spain/madrid-261028.osm.pbf",
+    "osmMd5": "c1dfa14ee00cca5710549dadb49b4e5e",
+    "ideamUrl": "https://sigma.madrid.es/hosted/rest/services/CARTOGRAFIA/EDIFICIOS_ALTURAS/MapServer/0/query",
+    "date": "2026-10-29"
+   }
   },
   {
    "id": "k1j2",
    "i": 1,
    "j": 2,
    "label": "Tesela k1j2",
-   "status": "pending",
+   "status": "ready",
    "core": [
     [
      -841.3,
@@ -3211,22 +3235,34 @@
    "module": "js/geodata/tile-k1j2.js",
    "overlapped": true,
    "areaKm2": 0.4,
-   "bytes": null,
-   "md5": null,
-   "counts": null,
+   "bytes": 346458,
+   "md5": "8b09ecb6df0ce1d5f8676cbca51cb25b",
+   "counts": {
+    "blocks": 39,
+    "parcels": 1570,
+    "parks": 30,
+    "water": 0,
+    "roads": 122,
+    "landmarks": 11
+   },
    "error": null,
    "sources": [
-    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
-    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
-    "Catastro INSPIRE WFS (© IGN/Catastro)"
-   ]
+    "OpenStreetMap / Geofabrik PBF (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)"
+   ],
+   "sourceSnapshot": {
+    "osmUrl": "https://download.geofabrik.de/europe/spain/madrid-261028.osm.pbf",
+    "osmMd5": "c1dfa14ee00cca5710549dadb49b4e5e",
+    "ideamUrl": "https://sigma.madrid.es/hosted/rest/services/CARTOGRAFIA/EDIFICIOS_ALTURAS/MapServer/0/query",
+    "date": "2026-10-29"
+   }
   },
   {
    "id": "k1j3",
    "i": 1,
    "j": 3,
    "label": "Tesela k1j3",
-   "status": "pending",
+   "status": "ready",
    "core": [
     [
      -841.3,
@@ -3256,15 +3292,27 @@
    "module": "js/geodata/tile-k1j3.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": null,
-   "md5": null,
-   "counts": null,
+   "bytes": 781574,
+   "md5": "51798d32468e0342981171338da17663",
+   "counts": {
+    "blocks": 92,
+    "parcels": 4216,
+    "parks": 19,
+    "water": 1,
+    "roads": 205,
+    "landmarks": 19
+   },
    "error": null,
    "sources": [
-    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
-    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
-    "Catastro INSPIRE WFS (© IGN/Catastro)"
-   ]
+    "OpenStreetMap / Geofabrik PBF (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)"
+   ],
+   "sourceSnapshot": {
+    "osmUrl": "https://download.geofabrik.de/europe/spain/madrid-261028.osm.pbf",
+    "osmMd5": "c1dfa14ee00cca5710549dadb49b4e5e",
+    "ideamUrl": "https://sigma.madrid.es/hosted/rest/services/CARTOGRAFIA/EDIFICIOS_ALTURAS/MapServer/0/query",
+    "date": "2026-10-29"
+   }
   },
   {
    "id": "k1j4",
@@ -3548,7 +3596,7 @@
    "i": 2,
    "j": 2,
    "label": "Tesela k2j2",
-   "status": "pending",
+   "status": "ready",
    "core": [
     [
      158.7,
@@ -3578,22 +3626,34 @@
    "module": "js/geodata/tile-k2j2.js",
    "overlapped": true,
    "areaKm2": 0.4,
-   "bytes": null,
-   "md5": null,
-   "counts": null,
+   "bytes": 332905,
+   "md5": "e322da575e0b29960ea91adf1459d264",
+   "counts": {
+    "blocks": 51,
+    "parcels": 1805,
+    "parks": 26,
+    "water": 0,
+    "roads": 102,
+    "landmarks": 18
+   },
    "error": null,
    "sources": [
-    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
-    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
-    "Catastro INSPIRE WFS (© IGN/Catastro)"
-   ]
+    "OpenStreetMap / Geofabrik PBF (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)"
+   ],
+   "sourceSnapshot": {
+    "osmUrl": "https://download.geofabrik.de/europe/spain/madrid-261028.osm.pbf",
+    "osmMd5": "c1dfa14ee00cca5710549dadb49b4e5e",
+    "ideamUrl": "https://sigma.madrid.es/hosted/rest/services/CARTOGRAFIA/EDIFICIOS_ALTURAS/MapServer/0/query",
+    "date": "2026-10-29"
+   }
   },
   {
    "id": "k2j3",
    "i": 2,
    "j": 3,
    "label": "Tesela k2j3",
-   "status": "pending",
+   "status": "ready",
    "core": [
     [
      158.7,
@@ -3623,15 +3683,27 @@
    "module": "js/geodata/tile-k2j3.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": null,
-   "md5": null,
-   "counts": null,
+   "bytes": 779812,
+   "md5": "3a8947041dd4cb23b9da6e82e7b3e166",
+   "counts": {
+    "blocks": 100,
+    "parcels": 4459,
+    "parks": 24,
+    "water": 0,
+    "roads": 216,
+    "landmarks": 27
+   },
    "error": null,
    "sources": [
-    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
-    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
-    "Catastro INSPIRE WFS (© IGN/Catastro)"
-   ]
+    "OpenStreetMap / Geofabrik PBF (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)"
+   ],
+   "sourceSnapshot": {
+    "osmUrl": "https://download.geofabrik.de/europe/spain/madrid-261028.osm.pbf",
+    "osmMd5": "c1dfa14ee00cca5710549dadb49b4e5e",
+    "ideamUrl": "https://sigma.madrid.es/hosted/rest/services/CARTOGRAFIA/EDIFICIOS_ALTURAS/MapServer/0/query",
+    "date": "2026-10-29"
+   }
   },
   {
    "id": "k2j4",
@@ -3870,7 +3942,7 @@
    "i": 3,
    "j": -1,
    "label": "Tesela k3j-1",
-   "status": "pending",
+   "status": "ready",
    "core": [
     [
      1158.7,
@@ -3900,22 +3972,34 @@
    "module": "js/geodata/tile-k3j-1.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": null,
-   "md5": null,
-   "counts": null,
+   "bytes": 304725,
+   "md5": "9c6657e48479cd9a4f59b968964235e1",
+   "counts": {
+    "blocks": 72,
+    "parcels": 1383,
+    "parks": 42,
+    "water": 3,
+    "roads": 261,
+    "landmarks": 3
+   },
    "error": null,
    "sources": [
-    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
-    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
-    "Catastro INSPIRE WFS (© IGN/Catastro)"
-   ]
+    "OpenStreetMap / Geofabrik PBF (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)"
+   ],
+   "sourceSnapshot": {
+    "osmUrl": "https://download.geofabrik.de/europe/spain/madrid-261028.osm.pbf",
+    "osmMd5": "c1dfa14ee00cca5710549dadb49b4e5e",
+    "ideamUrl": "https://sigma.madrid.es/hosted/rest/services/CARTOGRAFIA/EDIFICIOS_ALTURAS/MapServer/0/query",
+    "date": "2026-10-29"
+   }
   },
   {
    "id": "k3j0",
    "i": 3,
    "j": 0,
    "label": "Tesela k3j0",
-   "status": "pending",
+   "status": "ready",
    "core": [
     [
      1408.7,
@@ -3945,15 +4029,27 @@
    "module": "js/geodata/tile-k3j0.js",
    "overlapped": true,
    "areaKm2": 0.75,
-   "bytes": null,
-   "md5": null,
-   "counts": null,
+   "bytes": 226837,
+   "md5": "ac4a19c788c974be0a12bf2bae5e3b1e",
+   "counts": {
+    "blocks": 49,
+    "parcels": 1147,
+    "parks": 144,
+    "water": 3,
+    "roads": 144,
+    "landmarks": 16
+   },
    "error": null,
    "sources": [
-    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
-    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
-    "Catastro INSPIRE WFS (© IGN/Catastro)"
-   ]
+    "OpenStreetMap / Geofabrik PBF (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)"
+   ],
+   "sourceSnapshot": {
+    "osmUrl": "https://download.geofabrik.de/europe/spain/madrid-261028.osm.pbf",
+    "osmMd5": "c1dfa14ee00cca5710549dadb49b4e5e",
+    "ideamUrl": "https://sigma.madrid.es/hosted/rest/services/CARTOGRAFIA/EDIFICIOS_ALTURAS/MapServer/0/query",
+    "date": "2026-10-29"
+   }
   },
   {
    "id": "k3j1",
@@ -4012,7 +4108,7 @@
    "i": 3,
    "j": 2,
    "label": "Tesela k3j2",
-   "status": "pending",
+   "status": "ready",
    "core": [
     [
      1158.7,
@@ -4048,22 +4144,34 @@
    "module": "js/geodata/tile-k3j2.js",
    "overlapped": true,
    "areaKm2": 0.85,
-   "bytes": null,
-   "md5": null,
-   "counts": null,
+   "bytes": 604136,
+   "md5": "be5a71567139f60a5d58df68e87e1cf3",
+   "counts": {
+    "blocks": 61,
+    "parcels": 3672,
+    "parks": 13,
+    "water": 0,
+    "roads": 176,
+    "landmarks": 21
+   },
    "error": null,
    "sources": [
-    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
-    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
-    "Catastro INSPIRE WFS (© IGN/Catastro)"
-   ]
+    "OpenStreetMap / Geofabrik PBF (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)"
+   ],
+   "sourceSnapshot": {
+    "osmUrl": "https://download.geofabrik.de/europe/spain/madrid-261028.osm.pbf",
+    "osmMd5": "c1dfa14ee00cca5710549dadb49b4e5e",
+    "ideamUrl": "https://sigma.madrid.es/hosted/rest/services/CARTOGRAFIA/EDIFICIOS_ALTURAS/MapServer/0/query",
+    "date": "2026-10-29"
+   }
   },
   {
    "id": "k3j3",
    "i": 3,
    "j": 3,
    "label": "Tesela k3j3",
-   "status": "pending",
+   "status": "ready",
    "core": [
     [
      1158.7,
@@ -4093,15 +4201,27 @@
    "module": "js/geodata/tile-k3j3.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": null,
-   "md5": null,
-   "counts": null,
+   "bytes": 578978,
+   "md5": "f6edfba5310708222f428a46c6dd262d",
+   "counts": {
+    "blocks": 92,
+    "parcels": 3104,
+    "parks": 23,
+    "water": 0,
+    "roads": 273,
+    "landmarks": 28
+   },
    "error": null,
    "sources": [
-    "OpenStreetMap Overpass (© OpenStreetMap contributors, ODbL)",
-    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)",
-    "Catastro INSPIRE WFS (© IGN/Catastro)"
-   ]
+    "OpenStreetMap / Geofabrik PBF (© OpenStreetMap contributors, ODbL)",
+    "IDEAM EDIFICIOS_ALTURAS (© Ayuntamiento de Madrid)"
+   ],
+   "sourceSnapshot": {
+    "osmUrl": "https://download.geofabrik.de/europe/spain/madrid-261028.osm.pbf",
+    "osmMd5": "c1dfa14ee00cca5710549dadb49b4e5e",
+    "ideamUrl": "https://sigma.madrid.es/hosted/rest/services/CARTOGRAFIA/EDIFICIOS_ALTURAS/MapServer/0/query",
+    "date": "2026-10-29"
+   }
   },
   {
    "id": "k3j4",

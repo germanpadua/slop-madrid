@@ -27,7 +27,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { rdp, ringArea, log } from '../geo-base.mjs';
+import { rdp, ringArea } from '../geo-geometry.mjs';
+const log = (...args) => console.log('[madrid]', ...args);
 import { utmForward, utmInverse, utmToWorld, SOLX, SOLY } from './projection.mjs';
 import { PHASES } from './config.mjs';
 
@@ -289,7 +290,8 @@ function tileEntry(i, j, almendra, prev) {
     md5: prev?.md5 ?? null,
     counts: prev?.counts ?? null,
     error: prev?.status === 'failed' ? prev.error ?? null : null,
-    sources: SOURCES,
+    sources: prev?.sources || SOURCES,
+    ...(prev?.sourceSnapshot ? { sourceSnapshot: prev.sourceSnapshot } : {}),
   };
 }
 

@@ -1,0 +1,173 @@
+{
+  "mode": "cpu-no-renderer",
+  "baselineRef": null,
+  "importMs": 608.8,
+  "tileTimes": [
+    {
+      "id": "k0j-1",
+      "bytes": 287174,
+      "ok": true,
+      "importBuildMs": 180.7,
+      "graphMs": 27.7,
+      "graphLinks": 6295
+    },
+    {
+      "id": "k0j2",
+      "bytes": 249114,
+      "ok": true,
+      "importBuildMs": 88.4,
+      "graphMs": 29.9,
+      "graphLinks": 6520
+    },
+    {
+      "id": "k0j3",
+      "bytes": 450984,
+      "ok": true,
+      "importBuildMs": 145.3,
+      "graphMs": 35,
+      "graphLinks": 7277
+    },
+    {
+      "id": "k1j-1",
+      "bytes": 401590,
+      "ok": true,
+      "importBuildMs": 147,
+      "graphMs": 26.6,
+      "graphLinks": 8082
+    },
+    {
+      "id": "k1j2",
+      "bytes": 346458,
+      "ok": true,
+      "importBuildMs": 107.3,
+      "graphMs": 35.8,
+      "graphLinks": 8581
+    },
+    {
+      "id": "k1j3",
+      "bytes": 781574,
+      "ok": true,
+      "importBuildMs": 265.2,
+      "graphMs": 38.2,
+      "graphLinks": 9009
+    },
+    {
+      "id": "k2j-1",
+      "bytes": 500191,
+      "ok": true,
+      "importBuildMs": 180,
+      "graphMs": 29.4,
+      "graphLinks": 9384
+    },
+    {
+      "id": "k2j2",
+      "bytes": 332905,
+      "ok": true,
+      "importBuildMs": 104.4,
+      "graphMs": 31.6,
+      "graphLinks": 9721
+    },
+    {
+      "id": "k2j3",
+      "bytes": 779812,
+      "ok": true,
+      "importBuildMs": 226.6,
+      "graphMs": 33.2,
+      "graphLinks": 10173
+    },
+    {
+      "id": "k2j4",
+      "bytes": 424999,
+      "ok": true,
+      "importBuildMs": 152.4,
+      "graphMs": 34.4,
+      "graphLinks": 10936
+    },
+    {
+      "id": "k3j-1",
+      "bytes": 304725,
+      "ok": true,
+      "importBuildMs": 94.3,
+      "graphMs": 41.5,
+      "graphLinks": 11615
+    },
+    {
+      "id": "k3j0",
+      "bytes": 226837,
+      "ok": true,
+      "importBuildMs": 79,
+      "graphMs": 35.7,
+      "graphLinks": 11277
+    },
+    {
+      "id": "k3j1",
+      "bytes": 121670,
+      "ok": true,
+      "importBuildMs": 93.3,
+      "graphMs": 33.7,
+      "graphLinks": 11299
+    },
+    {
+      "id": "k3j2",
+      "bytes": 604136,
+      "ok": true,
+      "importBuildMs": 173.8,
+      "graphMs": 32.7,
+      "graphLinks": 10849
+    },
+    {
+      "id": "k3j3",
+      "bytes": 578978,
+      "ok": true,
+      "importBuildMs": 163.8,
+      "graphMs": 35.5,
+      "graphLinks": 10596
+    },
+    {
+      "id": "k4j1",
+      "bytes": 399280,
+      "ok": true,
+      "importBuildMs": 133,
+      "graphMs": 40.5,
+      "graphLinks": 10940
+    },
+    {
+      "id": "k4j2",
+      "bytes": 693314,
+      "ok": true,
+      "importBuildMs": 193.6,
+      "graphMs": 32.9,
+      "graphLinks": 10938
+    }
+  ],
+  "peakBytes": 8966388,
+  "peakTiles": 12,
+  "peakGeometryBufferBytes": 58868742,
+  "remainingMeshes": 0,
+  "geometryChecks": {
+    "roofHeight": 12,
+    "emptyPatioHeight": 2.3841863594498136e-08,
+    "innerCourtyardHeight": 2.3841863594498136e-08
+  },
+  "mapSmoke": {
+    "residentTiles": 12,
+    "roadCount": 5140,
+    "blockCount": 1257,
+    "afterDisposal": {
+      "residentTiles": 1,
+      "roadCount": 2796,
+      "blockCount": 488
+    }
+  },
+  "note": "No WebGPU renderer, no FPS. Geometry buffers exclude seed, textures, JS heap, driver allocations and shadow passes.",
+  "runtime": {
+    "arch": "arm64",
+    "cpus": 2,
+    "node": "v26.7.0",
+    "chromium": "156.0.8078.4"
+  },
+  "pageErrors": [],
+  "failedRequests": [],
+  "experiment": "Renderer y datos 98a2132, smoke Path2D, GPU desactivada",
+  "recordedAt": "2026-10-29T11:58:54.157551+00:00"
+}
