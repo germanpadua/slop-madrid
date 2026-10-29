@@ -82,3 +82,26 @@ export function clipRoadToRings(pts, rings, opts = {}) {
   }
   return { pieces, joints };
 }
+
+// ringsCross: true when any edge of ring a properly crosses any edge of ring b (endpoint touches allowed).
+export const ringsCross = (a, b) => {
+  for (let i = 0, j = a.length - 1; i < a.length; j = i++)
+    for (let k = 0, l = b.length - 1; k < b.length; l = k++)
+      if (segT(a[j], a[i], b[l], b[k]) !== null) return true;
+  return false;
+};
+
+// ringsContained: the candidate rings that lie FULLY inside the outer ring - bbox gate, every vertex inside,
+// and no boundary crossing. A candidate touching or crossing the boundary is excluded (conservative: cutting it
+// as a hole would tear the outer ring's triangulation). Used to cut exact holes for stacked ground layers.
+export function ringsContained(outer, outerBB, candidates) {
+  const out = [];
+  for (const g of candidates) {
+    const bb = g.bb || ringBBox(g.ring);
+    if (bb[0] < outerBB[0] || bb[2] > outerBB[2] || bb[1] < outerBB[1] || bb[3] > outerBB[3]) continue;
+    if (!g.ring.every((q) => pointInRing(outer, q.x, q.z))) continue;
+    if (ringsCross(outer, g.ring)) continue;
+    out.push(g);
+  }
+  return out;
+}

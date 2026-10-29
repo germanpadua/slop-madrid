@@ -10,7 +10,7 @@ import * as THREE from 'three/webgpu';
 import { Fn, abs, color, fract, max, mix, positionGeometry, positionWorld, smoothstep } from 'three/tsl';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { createExtrudedPolygonMesh, createFlatPolygonMesh, offsetPolygonInward } from './city-grid.js';
-import { clipRoadToRings } from './madrid-ground-clip.js';
+import { clipRoadToRings, ringsContained } from './madrid-ground-clip.js';
 import {
   WALL_KINDS,
   createCurbMaterial,
@@ -299,7 +299,11 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
     }
 
     // 2. Parks & gardens: real OSM landuse, clipped to the core by the builder; the channel is cut out of them too.
-    if (globalThis.__LAWNDEBUG === true && mats.lawn) mats.lawn = new THREE.MeshBasicMaterial({ color: 0xff2244 }); // diagnostic: flat red lawn
+    if (globalThis.__LAWNDEBUG === true && mats.lawn) { // diagnostic: flat red lawn - MUST keep the tier offset or it testifies falsely
+      const dbgLawn = new THREE.MeshBasicMaterial({ color: 0xff2244 });
+      dbgLawn.polygonOffset = true; dbgLawn.polygonOffsetFactor = -1; dbgLawn.polygonOffsetUnits = -2;
+      mats.lawn = dbgLawn;
+    }
     // 1c. Park floor underlay + SEMANTIC SPLIT (2026-10-29, containment dedup): cat 'park' rings are the
     // park BOUNDARY - they paint the dirt floor (y=0.05) but NOT lawn, so the real path/plaza gaps between
     // OSM grass rings stay dirt instead of being concealed under one blanket lawn. cat 'grass' rings paint
@@ -315,18 +319,30 @@ export function createTileWorld(scene, { colliders = null, materials = null } = 
         if (ring.length >= 3) allParkRings.push({ cat: park.cat, ring, bb: bboxOf(ring) });
       }
     }
+    // bboxOf returns {x0,x1,z0,z1} - property access, NOT array indices (array indexing silently failed
+    // every bbox gate here, leaving the semantic split inert: every park painted blanket lawn + dirt).
     const containedIn = (r, cat) => allParkRings.some((o) => o !== r && (!cat || o.cat === cat)
-      && o.bb[0] <= r.bb[0] && o.bb[2] >= r.bb[2] && o.bb[1] <= r.bb[1] && o.bb[3] >= r.bb[3]
+      && o.bb.x0 <= r.bb.x0 && o.bb.x1 >= r.bb.x1 && o.bb.z0 <= r.bb.z0 && o.bb.z1 >= r.bb.z1
       && r.ring.every((q) => pointInRingPts(o.ring, q.x, q.z)));
-    const dirtGeos = [];
+    // Pass 1: classify every ring. Order-independent: hole cutting below reads paintsLawn of ALL rings.
     for (const r of allParkRings) {
       const hasInnerGrass = r.cat === 'park' && allParkRings.some((g) => g.cat === 'grass'
-        && g.bb[0] >= r.bb[0] && g.bb[2] <= r.bb[2] && g.bb[1] >= r.bb[1] && g.bb[3] <= r.bb[3]
+        && g.bb.x0 >= r.bb.x0 && g.bb.x1 <= r.bb.x1 && g.bb.z0 >= r.bb.z0 && g.bb.z1 <= r.bb.z1
         && g.ring.every((q) => pointInRingPts(r.ring, q.x, q.z)));
       r.paintsLawn = r.cat === 'grass' || !hasInnerGrass;
-      r.paintsDirt = r.cat === 'park' && !containedIn(r, 'park');
+      // a ring whose own lawn covers it paints no dirt: stacked only 5 cm apart, dirt and lawn fall inside the
+      // ~13 cm aerial depth resolution and z-fight (the angular tan patches over lawns)
+      r.paintsDirt = r.cat === 'park' && !r.paintsLawn && !containedIn(r, 'park');
+    }
+    // Pass 2: paint dirt with EXACT holes for every contained lawn ring: disjoint layers, no depth race.
+    // Lawn rings crossing the dirt boundary stay stacked (no polygon-difference machinery yet) - conservative.
+    const lawnPainters = allParkRings.filter((r) => r.paintsLawn);
+    const dirtGeos = [];
+    for (const r of allParkRings) {
       if (!r.paintsDirt) continue;
       const holes = holesWithin(r.ring, r.bb, waterBoxes);
+      const bbArr = (o) => [o.bb.x0, o.bb.z0, o.bb.x1, o.bb.z1]; // clip module's array contract
+      for (const g of ringsContained(r.ring, bbArr(r), lawnPainters.map((o) => ({ ring: o.ring, bb: bbArr(o) })))) holes.push(g.ring);
       dirtGeos.push(createFlatPolygonMesh(r.ring, 0.05, mats.dirt, true, holes.length ? holes : null).geometry);
     }
     if (dirtGeos.length) {

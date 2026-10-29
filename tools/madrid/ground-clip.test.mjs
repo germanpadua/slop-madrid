@@ -1,7 +1,7 @@
 // tools/madrid/ground-clip.test.mjs — regression tests for TileRoadRibbons geometry (js/madrid-ground-clip.js).
 // Covers the combinations screenshots cannot: proper crossing, boundary graze, water-covered, nested/overlapping
 // rings, joined turns, and the non-convex midpoint trap. Run: node tools/madrid/ground-clip.test.mjs
-import { clipRoadToRings, pointInRing, ringBBox } from '../../js/madrid-ground-clip.js';
+import { clipRoadToRings, pointInRing, ringBBox, ringsContained, ringsCross } from '../../js/madrid-ground-clip.js';
 
 let failed = 0;
 const ok = (cond, name) => { console.log(`${cond ? 'PASS' : 'FAIL'} ${name}`); if (!cond) failed++; };
@@ -56,4 +56,35 @@ const len = (p) => Math.hypot(p.b.x - p.a.x, p.b.z - p.a.z);
 {
   ok(pointInRing(sq(0, 0, 100), 0, 0) && !pointInRing(sq(0, 0, 100), 60, 0), 'pointInRing basics');
 }
+
+// 7. ringsContained: lawn hole cutting for stacked ground layers (tan-patch fix)
+{
+  const outer = ring(sq(0, 0, 100));
+  const inside = ring(sq(0, 0, 40));
+  const disjoint = ring(sq(200, 0, 40));
+  const crossing = ring(sq(50, 0, 40)); // straddles the boundary
+  const touching = [{ x: -20, z: -20 }, { x: 50, z: -20 }, { x: 50, z: 20 }, { x: -20, z: 20 }]; // vertex ON boundary
+  const got = ringsContained(outer.ring, outer.bb, [inside, disjoint, crossing, ring(touching)]);
+  ok(got.length === 1 && got[0] === inside, 'contained: only the fully-inside ring is a hole');
+}
+// 8. ringsContained non-convex: candidate with all vertices inside but an edge crossing the outer boundary
+{
+  const c = [{ x: 0, z: 0 }, { x: 40, z: 0 }, { x: 40, z: 40 }, { x: 20, z: 20 }, { x: 0, z: 40 }]; // concave notch at (20,20)
+  const outer = ring(c);
+  const sneaky = [{ x: 30, z: 25 }, { x: 50, z: 25 }, { x: 30, z: 5 }]; // vertices inside, edge through the notch mouth
+  // if any candidate edge crosses the outer boundary it must be rejected even with every vertex inside
+  const got = ringsContained(outer.ring, outer.bb, [ring(sneaky)]);
+  const crosses = ringsCross(c, sneaky);
+  ok(crosses ? got.length === 0 : true, 'contained: edge-crossing candidate rejected (or no crossing, vacuous)');
+  ok(ringsCross(c, [{ x: -10, z: 20 }, { x: 60, z: 20 }, { x: 25, z: 30 }]) === true, 'ringsCross: detects a proper crossing');
+  ok(ringsCross(sq(0, 0, 100), sq(200, 0, 40)) === false, 'ringsCross: disjoint rings do not cross');
+}
+// 9. ringsContained self/nested: a big candidate fully swallowing the outer ring is NOT a hole
+{
+  const outer = ring(sq(0, 0, 40));
+  const bigger = ring(sq(0, 0, 100));
+  ok(ringsContained(outer.ring, outer.bb, [bigger]).length === 0, 'contained: swallowing ring rejected by bbox gate');
+}
+
+
 process.exit(failed ? 1 : 0);
