@@ -138,7 +138,7 @@ function buildLandmarks(scene) {
     const OPEN_SPACE = /^(Plaza|Glorieta|Parque|Jardín|Jardines|Paseo|Campo|Cuesta)\b|^Puerta del Sol\b/i;
     // Fountains are tagged as OSM areas too, but they are not buildings: extruding the Fuente de
     // Cibeles footprint to its 8 m sculpture height produced the blank white "cube" on the roundabout.
-    // Lay its footprint as pavement (the collider stays where it was) instead of giving a fountain
+    // Lay its footprint as pavement without a raised collider instead of giving a fountain
     // a facade. Temples/statues with a ring keep the plain stone body: they are monuments, not blocks.
     const FLAT_FEATURE = /^Fuente\b/i;
     const NON_BUILDING = /^(Templo|Monumento|Estatua)\b/i;
@@ -172,8 +172,7 @@ function buildLandmarks(scene) {
         g.add(flat);
         g.position.set(lm.cx, 0, lm.cz);
         group.add(g);
-        // Keep the fountain's old collision box: this pass only changes how it is drawn.
-        if (FLAT_FEATURE.test(name)) colliders.push({ minX: lm.cx - lm.w / 2, maxX: lm.cx + lm.w / 2, minZ: lm.cz - lm.d / 2, maxZ: lm.cz + lm.d / 2, maxY: H });
+        // Flat surfaces have no raised body for the player to collide with.
         continue;
       }
       // Procedural recognizable monuments replace the flat extrusion where modelled

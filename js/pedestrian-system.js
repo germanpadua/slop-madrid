@@ -524,7 +524,8 @@ function createPedestrianSystem(initialNetwork, { player, nearEdges, nearSignals
     return best;
   }
   function rematchSidewalk(p) {
-    const e = nearestWalkEdge(p.x, p.z, p.ux * p.dir, p.uz * p.dir);
+    // Track orientation is independent of walking direction; keep dir when matching the same sidewalk.
+    const e = nearestWalkEdge(p.x, p.z, p.ux, p.uz);
     if (!e) return false;
     const choices = pedRoutes.along(e);
     if (!choices.length) return false;
