@@ -214,12 +214,15 @@ export function decomposeRing(ring, { stripW = 6, minW = 2, minD = 2, holes = []
       // Outer fit of (hole ∩ slab): scan at the slab edges AND at every hole-vertex v inside the
       // slab - a hole floating inside a tall slab is missed by the edge scans alone (the extremes
       // of the intersection occur at hole vertices or band crossings, all covered by these lines).
+      // Collect every scan line's intervals first, ONE sorted sweep at the end (union is
+      // order-independent; the previous per-line unionSets re-sorted the accumulator O(lines^2)).
       let hv = [];
       for (const h of uvHoles) {
         const lines = [sz0 + eps, sz1 - eps];
         for (const q of h) if (q[1] > sz0 + 2 * eps && q[1] < sz1 - 2 * eps) lines.push(q[1]);
-        for (const vv of lines) hv = unionSets(hv, sliceIntervals(h, vv));
+        for (const vv of lines) hv.push(...sliceIntervals(h, vv));
       }
+      if (hv.length) hv = unionSets([], hv);
       iv = subtractSets(iv, hv);
     }
     for (const [a, b] of iv) {
