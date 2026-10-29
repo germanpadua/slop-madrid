@@ -1309,7 +1309,7 @@
   "ready": 14,
   "pending": 71,
   "failed": 0,
-  "readyBytes": 9392894,
+  "readyBytes": 9418344,
   "readyKm2": 20.8
  },
  "tiles": [
@@ -3907,8 +3907,8 @@
    "module": "js/geodata/tile-k3j-1.js",
    "overlapped": true,
    "areaKm2": 1,
-   "bytes": 289120,
-   "md5": "e5995e53319966f78a033a961281d9b4",
+   "bytes": 289261,
+   "md5": "19cbd16f9d160faac87a2e81ac35c09b",
    "counts": {
     "blocks": 72,
     "parcels": 1387,
@@ -3959,8 +3959,8 @@
    "module": "js/geodata/tile-k3j0.js",
    "overlapped": true,
    "areaKm2": 0.75,
-   "bytes": 202659,
-   "md5": "4ab80481fa09801ad8fe14a988b3b838",
+   "bytes": 227968,
+   "md5": "711becc78aa188537b12cac6905ea5bf",
    "counts": {
     "blocks": 49,
     "parcels": 1160,

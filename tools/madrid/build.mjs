@@ -164,10 +164,13 @@ for (const e of els) {
   const kept = pts.filter(([x, z]) => x >= wx0 - 20 && x <= wx1 + 20 && z >= wz0 - 20 && z <= wz1 + 20);
   if (kept.length < 2) continue;
   const dir = t.oneway === 'yes' ? 1 : t.oneway === '-1' ? -1 : 0;
-  roadLines.push({ name: t.name || '', w: roadW(t), dir, lanes: parseInt(t.lanes || '0', 10) || 0, hw: /^(motorway|trunk)/.test(t.highway) ? 1 : 0, surf: t.surface || '', pts: rdp(kept, 0.6) });
+  roadLines.push({ name: t.name || '', w: roadW(t), dir, lanes: parseInt(t.lanes || '0', 10) || 0, hw: /^(motorway|trunk)/.test(t.highway) ? 1 : 0, surf: t.surface || '', own: kept.some(([x, z]) => inCore(x, z)), pts: rdp(kept, 0.6) });
 }
 // Same ownership rule for roads (they carry the bridge decks over the water): keep the ones that enter the core.
-roadLines.splice(0, roadLines.length, ...roadLines.filter((r) => r.pts.some(([x, z]) => inCore(x, z))));
+// Ownership is decided on the FULL-RESOLUTION kept points, not the RDP output: simplification can remove every
+// in-core node of a smooth way and the ownership test then drops a way that does enter the core (seen on rail
+// way 99696152 at the k3j0/k3j-1 seam; same latent bug on roads and paths).
+roadLines.splice(0, roadLines.length, ...roadLines.filter((r) => r.own));
 
 // Foot-path-class ways (footway/path/pedestrian way/cycleway; steps & area-plazas excluded): kept whole when
 // they enter the core, carrying the OSM surface tag so park paths can paint SOURCE-GROUNDED pavement or earth
@@ -182,9 +185,9 @@ for (const e of els) {
   const kept = pts.filter(([x, z]) => x >= wx0 - 20 && x <= wx1 + 20 && z >= wz0 - 20 && z <= wz1 + 20);
   if (kept.length < 2) continue;
   const wSrc = t.width ? parseFloat(String(t.width).replace(',', '.')) : NaN;
-  pathLines.push({ name: t.name || '', cls: t.highway, surf: t.surface || '', w: Number.isFinite(wSrc) && wSrc > 0 ? wSrc : PATH_W[t.highway], pts: rdp(kept, 0.6) });
+  pathLines.push({ name: t.name || '', cls: t.highway, surf: t.surface || '', w: Number.isFinite(wSrc) && wSrc > 0 ? wSrc : PATH_W[t.highway], own: kept.some(([x, z]) => inCore(x, z)), pts: rdp(kept, 0.6) });
 }
-pathLines.splice(0, pathLines.length, ...pathLines.filter((r) => r.pts.some(([x, z]) => inCore(x, z))));
+pathLines.splice(0, pathLines.length, ...pathLines.filter((r) => r.own));
 
 // Rail ways (railway=rail): kept whole when they enter the core, same ownership rule as roads. The k3j-1
 // corridor void (Atocha / Méndez Álvaro) was traced to this class missing from the fetch (see MADRID.md).
@@ -197,11 +200,15 @@ for (const e of els) {
   // Atocha-Chamartin tunnel and underpasses drew fake surface track (k3j-1: 27 ways).
   if (t.tunnel && t.tunnel !== 'no') continue;
   const pts = e.geometry.filter((p) => p).map((p) => toWorld(p.lon, p.lat));
-  const kept = pts.filter(([x, z]) => x >= wx0 - 20 && x <= wx1 + 20 && z >= wz0 - 20 && z <= wz1 + 20);
+  // Margin = the full 100 m fetch overlap, not 20 m: with 20 m a sparse-node way whose next
+  // node sits just past the margin lost the crossing segment and the track stopped short of
+  // the seam (k3j0 ways 99696152/99696176 ended ~19 m north of the k3j-1 boundary). The
+  // polyline is core-clipped afterwards anyway, so a wide margin costs nothing.
+  const kept = pts.filter(([x, z]) => x >= wx0 - 100 && x <= wx1 + 100 && z >= wz0 - 100 && z <= wz1 + 100);
   if (kept.length < 2) continue;
-  railLines.push({ pts: rdp(kept, 0.6) });
+  railLines.push({ own: kept.some(([x, z]) => inCore(x, z)), pts: rdp(kept, 0.6) });
 }
-railLines.splice(0, railLines.length, ...railLines.filter((r) => r.pts.some(([x, z]) => inCore(x, z))));
+railLines.splice(0, railLines.length, ...railLines.filter((r) => r.own));
 // Rails are RENDERED geometry (unlike road centrelines): clip polylines to the core rect segment by segment
 // (Liang-Barsky) so no stub floats over the frame apron. Both tiles cut at the same line, so tracks join at seams.
 const clipSegCore = (ax, az, bx, bz, [x0, z0, x1, z1]) => {
